@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "SugarPrecision",
+    "slug": "sugarprecision",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#f4faff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sugarprecision.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#f4faff"
+      },
+      "package": "com.sugarprecision.app"
+    },
+    "extra": {
+      "apiBaseUrl": "${EXPO_PUBLIC_API_BASE_URL}"
+    }
+  }
+}

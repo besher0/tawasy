@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>طلبيات اليوم التالي - SugarPrecision</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            background-color: #f4faff;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #e4bdc2;
+            border-radius: 10px;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed": "#ffd9de",
+                        "on-surface-variant": "#5b3f43",
+                        "on-secondary": "#ffffff",
+                        "on-surface": "#111d23",
+                        "surface-container-high": "#ddeaf2",
+                        "on-secondary-fixed-variant": "#524249",
+                        "primary": "#b80049",
+                        "on-primary-fixed": "#400014",
+                        "on-tertiary-fixed-variant": "#005048",
+                        "secondary-fixed-dim": "#d7c1c8",
+                        "secondary-container": "#f4dce4",
+                        "on-tertiary-container": "#f4fffb",
+                        "surface-tint": "#bc004b",
+                        "surface-container-highest": "#d7e4ec",
+                        "on-background": "#111d23",
+                        "on-primary-container": "#fffbff",
+                        "on-primary": "#ffffff",
+                        "primary-container": "#e2165f",
+                        "surface-variant": "#d7e4ec",
+                        "tertiary-fixed-dim": "#67d9c9",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed": "#f4dce4",
+                        "surface-dim": "#cfdce4",
+                        "on-secondary-container": "#716066",
+                        "surface-container": "#e3f0f8",
+                        "surface": "#f4faff",
+                        "secondary": "#6b5a60",
+                        "on-secondary-fixed": "#25181e",
+                        "surface-bright": "#f4faff",
+                        "tertiary": "#00685e",
+                        "inverse-primary": "#ffb2be",
+                        "tertiary-fixed": "#85f6e5",
+                        "on-tertiary-fixed": "#00201c",
+                        "on-primary-fixed-variant": "#900038",
+                        "on-error": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-on-surface": "#e6f3fb",
+                        "primary-fixed-dim": "#ffb2be",
+                        "outline-variant": "#e4bdc2",
+                        "error-container": "#ffdad6",
+                        "background": "#f4faff",
+                        "outline": "#8f6f73",
+                        "surface-container-low": "#e9f6fd",
+                        "inverse-surface": "#263238",
+                        "tertiary-container": "#008377",
+                        "error": "#ba1a1a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "gutter": "16px",
+                        "container-max": "1280px",
+                        "margin-mobile": "16px",
+                        "margin-desktop": "32px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Be Vietnam Pro"],
+                        "body-lg": ["Be Vietnam Pro"],
+                        "label-md": ["Be Vietnam Pro"],
+                        "title-md": ["Be Vietnam Pro"],
+                        "headline-lg": ["Be Vietnam Pro"],
+                        "label-sm": ["Be Vietnam Pro"],
+                        "headline-lg-mobile": ["Be Vietnam Pro"],
+                        "display-lg": ["Be Vietnam Pro"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "title-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background selection:bg-primary-fixed selection:text-on-primary-fixed overflow-hidden">
+<!-- Main Wrapper with SideNav and TopNav -->
+<div class="flex h-screen w-full">
+<!-- Side Navigation (Authority: SideNavBar JSON) -->
+<aside class="hidden md:flex flex-col h-full w-64 border-l border-outline-variant bg-surface-container-low py-margin-desktop shrink-0 transition-all duration-300">
+<div class="px-6 mb-10">
+<h1 class="font-display-lg text-title-md font-bold text-primary">SugarPrecision</h1>
+<p class="text-label-sm text-on-surface-variant">Enterprise Production</p>
+</div>
+<nav class="flex-1 space-y-2 px-2">
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-on-surface-variant hover:bg-secondary-container" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-primary font-bold border-r-4 border-primary" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">shopping_cart</span>
+<span class="font-label-md text-label-md">Orders</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-on-surface-variant hover:bg-secondary-container" href="#">
+<span class="material-symbols-outlined">factory</span>
+<span class="font-label-md text-label-md">Production</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-on-surface-variant hover:bg-secondary-container" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-md text-label-md">Analytics</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-on-surface-variant hover:bg-secondary-container" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</nav>
+<div class="px-4 mt-auto">
+<div class="p-4 rounded-2xl bg-primary-fixed text-on-primary-fixed">
+<p class="font-label-sm text-label-sm font-bold">المناوبة الحالية</p>
+<p class="font-body-md text-body-md mt-1">الصباحية - دبي 1</p>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+<!-- Top Navigation (Authority: TopNavBar JSON) -->
+<header class="flex justify-between items-center w-full px-margin-desktop h-16 bg-surface shadow-sm z-10">
+<div class="flex items-center gap-4">
+<button class="md:hidden p-2 text-on-surface-variant">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="bg-surface-container-high border-none rounded-full pr-10 pl-4 py-2 w-64 focus:ring-2 focus:ring-primary text-body-md" placeholder="بحث عن طلبية..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2">
+<button class="p-2 rounded-full hover:bg-surface-variant transition-colors relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-surface"></span>
+</button>
+<button class="p-2 rounded-full hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+<div class="hidden md:flex items-center gap-3 border-r border-outline-variant pr-6">
+<div class="text-left">
+<p class="font-label-md text-label-md text-on-surface font-bold">أحمد محمود</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant text-right">مدير مخبز</p>
+</div>
+<img alt="Profile" class="w-10 h-10 rounded-full object-cover border-2 border-primary-fixed" data-alt="A professional headshot of a Middle Eastern male chef in his 30s, wearing a clean white bakery uniform. He has a friendly and confident expression, set against a blurred background of a modern, brightly lit commercial kitchen. The lighting is soft and warm, highlighting the high-quality, professional environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBWGxQRWgo0SlYH4tTxU7a1pKyjoBzzUWy8GQM4yxGftGMyVciHHTbyTv-AwYeeXDjiazBqk7b_jIrR5gGFn0qkuZOFary2IFVJRaX5fwAM335w1i0Nb_JdzPJMrY8yIXJe9XIMybOjz66gIXYF5DmnrMXm9P7XEVR73-mB9OcMjXrXIcJwTJif2tB5ZOxSv-HEQpYvuH9EGurEeuT34easL-lk8LUY2qwqIRxoqWcgywD62BjdSEjpJzvAdxY0S3ES9cHhtffhTmTh"/>
+</div>
+</div>
+</header>
+<!-- Scrollable Content Canvas -->
+<div class="flex-1 overflow-y-auto p-margin-desktop custom-scrollbar">
+<!-- Page Header with Date Selector -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+<div>
+<h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary">طلبيات اليوم التالي للمستلزمات</h2>
+<p class="text-on-surface-variant font-body-md text-body-md">إدارة وتدقيق طلبات التوريد ليوم غد</p>
+</div>
+<div class="flex items-center gap-3 bg-white p-2 rounded-2xl shadow-sm border border-outline-variant">
+<span class="material-symbols-outlined text-primary">calendar_today</span>
+<select class="border-none bg-transparent font-title-md text-title-md focus:ring-0 cursor-pointer">
+<option>غداً: 25 أكتوبر 2023</option>
+<option>26 أكتوبر 2023</option>
+<option>27 أكتوبر 2023</option>
+</select>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Left: Quick Add & Categories (8 Cols) -->
+<div class="lg:col-span-8 space-y-6">
+<!-- Quick Add Categories -->
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+<button class="flex flex-col items-center justify-center p-6 rounded-3xl bg-white border-2 border-transparent hover:border-primary transition-all group shadow-sm">
+<div class="w-16 h-16 rounded-2xl bg-secondary-container flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary text-4xl" style="font-variation-settings: 'FILL' 1;">cake</span>
+</div>
+<span class="font-title-md text-title-md text-on-surface">كاتو جاهز</span>
+</button>
+<button class="flex flex-col items-center justify-center p-6 rounded-3xl bg-white border-2 border-transparent hover:border-primary transition-all group shadow-sm">
+<div class="w-16 h-16 rounded-2xl bg-tertiary-fixed flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-tertiary text-4xl" style="font-variation-settings: 'FILL' 1;">kitchen</span>
+</div>
+<span class="font-title-md text-title-md text-on-surface">مواد أولية</span>
+</button>
+<button class="flex flex-col items-center justify-center p-6 rounded-3xl bg-white border-2 border-transparent hover:border-primary transition-all group shadow-sm">
+<div class="w-16 h-16 rounded-2xl bg-primary-fixed flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary text-4xl" style="font-variation-settings: 'FILL' 1;">bakery_dining</span>
+</div>
+<span class="font-title-md text-title-md text-on-surface">قطع</span>
+</button>
+<button class="flex flex-col items-center justify-center p-6 rounded-3xl bg-white border-2 border-transparent hover:border-primary transition-all group shadow-sm">
+<div class="w-16 h-16 rounded-2xl bg-surface-container-high flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-secondary text-4xl" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+</div>
+<span class="font-title-md text-title-md text-on-surface">مستلزمات</span>
+</button>
+</div>
+<!-- Current Items Table -->
+<div class="bg-white rounded-[2rem] shadow-sm overflow-hidden border border-outline-variant">
+<div class="p-6 border-b border-outline-variant flex justify-between items-center">
+<h3 class="font-title-md text-title-md">المواد المضافة حالياً</h3>
+<span class="bg-secondary-container text-on-secondary-container px-4 py-1 rounded-full text-label-sm font-bold">8 مواد</span>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-right border-collapse">
+<thead>
+<tr class="bg-surface-container-low text-on-surface-variant">
+<th class="p-4 font-label-md">اسم المادة</th>
+<th class="p-4 font-label-md">الفئة</th>
+<th class="p-4 font-label-md">الكمية</th>
+<th class="p-4 font-label-md">ملاحظات</th>
+<th class="p-4 font-label-md">الحالة</th>
+<th class="p-4 font-label-md">إجراء</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container transition-colors group">
+<td class="p-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-primary-fixed flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-xl">grain</span>
+</div>
+<span class="font-body-md text-body-md font-bold">طحين فاخر 50كجم</span>
+</div>
+</td>
+<td class="p-4">
+<span class="px-3 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant text-label-sm font-bold">مواد أولية</span>
+</td>
+<td class="p-4">
+<div class="flex items-center gap-3 bg-surface-container-high rounded-full w-fit px-2 py-1">
+<button class="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">add</span>
+</button>
+<span class="font-title-md text-title-md w-8 text-center">15</span>
+<button class="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">remove</span>
+</button>
+</div>
+</td>
+<td class="p-4">
+<input class="bg-transparent border-b border-outline focus:border-primary focus:ring-0 text-label-md py-1 w-full" placeholder="أضف ملاحظة..." type="text"/>
+</td>
+<td class="p-4">
+<span class="flex items-center gap-1 text-on-surface-variant font-label-sm text-label-sm">
+<span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                                                    قيد الانتظار
+                                                </span>
+</td>
+<td class="p-4">
+<button class="text-error opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-error-container rounded-full">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container transition-colors group">
+<td class="p-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-secondary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-secondary text-xl">cake</span>
+</div>
+<span class="font-body-md text-body-md font-bold">ريد فيلفيت (قطع)</span>
+</div>
+</td>
+<td class="p-4">
+<span class="px-3 py-1 rounded-full bg-primary-fixed text-on-primary-fixed-variant text-label-sm font-bold">حلويات</span>
+</td>
+<td class="p-4">
+<div class="flex items-center gap-3 bg-surface-container-high rounded-full w-fit px-2 py-1">
+<button class="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">add</span>
+</button>
+<span class="font-title-md text-title-md w-8 text-center">48</span>
+<button class="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">remove</span>
+</button>
+</div>
+</td>
+<td class="p-4">
+<input class="bg-transparent border-b border-outline focus:border-primary focus:ring-0 text-label-md py-1 w-full" type="text" value="تغليف خاص للهدايا"/>
+</td>
+<td class="p-4">
+<span class="flex items-center gap-1 text-primary font-label-sm text-label-sm">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                                                    يتم التجهيز
+                                                </span>
+</td>
+<td class="p-4">
+<button class="text-error opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-error-container rounded-full">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container transition-colors group">
+<td class="p-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-surface-variant text-xl">inventory_2</span>
+</div>
+<span class="font-body-md text-body-md font-bold">علب كيك قياس وسط</span>
+</div>
+</td>
+<td class="p-4">
+<span class="px-3 py-1 rounded-full bg-surface-variant text-on-surface-variant text-label-sm font-bold">مستلزمات</span>
+</td>
+<td class="p-4">
+<div class="flex items-center gap-3 bg-surface-container-high rounded-full w-fit px-2 py-1">
+<button class="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">add</span>
+</button>
+<span class="font-title-md text-title-md w-8 text-center">100</span>
+<button class="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">remove</span>
+</button>
+</div>
+</td>
+<td class="p-4">
+<input class="bg-transparent border-b border-outline focus:border-primary focus:ring-0 text-label-md py-1 w-full" placeholder="أضف ملاحظة..." type="text"/>
+</td>
+<td class="p-4">
+<span class="flex items-center gap-1 text-tertiary font-label-sm text-label-sm">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+                                                    جاهز للشحن
+                                                </span>
+</td>
+<td class="p-4">
+<button class="text-error opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-error-container rounded-full">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Right: Summary & Stats (4 Cols) -->
+<div class="lg:col-span-4 space-y-6">
+<!-- Order Summary Card -->
+<div class="bg-primary text-on-primary rounded-[2rem] p-8 shadow-xl relative overflow-hidden">
+<div class="relative z-10">
+<h3 class="font-title-md text-title-md mb-6 opacity-90">ملخص طلبية الغد</h3>
+<div class="space-y-4 mb-8">
+<div class="flex justify-between items-center py-2 border-b border-primary-container">
+<span class="text-label-md">إجمالي المواد</span>
+<span class="font-bold">163 وحدة</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-primary-container">
+<span class="text-label-md">مواد أولية</span>
+<span class="font-bold">15 كجم</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-primary-container">
+<span class="text-label-md">حلويات وقطع</span>
+<span class="font-bold">48 قطعة</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-primary-container">
+<span class="text-label-md">مستلزمات تغليف</span>
+<span class="font-bold">100 وحدة</span>
+</div>
+</div>
+<button class="w-full bg-white text-primary font-bold py-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-primary-fixed transition-all active:scale-95">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">send</span>
+                                    إرسال الطلبية للمصنع
+                                </button>
+<p class="text-center text-label-sm mt-4 opacity-70">آخر تحديث: منذ 5 دقائق</p>
+</div>
+<!-- Background Decoration -->
+<div class="absolute -bottom-10 -right-10 w-40 h-40 bg-primary-container rounded-full opacity-20"></div>
+<div class="absolute -top-10 -left-10 w-24 h-24 bg-primary-container rounded-full opacity-10"></div>
+</div>
+<!-- Production Tip / Info Card -->
+<div class="bg-surface-container-high rounded-[2rem] p-6 border border-outline-variant">
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 rounded-xl bg-white flex items-center justify-center shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-tertiary">info</span>
+</div>
+<div>
+<h4 class="font-title-md text-title-md text-on-surface mb-2">تنبيه المخزون</h4>
+<p class="text-label-md text-on-surface-variant leading-relaxed">بناءً على مبيعات الأسبوع الماضي، يُنصح بزيادة كمية "طحين الشوكولاتة" بنسبة 10% لتغطية طلبات نهاية الأسبوع.</p>
+</div>
+</div>
+</div>
+<!-- Mini Chart / Activity -->
+<div class="bg-white rounded-[2rem] p-6 shadow-sm border border-outline-variant">
+<h4 class="font-label-md text-label-md text-on-surface-variant mb-4">نشاط الطلبات (أخر 24 ساعة)</h4>
+<div class="flex items-end gap-2 h-24 mb-4 px-2">
+<div class="flex-1 bg-secondary-container rounded-t-lg transition-all hover:bg-primary" style="height: 40%"></div>
+<div class="flex-1 bg-secondary-container rounded-t-lg transition-all hover:bg-primary" style="height: 60%"></div>
+<div class="flex-1 bg-secondary-container rounded-t-lg transition-all hover:bg-primary" style="height: 90%"></div>
+<div class="flex-1 bg-secondary-container rounded-t-lg transition-all hover:bg-primary" style="height: 55%"></div>
+<div class="flex-1 bg-primary rounded-t-lg transition-all" style="height: 75%"></div>
+<div class="flex-1 bg-secondary-container rounded-t-lg transition-all hover:bg-primary" style="height: 45%"></div>
+<div class="flex-1 bg-secondary-container rounded-t-lg transition-all hover:bg-primary" style="height: 30%"></div>
+</div>
+<div class="flex justify-between text-label-sm text-on-surface-variant">
+<span>صباحاً</span>
+<span>ظهراً</span>
+<span>مساءً</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Floating Action Button (Mobile context) -->
+<button class="md:hidden fixed bottom-6 left-6 w-16 h-16 bg-primary text-on-primary rounded-full shadow-2xl flex items-center justify-center active:scale-95 transition-transform z-20">
+<span class="material-symbols-outlined text-3xl">add</span>
+</button>
+</main>
+</div>
+<!-- Micro-interaction for Quantity Selectors -->
+<script>
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                if (this.querySelector('.material-symbols-outlined')?.innerText === 'add') {
+                    const span = this.parentElement.querySelector('span.text-center');
+                    span.innerText = parseInt(span.innerText) + 1;
+                } else if (this.querySelector('.material-symbols-outlined')?.innerText === 'remove') {
+                    const span = this.parentElement.querySelector('span.text-center');
+                    if(parseInt(span.innerText) > 0) {
+                        span.innerText = parseInt(span.innerText) - 1;
+                    }
+                }
+            });
+        });
+
+        // Simple scale effect on click
+        document.addEventListener('mousedown', (e) => {
+            const btn = e.target.closest('button');
+            if (btn) btn.classList.add('scale-95');
+        });
+        document.addEventListener('mouseup', (e) => {
+            const btn = e.target.closest('button');
+            if (btn) btn.classList.remove('scale-95');
+        });
+    </script>
+</body></html>

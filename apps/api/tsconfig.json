@@ -1,0 +1,26 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2022",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "incremental": true,
+    "paths": {
+      "@sugarprecision/shared-types": [
+        "../../packages/shared-types/src"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts",
+    "prisma/seed.ts"
+  ]
+}

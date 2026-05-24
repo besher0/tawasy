@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+
+<html class="light" dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SugarPrecision | الإحصائيات والتقارير التحليلية</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;family=Noto+Sans+Arabic:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Noto+Sans+Arabic', 'Be Vietnam Pro', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        /* Chart Simulation Styles */
+        .chart-bar {
+            transition: height 1s ease-in-out;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-surface-variant": "#5b3f43",
+                      "surface-container-lowest": "#ffffff",
+                      "tertiary-fixed-dim": "#67d9c9",
+                      "on-error-container": "#93000a",
+                      "on-tertiary-container": "#f4fffb",
+                      "on-tertiary": "#ffffff",
+                      "on-secondary": "#ffffff",
+                      "secondary-container": "#f4dce4",
+                      "on-background": "#111d23",
+                      "primary-fixed": "#ffd9de",
+                      "surface-bright": "#f4faff",
+                      "inverse-surface": "#263238",
+                      "secondary-fixed-dim": "#d7c1c8",
+                      "outline-variant": "#e4bdc2",
+                      "background": "#f4faff",
+                      "on-secondary-container": "#716066",
+                      "on-primary-fixed": "#400014",
+                      "on-surface": "#111d23",
+                      "surface": "#f4faff",
+                      "tertiary": "#00685e",
+                      "secondary": "#6b5a60",
+                      "on-secondary-fixed-variant": "#524249",
+                      "error-container": "#ffdad6",
+                      "tertiary-container": "#008377",
+                      "on-tertiary-fixed": "#00201c",
+                      "surface-container-high": "#ddeaf2",
+                      "on-secondary-fixed": "#25181e",
+                      "primary-container": "#e2165f",
+                      "surface-tint": "#bc004b",
+                      "surface-dim": "#cfdce4",
+                      "surface-variant": "#d7e4ec",
+                      "inverse-primary": "#ffb2be",
+                      "primary": "#b80049",
+                      "surface-container-highest": "#d7e4ec",
+                      "on-primary": "#ffffff",
+                      "outline": "#8f6f73",
+                      "on-error": "#ffffff",
+                      "inverse-on-surface": "#e6f3fb",
+                      "surface-container-low": "#e9f6fd",
+                      "on-tertiary-fixed-variant": "#005048",
+                      "on-primary-fixed-variant": "#900038",
+                      "secondary-fixed": "#f4dce4",
+                      "surface-container": "#e3f0f8",
+                      "on-primary-container": "#fffbff",
+                      "error": "#ba1a1a",
+                      "tertiary-fixed": "#85f6e5",
+                      "primary-fixed-dim": "#ffb2be"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "unit": "4px",
+                      "margin-mobile": "16px",
+                      "margin-desktop": "32px",
+                      "gutter": "16px",
+                      "container-max": "1280px"
+              },
+              "fontFamily": {
+                      "headline-lg": ["Be Vietnam Pro", "Noto Sans Arabic"],
+                      "display-lg": ["Be Vietnam Pro", "Noto Sans Arabic"],
+                      "label-md": ["Be Vietnam Pro", "Noto Sans Arabic"],
+                      "label-sm": ["Be Vietnam Pro", "Noto Sans Arabic"],
+                      "body-md": ["Be Vietnam Pro", "Noto Sans Arabic"],
+                      "body-lg": ["Be Vietnam Pro", "Noto Sans Arabic"],
+                      "title-md": ["Be Vietnam Pro", "Noto Sans Arabic"],
+                      "headline-lg-mobile": ["Be Vietnam Pro", "Noto Sans Arabic"]
+              },
+              "fontSize": {
+                      "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                      "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                      "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "600"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "title-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                      "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}]
+              }
+            },
+          },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface antialiased overflow-x-hidden">
+<!-- TopNavBar Shell -->
+<header class="fixed top-0 left-0 right-0 z-50 bg-surface shadow-sm flex justify-between items-center w-full px-margin-desktop h-16">
+<div class="flex items-center gap-4">
+<span class="font-display-lg text-headline-lg-mobile font-bold text-primary">SugarPrecision</span>
+<div class="hidden md:flex items-center bg-surface-container rounded-full px-4 py-1 gap-2 border border-outline-variant">
+<span class="material-symbols-outlined text-on-surface-variant">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-md w-64" placeholder="البحث عن التقارير..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="hidden md:flex gap-8">
+<a class="text-on-surface-variant hover:text-primary transition-colors font-body-md" href="#">الرئيسية</a>
+<a class="text-primary font-bold border-b-2 border-primary pb-1 font-body-md" href="#">التحليلات</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors font-body-md" href="#">المخزون</a>
+</div>
+<div class="flex items-center gap-3">
+<button class="relative p-2 rounded-full hover:bg-secondary-container transition-all">
+<span class="material-symbols-outlined text-on-surface-variant">notifications</span>
+<span class="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full"></span>
+</button>
+<div class="h-8 w-8 rounded-full overflow-hidden border-2 border-primary">
+<img alt="User Profile" data-alt="A professional headshot of a middle-aged female pastry chef with a confident smile, wearing a clean white culinary jacket. The background is a softly blurred modern bakery with pink and white accents, reflecting a high-end corporate kitchen environment. The lighting is bright and professional, emphasizing a clean, light-mode aesthetic suitable for a business dashboard." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAlKpDkADRlNpRuhQ5JY81LxW-aZEzy_p62pva8zDLBS-dwPuM9wc792qdhY_dRybRsgfkkrDRYZ35cxwPm1m-gaq3XbUYnW5pu8NgBFIl3yxJpiZEOzxg5Aje7W81rofapKhtzTH9etYMgPoj6bn-dyBSuiaRkU8TECcne0XEEgKBwWsXKAsXJFQRi-QXWqLhxk-28a6iH04Q3-0Buwf_p-Ya0buNF1aAS7K0hswYa-nP-xfdLBL1xTzlYU3dnQZK3-BNp_ZbovnB6"/>
+</div>
+</div>
+</div>
+</header>
+<div class="flex pt-16 min-h-screen">
+<!-- SideNavBar Shell -->
+<aside class="hidden lg:flex fixed right-0 top-16 bottom-0 w-64 bg-surface-container-low border-l border-outline-variant flex-col py-margin-desktop z-40">
+<div class="px-6 mb-8">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-primary-container rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary">factory</span>
+</div>
+<div>
+<h2 class="font-display-lg text-title-md font-bold text-primary leading-tight">SugarPrecision</h2>
+<p class="text-label-sm text-on-surface-variant opacity-70">إدارة الإنتاج</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1 px-3">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-secondary-container transition-colors group" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-body-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-secondary-container transition-colors group" href="#">
+<span class="material-symbols-outlined">shopping_cart</span>
+<span class="font-body-md">Orders</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-secondary-container transition-colors group" href="#">
+<span class="material-symbols-outlined">factory</span>
+<span class="font-body-md">Production</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-primary dark:text-inverse-primary font-bold border-r-4 border-primary bg-secondary-container transition-colors group" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<span class="font-body-md">Analytics</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-secondary-container transition-colors group" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body-md">Settings</span>
+</a>
+</nav>
+<div class="px-6 mt-auto">
+<div class="bg-primary-container p-4 rounded-xl text-on-primary-container">
+<p class="text-label-sm font-bold mb-1">تقرير وردية الصباح</p>
+<p class="text-[11px] opacity-80 mb-3">نسبة الإنجاز: 84%</p>
+<div class="w-full bg-white/20 rounded-full h-1.5">
+<div class="bg-white h-1.5 rounded-full" style="width: 84%"></div>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 lg:mr-64 px-margin-mobile md:px-margin-desktop py-8 bg-background">
+<!-- Heading & Date Filter -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
+<div>
+<h1 class="font-headline-lg text-on-surface mb-2">الإحصائيات والتقارير التحليلية</h1>
+<p class="text-on-surface-variant font-body-md">نظرة شاملة على أداء الإنتاج والمبيعات لجميع الفروع</p>
+</div>
+<div class="flex items-center bg-white p-1 rounded-xl shadow-sm border border-outline-variant">
+<button class="px-5 py-2 rounded-lg text-label-md hover:bg-surface-container transition-colors">اليوم</button>
+<button class="px-5 py-2 rounded-lg bg-primary text-white text-label-md shadow-md">آخر 7 أيام</button>
+<button class="px-5 py-2 rounded-lg text-label-md hover:bg-surface-container transition-colors">هذا الشهر</button>
+<div class="mx-2 w-px h-6 bg-outline-variant"></div>
+<button class="px-3 py-2 text-primary hover:bg-primary-container/10 rounded-lg">
+<span class="material-symbols-outlined align-middle">calendar_today</span>
+</button>
+</div>
+</div>
+<!-- Metric Cards (Bento Style) -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter mb-10">
+<!-- Total Sales -->
+<div class="glass-card p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<div class="p-3 bg-secondary-container rounded-xl">
+<span class="material-symbols-outlined text-primary">payments</span>
+</div>
+<span class="text-tertiary font-bold text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">trending_up</span>
+                            12%+
+                        </span>
+</div>
+<p class="text-on-surface-variant text-label-md mb-1">إجمالي المبيعات</p>
+<h3 class="font-display-lg text-headline-lg-mobile text-on-surface">145,280 ر.س</h3>
+</div>
+<!-- Total Orders -->
+<div class="glass-card p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<div class="p-3 bg-blue-50 rounded-xl">
+<span class="material-symbols-outlined text-blue-600">shopping_bag</span>
+</div>
+<span class="text-tertiary font-bold text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">trending_up</span>
+                            8%+
+                        </span>
+</div>
+<p class="text-on-surface-variant text-label-md mb-1">إجمالي الطلبات</p>
+<h3 class="font-display-lg text-headline-lg-mobile text-on-surface">1,248 طلب</h3>
+</div>
+<!-- Completion Rate -->
+<div class="glass-card p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow border-r-4 border-tertiary">
+<div class="flex justify-between items-start mb-4">
+<div class="p-3 bg-tertiary/10 rounded-xl">
+<span class="material-symbols-outlined text-tertiary">task_alt</span>
+</div>
+<span class="text-on-surface-variant text-label-sm font-medium">اليوم</span>
+</div>
+<p class="text-on-surface-variant text-label-md mb-1">نسبة الإنجاز</p>
+<div class="flex items-end gap-3">
+<h3 class="font-display-lg text-headline-lg-mobile text-on-surface">94.2%</h3>
+<div class="mb-2 w-16 bg-surface-container rounded-full h-1.5">
+<div class="bg-tertiary h-1.5 rounded-full" style="width: 94%"></div>
+</div>
+</div>
+</div>
+<!-- Average Order Value -->
+<div class="glass-card p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<div class="p-3 bg-orange-50 rounded-xl">
+<span class="material-symbols-outlined text-orange-600">analytics</span>
+</div>
+<span class="text-error font-bold text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">trending_down</span>
+                            3%-
+                        </span>
+</div>
+<p class="text-on-surface-variant text-label-md mb-1">متوسط قيمة الطلب</p>
+<h3 class="font-display-lg text-headline-lg-mobile text-on-surface">116.4 ر.س</h3>
+</div>
+</div>
+<!-- Charts Section -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter mb-10">
+<!-- Line Chart Simulation: Daily Order Trends -->
+<div class="lg:col-span-2 glass-card p-8 rounded-2xl shadow-sm h-[400px] flex flex-col">
+<div class="flex justify-between items-center mb-8">
+<div>
+<h4 class="font-title-md text-on-surface">اتجاهات الطلبات اليومية</h4>
+<p class="text-label-sm text-on-surface-variant">مقارنة أداء الأسبوع الحالي بالأسبوع السابق</p>
+</div>
+<button class="p-2 hover:bg-surface-container rounded-lg">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+<div class="flex-1 flex items-end gap-4 md:gap-8 px-4 border-b border-outline-variant relative">
+<!-- Simulated Chart Grid Lines -->
+<div class="absolute inset-0 flex flex-col justify-between py-2 opacity-10 pointer-events-none">
+<div class="border-t border-on-surface"></div>
+<div class="border-t border-on-surface"></div>
+<div class="border-t border-on-surface"></div>
+<div class="border-t border-on-surface"></div>
+</div>
+<!-- Bars -->
+<div class="flex-1 group relative flex flex-col items-center">
+<div class="w-full bg-primary-container/20 rounded-t-lg absolute bottom-0 chart-bar" style="height: 60%"></div>
+<div class="w-full bg-primary rounded-t-lg absolute bottom-0 chart-bar group-hover:bg-primary-container transition-all" style="height: 45%"></div>
+<span class="absolute -bottom-7 text-label-sm text-on-surface-variant">أحد</span>
+</div>
+<div class="flex-1 group relative flex flex-col items-center">
+<div class="w-full bg-primary-container/20 rounded-t-lg absolute bottom-0 chart-bar" style="height: 50%"></div>
+<div class="w-full bg-primary rounded-t-lg absolute bottom-0 chart-bar group-hover:bg-primary-container transition-all" style="height: 75%"></div>
+<span class="absolute -bottom-7 text-label-sm text-on-surface-variant">اثنين</span>
+</div>
+<div class="flex-1 group relative flex flex-col items-center">
+<div class="w-full bg-primary-container/20 rounded-t-lg absolute bottom-0 chart-bar" style="height: 70%"></div>
+<div class="w-full bg-primary rounded-t-lg absolute bottom-0 chart-bar group-hover:bg-primary-container transition-all" style="height: 65%"></div>
+<span class="absolute -bottom-7 text-label-sm text-on-surface-variant">ثلاثاء</span>
+</div>
+<div class="flex-1 group relative flex flex-col items-center">
+<div class="w-full bg-primary-container/20 rounded-t-lg absolute bottom-0 chart-bar" style="height: 40%"></div>
+<div class="w-full bg-primary rounded-t-lg absolute bottom-0 chart-bar group-hover:bg-primary-container transition-all" style="height: 85%"></div>
+<span class="absolute -bottom-7 text-label-sm text-on-surface-variant">أربعاء</span>
+</div>
+<div class="flex-1 group relative flex flex-col items-center">
+<div class="w-full bg-primary-container/20 rounded-t-lg absolute bottom-0 chart-bar" style="height: 80%"></div>
+<div class="w-full bg-primary rounded-t-lg absolute bottom-0 chart-bar group-hover:bg-primary-container transition-all" style="height: 95%"></div>
+<span class="absolute -bottom-7 text-label-sm text-on-surface-variant">خميس</span>
+</div>
+<div class="flex-1 group relative flex flex-col items-center">
+<div class="w-full bg-primary-container/20 rounded-t-lg absolute bottom-0 chart-bar" style="height: 90%"></div>
+<div class="w-full bg-primary rounded-t-lg absolute bottom-0 chart-bar group-hover:bg-primary-container transition-all" style="height: 70%"></div>
+<span class="absolute -bottom-7 text-label-sm text-on-surface-variant">جمعة</span>
+</div>
+</div>
+</div>
+<!-- Donut Chart Simulation: Popular Cake Types -->
+<div class="glass-card p-8 rounded-2xl shadow-sm h-[400px] flex flex-col">
+<h4 class="font-title-md text-on-surface mb-6">أكثر أنواع القوالب طلباً</h4>
+<div class="flex-1 flex flex-col items-center justify-center relative">
+<!-- Custom Donut SVG -->
+<div class="relative w-48 h-48">
+<svg class="w-full h-full -rotate-90" viewbox="0 0 36 36">
+<circle cx="18" cy="18" fill="transparent" r="16" stroke="#f4dce4" stroke-width="4"></circle>
+<circle cx="18" cy="18" fill="transparent" r="16" stroke="#b80049" stroke-dasharray="45 100" stroke-width="4"></circle>
+<circle cx="18" cy="18" fill="transparent" r="16" stroke="#008377" stroke-dasharray="25 100" stroke-dashoffset="-45" stroke-width="4"></circle>
+<circle cx="18" cy="18" fill="transparent" r="16" stroke="#ffd9de" stroke-dasharray="30 100" stroke-dashoffset="-70" stroke-width="4"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="text-headline-lg text-on-surface">782</span>
+<span class="text-label-sm text-on-surface-variant">إجمالي القطع</span>
+</div>
+</div>
+</div>
+<div class="mt-6 space-y-2">
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-primary"></span>
+<span class="text-body-md text-on-surface-variant">كيك فانيليا</span>
+</div>
+<span class="font-bold text-on-surface">45%</span>
+</div>
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-tertiary-container"></span>
+<span class="text-body-md text-on-surface-variant">تشيز كيك</span>
+</div>
+<span class="font-bold text-on-surface">25%</span>
+</div>
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-primary-fixed"></span>
+<span class="text-body-md text-on-surface-variant">رد فيلفيت</span>
+</div>
+<span class="font-bold text-on-surface">30%</span>
+</div>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-gutter">
+<!-- Top Performing Shops -->
+<div class="glass-card p-8 rounded-2xl shadow-sm">
+<h4 class="font-title-md text-on-surface mb-8">أكثر المحال طلباً (الأداء حسب الفرع)</h4>
+<div class="space-y-6">
+<div class="space-y-2">
+<div class="flex justify-between text-body-md">
+<span class="font-medium">فرع الرياض - العليا</span>
+<span class="text-primary font-bold">482 طلب</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-3">
+<div class="bg-primary h-3 rounded-full" style="width: 85%"></div>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between text-body-md">
+<span class="font-medium">فرع جدة - الكورنيش</span>
+<span class="text-primary font-bold">391 طلب</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-3">
+<div class="bg-primary h-3 rounded-full opacity-80" style="width: 70%"></div>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between text-body-md">
+<span class="font-medium">فرع الخبر - الواجهة</span>
+<span class="text-primary font-bold">315 طلب</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-3">
+<div class="bg-primary h-3 rounded-full opacity-60" style="width: 55%"></div>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between text-body-md">
+<span class="font-medium">فرع مكة - العزيزية</span>
+<span class="text-primary font-bold">128 طلب</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-3">
+<div class="bg-primary h-3 rounded-full opacity-40" style="width: 25%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Top Selling Products Table -->
+<div class="glass-card p-8 rounded-2xl shadow-sm">
+<div class="flex justify-between items-center mb-6">
+<h4 class="font-title-md text-on-surface">أكثر المنتجات مبيعاً</h4>
+<button class="text-primary text-label-md font-bold hover:underline">عرض الكل</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-right border-collapse">
+<thead>
+<tr class="border-b border-outline-variant text-label-sm text-on-surface-variant uppercase">
+<th class="pb-4 pr-2">المنتج</th>
+<th class="pb-4">الفئة</th>
+<th class="pb-4">الكمية</th>
+<th class="pb-4">الإيرادات</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/50">
+<tr class="hover:bg-secondary-container/30 transition-colors">
+<td class="py-4 pr-2 flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container overflow-hidden">
+<img alt="Product" data-alt="A macro photograph of a decadent chocolate layer cake with rich ganache dripping down the sides. The cake is perfectly lit on a minimalist white marble surface with a vibrant pink background. The style is professional commercial food photography, clean, sharp, and inviting for a premium bakery management system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrSSH9PZSfQYckrZnxX4hNb5wMGg5XU7Z8-WGEZ0xE3pUKmJ_dZOLEhrEDyLhMO6Zd1oM2pcT-NZF4WZvW7DcKKyCOGdsSKQMNMXcjaXWKa8YfViLJFsILcY4x_XkJNhD7KuYaNmig7q_NE48iDdcGMJ8x8vHhD6QFxworrkSfA6tIGGJmmGZhIr7AANDyTWs7S2zPzPKxh4jzKXUi5ZByAtHUNnRNUINSQOG8n8YdrhlKjTPN3mCRBmxx1L0FA7lVgk3_KCb8PfGr"/>
+</div>
+<span class="font-medium text-body-md">كيك الشوكولاتة</span>
+</td>
+<td class="py-4 text-body-md text-on-surface-variant">حلويات غربية</td>
+<td class="py-4 text-body-md font-bold">342</td>
+<td class="py-4 text-body-md text-primary font-bold">41,040 ر.س</td>
+</tr>
+<tr class="hover:bg-secondary-container/30 transition-colors">
+<td class="py-4 pr-2 flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container overflow-hidden">
+<img alt="Product" data-alt="A top-down view of a classic fruit tart filled with colorful berries and creamy custard. The pastry crust is golden brown and flaky. The lighting is soft and natural, emphasizing the freshness of the ingredients. The background uses the brand's soft pink and white tones, maintaining a high-end bakery aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAaDNaI-FFP0ndgitJHYhJOOiPaOBsDUmdJ7wLOOtGIsZcUelYeafAL9JnUlnbgsp-rs6isyJC4-m7-1mJIYc7Hl23GPrxqLD85AM_FMVePpC03R04_nnQdlevuO5JyDWrYCaXFT-RrMjXPNdS7r8NgbWwgxotiSJpTNvEeSiMgxb8bRJvHu7nCilIC5bRwRCBxr9MrPXuBLz_BlFLrqGOVLz8IRE7i0yrmI5sa2gLN5yUTeFoPsqysHoguEXuh3-596bqAGk3vbNu"/>
+</div>
+<span class="font-medium text-body-md">تارت الفواكه</span>
+</td>
+<td class="py-4 text-body-md text-on-surface-variant">تارت</td>
+<td class="py-4 text-body-md font-bold">285</td>
+<td class="py-4 text-body-md text-primary font-bold">22,800 ر.س</td>
+</tr>
+<tr class="hover:bg-secondary-container/30 transition-colors">
+<td class="py-4 pr-2 flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container overflow-hidden">
+<img alt="Product" data-alt="A close-up shot of several delicate macarons in various pastel shades including light pink and mint green, arranged neatly on a sleek white plate. The image is bright and airy, with soft shadows. The overall feel is one of artisanal luxury and high-quality confectionary craft." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDH1qkviWoNWlI1uw2muJWmwOw8nJyejkHVTep5F4IF8nxZeYNUamJhuHvf4nUrsG_d8mVhNv3TZShav9PgxlhnhMzx7gm59q7zs0P4FiaftNA_so7lo_SIAmsQtbB1L-Yv7SUdVyw_9oG5sSep1gGfE8fXk9FljrHls2Q8Ug1h4VFFuNVcfQ3SEvapDjXJos1cT9ycqTzt13CB215E63cmS3zWAsAxOkjLc63hCa9drh2xMmk6QGMlvMRn5Qqo4Cr1xvUQBptf86hW"/>
+</div>
+<span class="font-medium text-body-md">ماكرون فرنسي</span>
+</td>
+<td class="py-4 text-body-md text-on-surface-variant">بسكويت</td>
+<td class="py-4 text-body-md font-bold">1,120</td>
+<td class="py-4 text-body-md text-primary font-bold">16,800 ر.س</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Mobile Navigation Shell -->
+<nav class="md:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-outline-variant h-16 flex items-center justify-around z-50 px-4">
+<button class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<span class="text-[10px] font-bold">التحليلات</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined">shopping_cart</span>
+<span class="text-[10px]">الطلبات</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-on-surface-variant">
+<div class="w-10 h-10 -mt-8 bg-primary rounded-full shadow-lg flex items-center justify-center text-white border-4 border-background">
+<span class="material-symbols-outlined">add</span>
+</div>
+<span class="text-[10px]">جديد</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined">factory</span>
+<span class="text-[10px]">الإنتاج</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-[10px]">الإعدادات</span>
+</button>
+</nav>
+<script>
+        // Micro-interaction for bars
+        document.querySelectorAll('.chart-bar').forEach(bar => {
+            const finalHeight = bar.style.height;
+            bar.style.height = '0px';
+            setTimeout(() => {
+                bar.style.height = finalHeight;
+            }, 300);
+        });
+
+        // Simple Arabic localization for the date
+        const today = new Date();
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', calendar: 'islamic' };
+        // Could inject dynamic date if needed
+    </script>
+</body></html>

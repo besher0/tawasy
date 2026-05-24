@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<title>SugarPrecision | نظام إدارة الإنتاج</title>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #e4bdc2;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #b80049;
+        }
+        .kanban-column {
+            min-height: calc(100vh - 280px);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error-container": "#93000a",
+                        "secondary-fixed": "#f4dce4",
+                        "surface-dim": "#cfdce4",
+                        "on-secondary-container": "#716066",
+                        "primary-container": "#e2165f",
+                        "surface-variant": "#d7e4ec",
+                        "tertiary-fixed-dim": "#67d9c9",
+                        "surface-bright": "#f4faff",
+                        "inverse-primary": "#ffb2be",
+                        "tertiary": "#00685e",
+                        "surface-container": "#e3f0f8",
+                        "surface": "#f4faff",
+                        "secondary": "#6b5a60",
+                        "on-secondary-fixed": "#25181e",
+                        "primary-fixed-dim": "#ffb2be",
+                        "outline-variant": "#e4bdc2",
+                        "on-tertiary-fixed": "#00201c",
+                        "tertiary-fixed": "#85f6e5",
+                        "on-primary-fixed-variant": "#900038",
+                        "on-error": "#ffffff",
+                        "inverse-on-surface": "#e6f3fb",
+                        "surface-container-lowest": "#ffffff",
+                        "outline": "#8f6f73",
+                        "surface-container-low": "#e9f6fd",
+                        "inverse-surface": "#263238",
+                        "tertiary-container": "#008377",
+                        "error": "#ba1a1a",
+                        "error-container": "#ffdad6",
+                        "background": "#f4faff",
+                        "on-surface-variant": "#5b3f43",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed": "#ffd9de",
+                        "surface-container-high": "#ddeaf2",
+                        "on-secondary": "#ffffff",
+                        "on-surface": "#111d23",
+                        "on-tertiary-fixed-variant": "#005048",
+                        "secondary-container": "#f4dce4",
+                        "on-tertiary-container": "#f4fffb",
+                        "secondary-fixed-dim": "#d7c1c8",
+                        "on-secondary-fixed-variant": "#524249",
+                        "primary": "#b80049",
+                        "on-primary-fixed": "#400014",
+                        "on-primary-container": "#fffbff",
+                        "on-primary": "#ffffff",
+                        "surface-tint": "#bc004b",
+                        "surface-container-highest": "#d7e4ec",
+                        "on-background": "#111d23"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-max": "1280px",
+                        "margin-mobile": "16px",
+                        "margin-desktop": "32px",
+                        "gutter": "16px",
+                        "unit": "4px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Be Vietnam Pro"],
+                        "label-sm": ["Be Vietnam Pro"],
+                        "headline-lg-mobile": ["Be Vietnam Pro"],
+                        "title-md": ["Be Vietnam Pro"],
+                        "headline-lg": ["Be Vietnam Pro"],
+                        "label-md": ["Be Vietnam Pro"],
+                        "body-lg": ["Be Vietnam Pro"],
+                        "body-md": ["Be Vietnam Pro"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "title-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-md overflow-x-hidden">
+<!-- Top Navigation Bar -->
+<header class="fixed top-0 left-0 right-0 z-50 bg-surface shadow-sm px-margin-desktop h-16 flex justify-between items-center">
+<div class="flex items-center gap-8">
+<h1 class="font-display-lg text-headline-lg font-bold text-primary">SugarPrecision</h1>
+<nav class="hidden md:flex gap-6">
+<a class="text-primary font-bold border-b-2 border-primary pb-1 font-label-md" href="#">Dashboard</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors font-label-md" href="#">Orders</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors font-label-md" href="#">Production</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors font-label-md" href="#">Analytics</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden sm:block">
+<input class="w-64 h-10 pr-10 pl-4 rounded-full border-none bg-surface-container text-on-surface focus:ring-2 focus:ring-primary transition-all" placeholder="البحث عن الطلبات..." type="text"/>
+<span class="material-symbols-outlined absolute right-3 top-2 text-on-surface-variant">search</span>
+</div>
+<button class="p-2 text-on-surface-variant hover:bg-secondary-container rounded-full transition-all">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary-container">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="A professional headshot of a head pastry chef wearing a clean white chef's coat, set against a soft-focus high-end bakery kitchen background with warm lighting and hints of rose pink accents." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD449yB_3uuxUiXIeo2uObwNK5ZJObMyUoJ0emlTRriFw-5ky03zHwEamzPq2Tevh6RWX3rbE9fAvG5z12eoOiSUacJNMuPJyQLBiHuTBUk4G6PXEjLJtx1lo4K7HqBgvXB5d9t34hIm3FYHyQ76numeTz9IevWTcS8YTFvAMd2chR9cRlDVJ19FkWnevIWNeUUBx_0Y4zwNC1kNA50bDS8108dDvBRc1UJXcRKKITaO0A4evXzcFpAOuf9HTzPecLdMIYeDwg_d2d1"/>
+</div>
+</div>
+</header>
+<!-- Side Navigation (RTL Logic) -->
+<aside class="fixed right-0 top-16 h-full w-64 bg-surface-container-low border-l border-outline-variant py-margin-desktop flex flex-col hidden lg:flex">
+<div class="px-6 mb-8">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-primary-container rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">factory</span>
+</div>
+<div>
+<p class="font-bold text-primary text-title-md">SugarPrecision</p>
+<p class="text-on-surface-variant text-label-sm">Enterprise Production</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 px-4 space-y-2">
+<a class="flex items-center gap-4 p-3 rounded-lg text-on-surface-variant hover:bg-secondary-container transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-4 p-3 rounded-lg text-on-surface-variant hover:bg-secondary-container transition-colors" href="#">
+<span class="material-symbols-outlined">shopping_cart</span>
+<span class="font-label-md">Orders</span>
+</a>
+<a class="flex items-center gap-4 p-3 rounded-lg text-primary font-bold border-r-4 border-primary bg-secondary-container" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">factory</span>
+<span class="font-label-md">Production</span>
+</a>
+<a class="flex items-center gap-4 p-3 rounded-lg text-on-surface-variant hover:bg-secondary-container transition-colors" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-md">Analytics</span>
+</a>
+<a class="flex items-center gap-4 p-3 rounded-lg text-on-surface-variant hover:bg-secondary-container transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md">Settings</span>
+</a>
+</nav>
+</aside>
+<!-- Main Content Canvas -->
+<main class="pt-24 pb-12 px-margin-mobile md:px-margin-desktop lg:mr-64 transition-all">
+<!-- Dashboard Header & Filters -->
+<div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div>
+<h2 class="font-display-lg text-headline-lg text-primary mb-2">لوحة الإنتاج والعمليات</h2>
+<p class="text-on-surface-variant">إدارة دورة حياة الكيك من التحضير إلى التسليم.</p>
+</div>
+<div class="flex flex-wrap gap-3">
+<div class="flex flex-col gap-1">
+<label class="text-label-sm text-on-surface-variant pr-1">المتجر</label>
+<select class="bg-surface-container border-none rounded-lg text-on-surface focus:ring-primary h-11 px-4 min-w-[140px]">
+<option>كل المتاجر</option>
+<option>فرع الرياض</option>
+<option>فرع جدة</option>
+</select>
+</div>
+<div class="flex flex-col gap-1">
+<label class="text-label-sm text-on-surface-variant pr-1">التاريخ</label>
+<input class="bg-surface-container border-none rounded-lg text-on-surface focus:ring-primary h-11 px-4" type="date"/>
+</div>
+<div class="flex flex-col gap-1">
+<label class="text-label-sm text-on-surface-variant pr-1">الحالة</label>
+<select class="bg-surface-container border-none rounded-lg text-on-surface focus:ring-primary h-11 px-4 min-w-[140px]">
+<option>كل الحالات</option>
+<option>جديد</option>
+<option>قيد التحضير</option>
+</select>
+</div>
+<button class="self-end h-11 px-6 bg-primary text-white rounded-lg font-bold hover:bg-opacity-90 transition-all flex items-center gap-2">
+<span class="material-symbols-outlined">add</span>
+                    طلب جديد
+                </button>
+</div>
+</div>
+<!-- Kanban Board -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- Column: New (جديد) -->
+<div class="flex flex-col gap-4">
+<div class="flex items-center justify-between px-2">
+<h3 class="font-bold text-title-md flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-slate-400"></span>
+                        جديد (3)
+                    </h3>
+<button class="text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined">more_horiz</span></button>
+</div>
+<div class="kanban-column flex flex-col gap-4 p-2 bg-surface-container-low rounded-xl">
+<!-- Card 1 -->
+<div class="glass-card p-4 rounded-xl shadow-sm border-r-4 border-error hover:shadow-md transition-all cursor-pointer group">
+<div class="flex justify-between items-start mb-3">
+<span class="bg-error-container text-on-error-container px-2 py-0.5 rounded text-label-sm font-bold animate-pulse">عاجل</span>
+<span class="text-label-sm text-on-surface-variant">#9842</span>
+</div>
+<div class="flex gap-3 mb-4">
+<img alt="Cake" class="w-16 h-16 rounded-lg object-cover" data-alt="A luxurious dark chocolate ganache cake decorated with gold leaf and fresh raspberries, set on a marble pedestal. The lighting is moody and dramatic, highlighting the rich textures of the frosting and the vibrant red of the berries against a professional kitchen background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBx7Vt3s1x8-2TGDw91ixGTGDBxlt3_l4TcygbP8SRAn8BcKUc_mrYeFJpB5bNYp3Ntzz4-NFQaM2RHKbONCpqNe6VuaFksYCOfaRtnaCTOCJ7JYQZKrIIcx5fccGtrC8hRF5CpkZU5yvvAeXuR7Gjl5tECsb7jsmDLAoo-jZ9ykPPYcWKl82M0szVZTo0JwWzqVhvWCrQM5wJfls6hZJ1PBL1w1nVlXS8lvfez92kCQ36xdOW2ycgHUD5XRjkAhz8SOT528I-GkBGm"/>
+<div>
+<h4 class="font-bold text-on-surface group-hover:text-primary transition-colors">كيكة الشوكولاتة الفاخرة</h4>
+<p class="text-label-md text-on-surface-variant">العميل: سارة أحمد</p>
+</div>
+</div>
+<div class="border-t border-outline-variant pt-3 flex justify-between items-center">
+<div class="flex items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">store</span>
+<span class="text-label-sm">فرع التحلية</span>
+</div>
+<div class="flex items-center gap-1 text-primary font-bold">
+<span class="material-symbols-outlined text-[18px]">schedule</span>
+<span class="text-label-sm">5:00 PM</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Column: Reviewing (قيد المراجعة) -->
+<div class="flex flex-col gap-4">
+<div class="flex items-center justify-between px-2">
+<h3 class="font-bold text-title-md flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-warning-amber bg-yellow-500"></span>
+                        قيد المراجعة (2)
+                    </h3>
+<button class="text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined">more_horiz</span></button>
+</div>
+<div class="kanban-column flex flex-col gap-4 p-2 bg-surface-container-low rounded-xl">
+<!-- Card 2 -->
+<div class="glass-card p-4 rounded-xl shadow-sm border-r-4 border-primary hover:shadow-md transition-all cursor-pointer group">
+<div class="flex justify-between items-start mb-3">
+<span class="bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded text-label-sm font-bold">مراجعة التصميم</span>
+<span class="text-label-sm text-on-surface-variant">#9845</span>
+</div>
+<div class="flex gap-3 mb-4">
+<img alt="Cake" class="w-16 h-16 rounded-lg object-cover" data-alt="A delicate two-tier wedding cake with soft pink ombre frosting and intricate sugar lace details. The cake is photographed in a bright, airy studio with natural sunlight casting soft shadows, emphasizing the confectionery precision and elegant craft." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBljHb538MDm4GgRwlRLhgbAWVbXxUZ67UidJ5zAho0FCFu-ArUTtmPXmcXQLZ6i8IYEYGjoOdjhcHIXNBmsIEAqAVNTD_Xegq8gygRcfofT6D3vCKuSu4VPXZhyaLbxaRtO0fRiXb2Qa8RESaubmY2q4302A3mrDLQHrbItDArOJJEYTpas1f1tiFh2p87g-hkVqdHfeguqIeL3Wk4jSYgbiWbfRVHVV5ApstWEQFM4oYwajHLs0Fk5UDY_xRgpv9M1XfZBDoP2Cd4"/>
+<div>
+<h4 class="font-bold text-on-surface group-hover:text-primary transition-colors">كيكة زفاف وردية</h4>
+<p class="text-label-md text-on-surface-variant">العميل: محمد العلي</p>
+</div>
+</div>
+<div class="border-t border-outline-variant pt-3 flex justify-between items-center">
+<div class="flex items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">store</span>
+<span class="text-label-sm">فرع المروج</span>
+</div>
+<div class="flex items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">schedule</span>
+<span class="text-label-sm">7:30 PM</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Column: Preparing (قيد التحضير) -->
+<div class="flex flex-col gap-4">
+<div class="flex items-center justify-between px-2">
+<h3 class="font-bold text-title-md flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-primary"></span>
+                        قيد التحضير (5)
+                    </h3>
+<button class="text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined">more_horiz</span></button>
+</div>
+<div class="kanban-column flex flex-col gap-4 p-2 bg-surface-container-low rounded-xl">
+<!-- Card 3 -->
+<div class="glass-card p-4 rounded-xl shadow-sm border-r-4 border-primary-container hover:shadow-md transition-all cursor-pointer group">
+<div class="mb-3">
+<div class="w-full bg-surface-container rounded-full h-1.5 overflow-hidden">
+<div class="bg-primary h-full w-[65%] transition-all duration-1000"></div>
+</div>
+<p class="text-[10px] text-primary font-bold mt-1">جاري التزيين - 65%</p>
+</div>
+<div class="flex gap-3 mb-4">
+<img alt="Cake" class="w-16 h-16 rounded-lg object-cover" data-alt="A vibrant red velvet cake with thick cream cheese frosting swirls, decorated with fresh strawberry slices. The shot is high-key and professional, captured in a clean bakery workspace with soft ambient lighting and a shallow depth of field." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFJoWIinGc5YuIaOxknYRgrBI7ZfwAEbIJ01MB1DBOpYdHoBaIAP2BNFcHzm6xs1BCp5eMfk6fYKUUB67cFGxE-8SgLsp9yi9V14qvyB1AqMxwLCJlvMrwT6RHngILwCtbOFGOGNYMocGL_5nanobKHh1mfYpKfVzM_BMru3iMcGaUOmzWfkAsrQDhO5w2Pv4MwyUG8vAaHHu0byUyMu6uJnb6xCejJ7f7NhGAl81dvApIG2UInqV2itm5qpZyQXfXX1lRKZxdgjxs"/>
+<div>
+<h4 class="font-bold text-on-surface group-hover:text-primary transition-colors">كيكة ريد فيلفيت</h4>
+<p class="text-label-md text-on-surface-variant">العميل: نورة خالد</p>
+</div>
+</div>
+<div class="border-t border-outline-variant pt-3 flex justify-between items-center">
+<div class="flex items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">store</span>
+<span class="text-label-sm">فرع الحمراء</span>
+</div>
+<div class="flex items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">schedule</span>
+<span class="text-label-sm">6:15 PM</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Column: Ready (جاهز) -->
+<div class="flex flex-col gap-4">
+<div class="flex items-center justify-between px-2">
+<h3 class="font-bold text-title-md flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-tertiary"></span>
+                        جاهز (8)
+                    </h3>
+<button class="text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined">more_horiz</span></button>
+</div>
+<div class="kanban-column flex flex-col gap-4 p-2 bg-surface-container-low rounded-xl">
+<!-- Card 4 -->
+<div class="glass-card p-4 rounded-xl shadow-sm border-r-4 border-tertiary hover:shadow-md transition-all cursor-pointer group">
+<div class="flex justify-between items-start mb-3">
+<span class="bg-tertiary-fixed text-on-tertiary-fixed-variant px-2 py-0.5 rounded text-label-sm font-bold">جاهز للتسليم</span>
+<span class="text-label-sm text-on-surface-variant">#9812</span>
+</div>
+<div class="flex gap-3 mb-4">
+<img alt="Cake" class="w-16 h-16 rounded-lg object-cover" data-alt="A festive rainbow-layered cake with vanilla bean frosting and colorful confetti sprinkles. The image is bright and cheerful, with professional studio lighting that makes the colors pop against a clean, white minimalist background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA7g_ieVsEFp7O7msqiVo4wUvgAmsbuzG8qjKcQHc98wS4Q7kmMh_sJPiOJKNLJlAVEK1bsD-KCcoDQDE5eO7jk5MwkTd8mYf8_37cDO-G4AwNiuix4igASA-j6LZZebWZ5lyFNsg4hJ0BsH3OxmKOaEjr__f-wuNvV0Xfy2G1Ao3Lv0Xl5mZemQIHdbE_XxYMARVdXYsOd4jj-5akv0Ms0p2mXvhnv2F5d7d_wGEjYs9ufNJXzCzkqrJW4b22Y9eJEcEHWfY8smJ26"/>
+<div>
+<h4 class="font-bold text-on-surface group-hover:text-primary transition-colors">كيكة الحفلات الملونة</h4>
+<p class="text-label-md text-on-surface-variant">العميل: فهد بن عبدالعزيز</p>
+</div>
+</div>
+<div class="border-t border-outline-variant pt-3 flex justify-between items-center">
+<div class="flex items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">store</span>
+<span class="text-label-sm">فرع النخيل</span>
+</div>
+<button class="px-3 py-1 bg-tertiary text-white rounded text-label-sm font-bold hover:scale-105 transition-transform">تأكيد التسليم</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Action Button -->
+<button class="fixed bottom-8 left-8 w-14 h-14 bg-primary text-white rounded-full shadow-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50">
+<span class="material-symbols-outlined text-[28px]">add</span>
+</button>
+<script>
+        // Simple drag interaction visualization (simulation)
+        const cards = document.querySelectorAll('.glass-card');
+        cards.forEach(card => {
+            card.addEventListener('mousedown', () => {
+                card.style.transform = 'scale(0.98)';
+                card.style.opacity = '0.8';
+            });
+            card.addEventListener('mouseup', () => {
+                card.style.transform = 'scale(1)';
+                card.style.opacity = '1';
+            });
+        });
+
+        // Filter toggles (conceptual)
+        const selects = document.querySelectorAll('select');
+        selects.forEach(select => {
+            select.addEventListener('change', (e) => {
+                console.log(`Filtering by: ${e.target.value}`);
+                // In a real app, this would trigger a state update
+            });
+        });
+    </script>
+</body></html>
