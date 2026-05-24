@@ -23,5 +23,8 @@ const styles = StyleSheet.create({
   content: {
     padding: theme.spacing.lg,
     gap: theme.spacing.lg,
+    width: '100%',
+    maxWidth: 1280,
+    alignSelf: 'center',
   },
 });

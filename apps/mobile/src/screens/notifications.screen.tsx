@@ -37,7 +37,7 @@ export function NotificationsScreen() {
 
   return (
     <View style={styles.wrapper}>
-      <Text style={styles.heading}>ط·آ§ط¸â€‍ط·آ¥ط·آ´ط·آ¹ط·آ§ط·آ±ط·آ§ط·ع¾</Text>
+      <Text style={styles.heading}>الإشعارات</Text>
       <FlatList
         data={notifications}
         keyExtractor={(item) => item.id}
@@ -46,7 +46,7 @@ export function NotificationsScreen() {
           <TouchableOpacity style={styles.card} onPress={() => void toggleRead(item)}>
             <View style={styles.rowBetween}>
               <Text style={styles.title}>{item.title}</Text>
-              <StatusBadge label={item.isRead ? 'ط¸â€¦ط¸â€ڑط·آ±ط¸ث†ط·طŒط·آ©' : 'ط·آ¬ط·آ¯ط¸ظ¹ط·آ¯ط·آ©'} tone={item.isRead ? 'neutral' : 'primary'} />
+              <StatusBadge label={item.isRead ? 'مقروءة' : 'جديدة'} tone={item.isRead ? 'neutral' : 'primary'} />
             </View>
             <Text style={styles.body}>{item.body}</Text>
             <Text style={styles.meta}>{new Date(item.createdAt).toLocaleString()}</Text>
@@ -59,8 +59,22 @@ export function NotificationsScreen() {
 
 const styles = StyleSheet.create({
   wrapper: { flex: 1, backgroundColor: theme.colors.surface, paddingTop: theme.spacing.lg },
-  heading: { ...theme.typography.heading, color: theme.colors.onSurface, textAlign: 'right', paddingHorizontal: theme.spacing.lg },
-  list: { padding: theme.spacing.lg, gap: theme.spacing.sm },
+  heading: {
+    ...theme.typography.heading,
+    color: theme.colors.onSurface,
+    textAlign: 'right',
+    paddingHorizontal: theme.spacing.lg,
+    width: '100%',
+    maxWidth: 1280,
+    alignSelf: 'center',
+  },
+  list: {
+    padding: theme.spacing.lg,
+    gap: theme.spacing.sm,
+    width: '100%',
+    maxWidth: 1280,
+    alignSelf: 'center',
+  },
   card: {
     backgroundColor: theme.colors.surfaceContainerLowest,
     borderRadius: theme.radius.xl,

@@ -32,6 +32,6 @@ const styles = StyleSheet.create({
   },
   text: {
     ...theme.typography.label,
-    fontWeight: '700',
+    fontFamily: 'Cairo_700Bold',
   },
 });

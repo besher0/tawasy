@@ -29,36 +29,36 @@ export function DashboardScreen() {
 
   return (
     <ScreenContainer>
-      <Text style={styles.heading}>ط¸â€¦ط·آ±ط·آ­ط·آ¨ط·آ§ط¸â€¹ط·إ’ ط¸â€¦ط·آ¯ط¸ظ¹ط·آ± ط·آ§ط¸â€‍ط·آ¥ط¸â€ ط·ع¾ط·آ§ط·آ¬</Text>
-      <Text style={styles.subheading}>ط¸â€ ط·آ¸ط·آ±ط·آ© ط·آ¹ط·آ§ط¸â€¦ط·آ© ط·آ¹ط¸â€‍ط¸â€° ط·آ£ط·آ¯ط·آ§ط·طŒ ط·آ§ط¸â€‍ط¸ظ¹ط¸ث†ط¸â€¦</Text>
+      <Text style={styles.heading}>مرحباً، مدير الإنتاج</Text>
+      <Text style={styles.subheading}>نظرة عامة على أداء اليوم</Text>
 
       <StatCard
-        title="ط·آ¥ط·آ¬ط¸â€¦ط·آ§ط¸â€‍ط¸ظ¹ ط·آ§ط¸â€‍ط¸â€¦ط·آ¨ط¸ظ¹ط·آ¹ط·آ§ط·ع¾"
-        value={`${Math.round(overview?.totalSales ?? 0)} ط·آ±.ط·آ³`}
+        title="إجمالي المبيعات"
+        value={`${Math.round(overview?.totalSales ?? 0)} ر.س`}
       />
-      <StatCard title="ط·آ¥ط·آ¬ط¸â€¦ط·آ§ط¸â€‍ط¸ظ¹ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾" value={`${overview?.totalOrders ?? 0}`} />
+      <StatCard title="إجمالي الطلبات" value={`${overview?.totalOrders ?? 0}`} />
       <StatCard
-        title="ط¸â€ ط·آ³ط·آ¨ط·آ© ط·آ§ط¸â€‍ط·آ¥ط¸â€ ط·آ¬ط·آ§ط·آ²"
+        title="نسبة الإنجاز"
         value={`${(overview?.completionRate ?? 0).toFixed(1)}%`}
       />
       <StatCard
-        title="ط¸â€¦ط·ع¾ط¸ث†ط·آ³ط·آ· ط¸â€ڑط¸ظ¹ط¸â€¦ط·آ© ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨"
-        value={`${(overview?.avgOrderValue ?? 0).toFixed(1)} ط·آ±.ط·آ³`}
+        title="متوسط قيمة الطلب"
+        value={`${(overview?.avgOrderValue ?? 0).toFixed(1)} ر.س`}
       />
-      <StatCard title="ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾ ط¸â€¦ط·ع¾ط·آ£ط·آ®ط·آ±ط·آ©" value={`${overview?.delayedCount ?? 0}`} />
+      <StatCard title="طلبات متأخرة" value={`${overview?.delayedCount ?? 0}`} />
 
       <View style={styles.actionsRow}>
         <TouchableOpacity
           style={styles.primaryAction}
           onPress={() => navigation.navigate('Notifications')}
         >
-          <Text style={styles.primaryActionText}>ط·آ¹ط·آ±ط·آ¶ ط·آ§ط¸â€‍ط·آ¥ط·آ´ط·آ¹ط·آ§ط·آ±ط·آ§ط·ع¾</Text>
+          <Text style={styles.primaryActionText}>عرض الإشعارات</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.secondaryAction}
           onPress={() => navigation.navigate('Settings')}
         >
-          <Text style={styles.secondaryActionText}>ط·آ§ط¸â€‍ط·آ¥ط·آ¹ط·آ¯ط·آ§ط·آ¯ط·آ§ط·ع¾</Text>
+          <Text style={styles.secondaryActionText}>الإعدادات</Text>
         </TouchableOpacity>
       </View>
     </ScreenContainer>

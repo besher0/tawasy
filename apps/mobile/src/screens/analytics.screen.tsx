@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import api from '../lib/api';
 import theme from '../theme';
 import { StatCard } from '../components/stat-card';
+import { cakeTypeLabel } from '../lib/labels';
 
 export function AnalyticsScreen() {
   const [overview, setOverview] = useState<any>(null);
@@ -30,30 +31,30 @@ export function AnalyticsScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.heading}>ط·آ§ط¸â€‍ط·ع¾ط·آ­ط¸â€‍ط¸ظ¹ط¸â€‍ط·آ§ط·ع¾ ط¸ث†ط·آ§ط¸â€‍ط·ع¾ط¸â€ڑط·آ§ط·آ±ط¸ظ¹ط·آ±</Text>
+      <Text style={styles.heading}>التحليلات والتقارير</Text>
 
-      <StatCard title="ط·آ¥ط·آ¬ط¸â€¦ط·آ§ط¸â€‍ط¸ظ¹ ط·آ§ط¸â€‍ط¸â€¦ط·آ¨ط¸ظ¹ط·آ¹ط·آ§ط·ع¾" value={`${Math.round(overview?.totalSales ?? 0)} ط·آ±.ط·آ³`} />
-      <StatCard title="ط·آ¥ط·آ¬ط¸â€¦ط·آ§ط¸â€‍ط¸ظ¹ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾" value={`${overview?.totalOrders ?? 0}`} />
-      <StatCard title="ط¸â€ ط·آ³ط·آ¨ط·آ© ط·آ§ط¸â€‍ط·آ¥ط¸â€ ط·آ¬ط·آ§ط·آ²" value={`${(overview?.completionRate ?? 0).toFixed(1)}%`} />
+      <StatCard title="إجمالي المبيعات" value={`${Math.round(overview?.totalSales ?? 0)} ر.س`} />
+      <StatCard title="إجمالي الطلبات" value={`${overview?.totalOrders ?? 0}`} />
+      <StatCard title="نسبة الإنجاز" value={`${(overview?.completionRate ?? 0).toFixed(1)}%`} />
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>ط·آ§ط·ع¾ط·آ¬ط·آ§ط¸â€، ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾ ط·آ§ط¸â€‍ط¸ظ¹ط¸ث†ط¸â€¦ط¸ظ¹ط·آ©</Text>
+        <Text style={styles.cardTitle}>اتجاه الطلبات اليومية</Text>
         {trend.map((point) => (
-          <Text key={point.date} style={styles.rowText}>{`${point.date}: ${point.count}`}</Text>
+          <Text key={point.date} style={styles.rowText}>{`${point.date} - ${point.count} طلب`}</Text>
         ))}
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>ط·آ£ط¸ئ’ط·آ«ط·آ± ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾ ط·آ·ط¸â€‍ط·آ¨ط·آ§ط¸â€¹</Text>
+        <Text style={styles.cardTitle}>أكثر المنتجات طلباً</Text>
         {topProducts.map((product) => (
-          <Text key={product.label} style={styles.rowText}>{`${product.label} (${product.quantity})`}</Text>
+          <Text key={product.label} style={styles.rowText}>{`${cakeTypeLabel(product.label)} (${product.quantity})`}</Text>
         ))}
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>ط·آ£ط¸ئ’ط·آ«ط·آ± ط·آ§ط¸â€‍ط¸ظ¾ط·آ±ط¸ث†ط·آ¹ ط·آ·ط¸â€‍ط·آ¨ط·آ§ط¸â€¹</Text>
+        <Text style={styles.cardTitle}>أكثر الفروع طلباً</Text>
         {topShops.map((shop) => (
-          <Text key={shop.shopName} style={styles.rowText}>{`${shop.shopName} (${shop.ordersCount})`}</Text>
+          <Text key={shop.shopName} style={styles.rowText}>{`${shop.shopName} (${shop.ordersCount} طلب)`}</Text>
         ))}
       </View>
     </ScrollView>
@@ -62,7 +63,13 @@ export function AnalyticsScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.surface },
-  content: { padding: theme.spacing.lg, gap: theme.spacing.lg },
+  content: {
+    padding: theme.spacing.lg,
+    gap: theme.spacing.lg,
+    width: '100%',
+    maxWidth: 1280,
+    alignSelf: 'center',
+  },
   heading: { ...theme.typography.heading, color: theme.colors.onSurface, textAlign: 'right' },
   card: {
     backgroundColor: theme.colors.surfaceContainerLowest,

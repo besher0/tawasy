@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import api from '../lib/api';
 import theme from '../theme';
+import { orderStatusLabel } from '../lib/labels';
 
 const columns = ['New', 'Reviewing', 'In_Production', 'Ready'];
 
@@ -18,17 +19,20 @@ export function ProductionKanbanScreen() {
   }, []);
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.heading}>ط¸â€‍ط¸ث†ط·آ­ط·آ© ط·آ§ط¸â€‍ط·آ¥ط¸â€ ط·ع¾ط·آ§ط·آ¬</Text>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={[styles.content, Platform.OS === 'web' ? styles.webContent : null]}
+    >
+      <Text style={styles.heading}>لوحة الإنتاج</Text>
       {columns.map((column) => (
         <View key={column} style={styles.columnCard}>
-          <Text style={styles.columnTitle}>{column}</Text>
+          <Text style={styles.columnTitle}>{orderStatusLabel(column)}</Text>
           {(kanban[column] ?? []).map((order) => (
             <View key={order.id} style={styles.orderCard}>
               <Text style={styles.orderTitle}>{order.orderNumber}</Text>
               <Text style={styles.orderText}>{order.customerName}</Text>
               <Text style={[styles.orderText, order.isUrgent ? styles.urgent : null]}>
-                {order.isUrgent ? 'ط·آ¹ط·آ§ط·آ¬ط¸â€‍' : 'ط·آ¹ط·آ§ط·آ¯ط¸ظ¹'}
+                {order.isUrgent ? 'عاجل' : 'عادي'}
               </Text>
             </View>
           ))}
@@ -41,12 +45,23 @@ export function ProductionKanbanScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.surface },
   content: { padding: theme.spacing.lg, gap: theme.spacing.lg },
+  webContent: {
+    maxWidth: 1280,
+    width: '100%',
+    alignSelf: 'center',
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+  },
   heading: {
     ...theme.typography.heading,
     color: theme.colors.onSurface,
     textAlign: 'right',
+    width: '100%',
   },
   columnCard: {
+    flexGrow: 1,
+    flexBasis: 260,
     backgroundColor: theme.colors.surfaceContainerLowest,
     borderRadius: theme.radius.xl,
     borderWidth: 1,

@@ -5,6 +5,7 @@ import { RootStackParamList } from '../navigation/types';
 import api from '../lib/api';
 import theme from '../theme';
 import { StatusBadge } from '../components/status-badge';
+import { cakeShapeLabel, cakeTypeLabel, orderStatusLabel } from '../lib/labels';
 
 type ScreenRoute = RouteProp<RootStackParamList, 'OrderDetails'>;
 
@@ -26,14 +27,14 @@ export function OrderDetailsScreen() {
       await api.post(`/orders/${route.params.orderId}/status`, { status });
       await loadOrder();
     } catch {
-      Alert.alert('ط·آ®ط·آ·ط·آ£', 'ط·ع¾ط·آ¹ط·آ°ط·آ± ط·ع¾ط·آ­ط·آ¯ط¸ظ¹ط·آ« ط·آ­ط·آ§ط¸â€‍ط·آ© ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨');
+      Alert.alert('خطأ', 'تعذر تحديث حالة الطلب');
     }
   };
 
   if (!order) {
     return (
       <View style={styles.centered}>
-        <Text>Loading...</Text>
+        <Text style={styles.meta}>جاري تحميل الطلب...</Text>
       </View>
     );
   }
@@ -43,29 +44,29 @@ export function OrderDetailsScreen() {
       <View style={styles.card}>
         <Text style={styles.orderNumber}>{order.orderNumber}</Text>
         <Text style={styles.title}>{order.customerName}</Text>
-        <StatusBadge label={order.status} tone={order.isUrgent ? 'error' : 'neutral'} />
-        <Text style={styles.meta}>ط·آ§ط¸â€‍ط·ع¾ط·آ³ط¸â€‍ط¸ظ¹ط¸â€¦: {new Date(order.deliveryDatetime).toLocaleString()}</Text>
-        <Text style={styles.meta}>ط·آ§ط¸â€‍ط·آ¥ط·آ¬ط¸â€¦ط·آ§ط¸â€‍ط¸ظ¹: {order.totalPrice} ط·آ±.ط·آ³</Text>
+        <StatusBadge label={orderStatusLabel(order.status)} tone={order.isUrgent ? 'error' : 'neutral'} />
+        <Text style={styles.meta}>التسليم: {new Date(order.deliveryDatetime).toLocaleString()}</Text>
+        <Text style={styles.meta}>الإجمالي: {order.totalPrice} ر.س</Text>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.title}>ط·ع¾ط¸ظ¾ط·آ§ط·آµط¸ظ¹ط¸â€‍ ط·آ§ط¸â€‍ط¸ئ’ط¸ظ¹ط¸ئ’</Text>
+        <Text style={styles.title}>تفاصيل الكيك</Text>
         {order.items.map((item: any, index: number) => (
           <Text key={item.id} style={styles.meta}>
-            {`${index + 1}. ${item.cakeType} - ${item.shape} - ${item.filling}`}
+            {`${index + 1}. ${cakeTypeLabel(item.cakeType)} - ${cakeShapeLabel(item.shape)} - ${item.filling}`}
           </Text>
         ))}
       </View>
 
       <View style={styles.actions}>
         <TouchableOpacity style={styles.secondaryButton} onPress={() => void moveStatus('In_Production')}>
-          <Text style={styles.secondaryButtonText}>ط·آ¥ط¸â€‍ط¸â€° ط¸â€ڑط¸ظ¹ط·آ¯ ط·آ§ط¸â€‍ط·آ¥ط¸â€ ط·ع¾ط·آ§ط·آ¬</Text>
+          <Text style={styles.secondaryButtonText}>إلى قيد الإنتاج</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.secondaryButton} onPress={() => void moveStatus('Ready')}>
-          <Text style={styles.secondaryButtonText}>ط·ع¾ط·آ¹ط¸ظ¹ط¸ظ¹ط¸â€  ط·آ¬ط·آ§ط¸â€،ط·آ²</Text>
+          <Text style={styles.secondaryButtonText}>تعيين جاهز</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.primaryButton} onPress={() => void moveStatus('Delivered')}>
-          <Text style={styles.primaryButtonText}>ط·ع¾ط·آ£ط¸ئ’ط¸ظ¹ط·آ¯ ط·آ§ط¸â€‍ط·ع¾ط·آ³ط¸â€‍ط¸ظ¹ط¸â€¦</Text>
+          <Text style={styles.primaryButtonText}>تأكيد التسليم</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

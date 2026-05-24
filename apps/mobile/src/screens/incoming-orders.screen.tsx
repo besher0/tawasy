@@ -13,6 +13,7 @@ import { RootStackParamList } from '../navigation/types';
 import theme from '../theme';
 import api from '../lib/api';
 import { StatusBadge } from '../components/status-badge';
+import { orderStatusLabel } from '../lib/labels';
 
 interface OrderRow {
   id: string;
@@ -44,10 +45,10 @@ export function IncomingOrdersScreen() {
   return (
     <View style={styles.wrapper}>
       <View style={styles.header}>
-        <Text style={styles.heading}>ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾ ط·آ§ط¸â€‍ط¸ث†ط·آ§ط·آ±ط·آ¯ط·آ©</Text>
+        <Text style={styles.heading}>الطلبات الواردة</Text>
         <TextInput
           style={styles.search}
-          placeholder="ط·آ¨ط·آ­ط·آ« ط·آ¹ط¸â€  ط·آ·ط¸â€‍ط·آ¨ ط·آ£ط¸ث† ط·آ¹ط¸â€¦ط¸ظ¹ط¸â€‍"
+          placeholder="بحث عن طلب أو عميل"
           value={search}
           onChangeText={setSearch}
           onSubmitEditing={() => void loadOrders()}
@@ -66,13 +67,13 @@ export function IncomingOrdersScreen() {
             <View style={styles.rowBetween}>
               <Text style={styles.orderNumber}>{item.orderNumber}</Text>
               <StatusBadge
-                label={item.isUrgent ? 'ط·آ¹ط·آ§ط·آ¬ط¸â€‍' : 'ط·آ¹ط·آ§ط·آ¯ط¸ظ¹'}
+                label={item.isUrgent ? 'عاجل' : 'عادي'}
                 tone={item.isUrgent ? 'error' : 'neutral'}
               />
             </View>
             <Text style={styles.customer}>{item.customerName}</Text>
-            <Text style={styles.meta}>ط·آ§ط¸â€‍ط·آ­ط·آ§ط¸â€‍ط·آ©: {item.status}</Text>
-            <Text style={styles.meta}>ط·آ§ط¸â€‍ط·ع¾ط·آ³ط¸â€‍ط¸ظ¹ط¸â€¦: {new Date(item.deliveryDatetime).toLocaleString()}</Text>
+            <Text style={styles.meta}>الحالة: {orderStatusLabel(item.status)}</Text>
+            <Text style={styles.meta}>التسليم: {new Date(item.deliveryDatetime).toLocaleString()}</Text>
           </TouchableOpacity>
         )}
       />
@@ -85,6 +86,9 @@ const styles = StyleSheet.create({
   header: {
     padding: theme.spacing.lg,
     gap: theme.spacing.sm,
+    width: '100%',
+    maxWidth: 1280,
+    alignSelf: 'center',
   },
   heading: {
     ...theme.typography.heading,
@@ -104,6 +108,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     paddingBottom: theme.spacing.xxl,
     gap: theme.spacing.md,
+    width: '100%',
+    maxWidth: 1280,
+    alignSelf: 'center',
   },
   card: {
     backgroundColor: theme.colors.surfaceContainerLowest,

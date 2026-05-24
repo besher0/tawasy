@@ -104,23 +104,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       },
       logout: async () => {
-        try {
-          await api.post('/auth/logout');
-        } catch {
-          // continue local logout even if server call fails
-        }
-
+        const tokenToRevoke = state.accessToken;
         const emptyState: AuthState = {
           user: null,
           accessToken: null,
           refreshToken: null,
         };
+
         setState(emptyState);
         setAccessToken(null);
+
         try {
           await persistState(null);
         } catch (error) {
           console.warn('Failed to clear persisted auth state', error);
+        }
+
+        if (tokenToRevoke) {
+          void api.post('/auth/logout', undefined, {
+            headers: { Authorization: `Bearer ${tokenToRevoke}` },
+          }).catch(() => {
+            // Local logout has already completed.
+          });
         }
       },
     }),

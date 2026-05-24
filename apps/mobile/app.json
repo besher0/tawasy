@@ -24,6 +24,9 @@
     },
     "extra": {
       "apiBaseUrl": "${EXPO_PUBLIC_API_BASE_URL}"
-    }
+    },
+    "plugins": [
+      "expo-font"
+    ]
   }
 }

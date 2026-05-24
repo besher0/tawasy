@@ -39,29 +39,29 @@ export const radius = {
 
 export const typography = {
   display: {
-    fontFamily: 'Cairo',
+    fontFamily: 'Cairo_700Bold',
     fontSize: 28,
-    fontWeight: '700' as const,
+    lineHeight: 38,
   },
   heading: {
-    fontFamily: 'Cairo',
+    fontFamily: 'Cairo_700Bold',
     fontSize: 20,
-    fontWeight: '700' as const,
+    lineHeight: 30,
   },
   title: {
-    fontFamily: 'Cairo',
+    fontFamily: 'Cairo_600SemiBold',
     fontSize: 16,
-    fontWeight: '600' as const,
+    lineHeight: 24,
   },
   body: {
-    fontFamily: 'Cairo',
+    fontFamily: 'Cairo_400Regular',
     fontSize: 14,
-    fontWeight: '400' as const,
+    lineHeight: 22,
   },
   label: {
-    fontFamily: 'Cairo',
+    fontFamily: 'Cairo_500Medium',
     fontSize: 12,
-    fontWeight: '500' as const,
+    lineHeight: 18,
   },
 };
 

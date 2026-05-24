@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import api from '../lib/api';
 import theme from '../theme';
+import { essentialsCategoryLabel, essentialsStatusLabel } from '../lib/labels';
 
 interface EssentialRow {
   id: string;
@@ -55,25 +56,25 @@ export function NextDayEssentialsScreen() {
       setItemName('');
       await load();
     } catch {
-      Alert.alert('ط·آ®ط·آ·ط·آ£', 'ط·ع¾ط·آ¹ط·آ°ط·آ± ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط·آ§ط·آ¯ط·آ©');
+      Alert.alert('خطأ', 'تعذر إضافة المادة');
     }
   };
 
   return (
     <View style={styles.wrapper}>
       <View style={styles.formCard}>
-        <Text style={styles.heading}>ط·آ·ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط·ع¾ ط·آ§ط¸â€‍ط¸ظ¹ط¸ث†ط¸â€¦ ط·آ§ط¸â€‍ط·ع¾ط·آ§ط¸â€‍ط¸ظ¹</Text>
-        <TextInput style={styles.input} value={shopId} onChangeText={setShopId} placeholder="shop-uuid" />
-        <TextInput style={styles.input} value={itemName} onChangeText={setItemName} placeholder="ط·آ§ط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط¸â€¦ط·آ§ط·آ¯ط·آ©" />
+        <Text style={styles.heading}>طلبيات اليوم التالي</Text>
+        <TextInput style={styles.input} value={shopId} onChangeText={setShopId} placeholder="معرّف الفرع" />
+        <TextInput style={styles.input} value={itemName} onChangeText={setItemName} placeholder="اسم المادة" />
         <TextInput
           style={styles.input}
           value={quantity}
           onChangeText={setQuantity}
           keyboardType="numeric"
-          placeholder="ط·آ§ط¸â€‍ط¸ئ’ط¸â€¦ط¸ظ¹ط·آ©"
+          placeholder="الكمية"
         />
         <TouchableOpacity style={styles.button} onPress={addItem}>
-          <Text style={styles.buttonText}>ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·آ©</Text>
+          <Text style={styles.buttonText}>إضافة</Text>
         </TouchableOpacity>
       </View>
 
@@ -84,9 +85,9 @@ export function NextDayEssentialsScreen() {
         renderItem={({ item }) => (
           <View style={styles.card}>
             <Text style={styles.itemName}>{item.itemName}</Text>
-            <Text style={styles.itemMeta}>ط·آ§ط¸â€‍ط¸ظ¾ط·آ¦ط·آ©: {item.category}</Text>
-            <Text style={styles.itemMeta}>ط·آ§ط¸â€‍ط¸ئ’ط¸â€¦ط¸ظ¹ط·آ©: {item.quantity}</Text>
-            <Text style={styles.itemMeta}>ط·آ§ط¸â€‍ط·آ­ط·آ§ط¸â€‍ط·آ©: {item.status}</Text>
+            <Text style={styles.itemMeta}>الفئة: {essentialsCategoryLabel(item.category)}</Text>
+            <Text style={styles.itemMeta}>الكمية: {item.quantity}</Text>
+            <Text style={styles.itemMeta}>الحالة: {essentialsStatusLabel(item.status)}</Text>
           </View>
         )}
       />
@@ -98,6 +99,9 @@ const styles = StyleSheet.create({
   wrapper: { flex: 1, backgroundColor: theme.colors.surface },
   formCard: {
     margin: theme.spacing.lg,
+    width: '100%',
+    maxWidth: 1280,
+    alignSelf: 'center',
     backgroundColor: theme.colors.surfaceContainerLowest,
     borderRadius: theme.radius.xl,
     borderWidth: 1,
@@ -122,7 +126,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   buttonText: { ...theme.typography.title, color: theme.colors.onPrimary },
-  list: { paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl, gap: theme.spacing.sm },
+  list: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.xxl,
+    gap: theme.spacing.sm,
+    width: '100%',
+    maxWidth: 1280,
+    alignSelf: 'center',
+  },
   card: {
     backgroundColor: theme.colors.surfaceContainerLowest,
     borderRadius: theme.radius.lg,

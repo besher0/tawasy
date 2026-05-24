@@ -1,6 +1,14 @@
 import 'react-native-gesture-handler';
 import React from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import {
+  Cairo_400Regular,
+  Cairo_500Medium,
+  Cairo_600SemiBold,
+  Cairo_700Bold,
+  useFonts,
+} from '@expo-google-fonts/cairo';
 import { AuthProvider, useAuth } from './src/context/auth-context';
 import { AppNavigator } from './src/navigation/app-navigator';
 import { usePushRegistration } from './src/hooks/use-push-registration';
@@ -12,6 +20,21 @@ function PushRegistrationBinder() {
 }
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    Cairo_400Regular,
+    Cairo_500Medium,
+    Cairo_600SemiBold,
+    Cairo_700Bold,
+  });
+
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.loader}>
+        <ActivityIndicator size="large" color="#b80049" />
+      </View>
+    );
+  }
+
   return (
     <AuthProvider>
       <StatusBar style="dark" />
@@ -20,3 +43,12 @@ export default function App() {
     </AuthProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  loader: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f4faff',
+  },
+});
