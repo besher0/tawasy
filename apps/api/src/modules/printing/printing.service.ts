@@ -25,6 +25,7 @@ export class PrintingService {
       include: {
         items: true,
         shop: true,
+        moldDeliveryShop: true,
       },
     });
 
@@ -43,6 +44,7 @@ export class PrintingService {
     doc.fontSize(12);
     doc.text(`Order Number: ${order.orderNumber}`);
     doc.text(`Shop: ${order.shop.name}`);
+    doc.text(`Mold Delivery Branch: ${order.moldDeliveryShop?.name ?? order.shop.name}`);
     doc.text(`Customer: ${order.customerName}`);
     doc.text(`Phone: ${order.customerPhone}`);
     doc.text(`Delivery: ${order.deliveryDatetime.toISOString()}`);

@@ -15,6 +15,9 @@ describe('OrdersService', () => {
     user: {
       findMany: jest.fn().mockResolvedValue([]),
     },
+    shop: {
+      findUnique: jest.fn(),
+    },
   };
 
   const auditService: any = {
@@ -29,6 +32,7 @@ describe('OrdersService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    prisma.shop.findUnique.mockResolvedValue({ id: 'shop-1', type: 'Branch' });
     service = new OrdersService(prisma, auditService, notificationsService);
   });
 
@@ -84,6 +88,13 @@ describe('OrdersService', () => {
     );
 
     expect(result.id).toBe('order-1');
+    expect(prisma.order.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          moldDeliveryShopId: 'shop-1',
+        }),
+      }),
+    );
     expect(prisma.orderStatusHistory.create).toHaveBeenCalled();
   });
 });

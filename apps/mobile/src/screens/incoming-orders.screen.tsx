@@ -22,6 +22,10 @@ interface OrderRow {
   status: string;
   deliveryDatetime: string;
   isUrgent: boolean;
+  moldDeliveryShop?: {
+    name: string;
+    location: string;
+  } | null;
 }
 
 export function IncomingOrdersScreen() {
@@ -74,6 +78,7 @@ export function IncomingOrdersScreen() {
             <Text style={styles.customer}>{item.customerName}</Text>
             <Text style={styles.meta}>الحالة: {orderStatusLabel(item.status)}</Text>
             <Text style={styles.meta}>التسليم: {new Date(item.deliveryDatetime).toLocaleString()}</Text>
+            <Text style={styles.meta}>تسليم القالب: {item.moldDeliveryShop?.name ?? 'غير محدد'}</Text>
           </TouchableOpacity>
         )}
       />
@@ -103,6 +108,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surfaceContainerLowest,
     paddingHorizontal: theme.spacing.md,
     textAlign: 'right',
+    ...theme.typography.body,
   },
   listContent: {
     paddingHorizontal: theme.spacing.lg,

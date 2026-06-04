@@ -17,6 +17,7 @@ export class ExportsService {
     sheet.columns = [
       { header: 'Order Number', key: 'orderNumber', width: 20 },
       { header: 'Shop', key: 'shopName', width: 24 },
+      { header: 'Mold Delivery Branch', key: 'moldDeliveryShopName', width: 26 },
       { header: 'Customer Name', key: 'customerName', width: 24 },
       { header: 'Phone', key: 'customerPhone', width: 18 },
       { header: 'Delivery Date', key: 'deliveryDatetime', width: 22 },
@@ -28,7 +29,7 @@ export class ExportsService {
     ];
 
     const orders = await this.prisma.order.findMany({
-      include: { shop: true },
+      include: { shop: true, moldDeliveryShop: true },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -36,6 +37,7 @@ export class ExportsService {
       sheet.addRow({
         orderNumber: order.orderNumber,
         shopName: order.shop.name,
+        moldDeliveryShopName: order.moldDeliveryShop?.name ?? order.shop.name,
         customerName: order.customerName,
         customerPhone: order.customerPhone,
         deliveryDatetime: order.deliveryDatetime.toISOString(),

@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PaymentStatus } from '@sugarprecision/shared-types';
 import {
   IsArray,
@@ -18,6 +18,11 @@ export class CreateOrderDto {
   @ApiProperty()
   @IsString()
   shopId!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  moldDeliveryShopId?: string;
 
   @ApiProperty()
   @IsString()

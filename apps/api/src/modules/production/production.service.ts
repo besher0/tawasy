@@ -53,6 +53,7 @@ export class ProductionService {
       where,
       include: {
         shop: true,
+        moldDeliveryShop: true,
         items: true,
       },
       orderBy: [{ isUrgent: 'desc' }, { deliveryDatetime: 'asc' }],

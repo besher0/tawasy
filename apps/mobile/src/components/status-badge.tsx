@@ -9,7 +9,7 @@ interface StatusBadgeProps {
 
 const toneStyles = {
   neutral: { backgroundColor: theme.colors.surfaceContainer, color: theme.colors.onSurfaceVariant },
-  primary: { backgroundColor: '#ffd9de', color: theme.colors.primary },
+  primary: { backgroundColor: theme.colors.secondaryContainer, color: theme.colors.primary },
   success: { backgroundColor: '#d4f5ec', color: theme.colors.tertiary },
   warning: { backgroundColor: '#fef3c7', color: '#b45309' },
   error: { backgroundColor: theme.colors.errorContainer, color: theme.colors.error },

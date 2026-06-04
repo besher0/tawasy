@@ -8,6 +8,7 @@ import {
   createBottomTabNavigator,
 } from '@react-navigation/bottom-tabs';
 import { MaterialIcons } from '@expo/vector-icons';
+import { UserRole } from '@sugarprecision/shared-types';
 import { useAuth } from '../context/auth-context';
 import theme from '../theme';
 import { RootStackParamList } from './types';
@@ -22,7 +23,6 @@ import { NotificationsScreen } from '../screens/notifications.screen';
 import { OrderDetailsScreen } from '../screens/order-details.screen';
 import { ProfileScreen } from '../screens/profile.screen';
 import { SettingsScreen } from '../screens/settings.screen';
-import { UserRole } from '@sugarprecision/shared-types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tabs = createBottomTabNavigator();
@@ -62,7 +62,7 @@ const navigationTheme = {
 };
 
 function WebTabBar(props: BottomTabBarProps) {
-  const { state, descriptors, navigation } = props;
+  const { state, navigation } = props;
 
   if (Platform.OS !== 'web') {
     return <BottomTabBar {...props} />;
@@ -83,7 +83,7 @@ function WebTabBar(props: BottomTabBarProps) {
       <View style={styles.webSidebar}>
         <View style={styles.brandBlock}>
           <View style={styles.brandIcon}>
-            <MaterialIcons name="factory" size={22} color={theme.colors.onPrimary} />
+            <MaterialIcons name="bakery-dining" size={24} color={theme.colors.onPrimary} />
           </View>
           <View>
             <Text style={styles.brandTitle}>SugarPrecision</Text>
@@ -133,9 +133,7 @@ function WebTabBar(props: BottomTabBarProps) {
 
 function AppTabs() {
   const { user } = useAuth();
-
-  const isFactory =
-    user?.role === UserRole.ADMIN || user?.role === UserRole.FACTORY_MANAGER;
+  const isFactory = user?.role === UserRole.ADMIN || user?.role === UserRole.FACTORY_MANAGER;
 
   return (
     <Tabs.Navigator
@@ -220,6 +218,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'space-between',
+    shadowColor: theme.colors.primary,
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
   },
   webHeaderActions: {
     flexDirection: 'row-reverse',
@@ -245,7 +247,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: theme.colors.primary + '22',
+    borderColor: theme.colors.surfaceContainerLowest,
   },
   webSidebar: {
     position: 'absolute',
@@ -266,12 +268,16 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   brandIcon: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: theme.colors.primary,
+    shadowOpacity: 0.28,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
   },
   brandTitle: {
     ...theme.typography.title,

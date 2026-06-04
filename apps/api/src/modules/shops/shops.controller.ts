@@ -1,8 +1,8 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ShopsService } from './shops.service';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { UserRole } from '@sugarprecision/shared-types';
+import { ShopType, UserRole } from '@sugarprecision/shared-types';
 import { CreateShopDto } from './dto/create-shop.dto';
 
 @ApiTags('shops')
@@ -12,8 +12,8 @@ export class ShopsController {
   constructor(private readonly shopsService: ShopsService) {}
 
   @Get()
-  async findAll() {
-    return this.shopsService.findAll();
+  async findAll(@Query('type') type?: ShopType) {
+    return this.shopsService.findAll({ type });
   }
 
   @Roles(UserRole.ADMIN)

@@ -6,6 +6,7 @@ import {
   NotificationType,
   OrderStatus,
   PaymentStatus,
+  ShopType,
   UserRole,
 } from './enums';
 
@@ -34,6 +35,7 @@ export interface OrderItemInput {
 
 export interface CreateOrderInput {
   shopId: string;
+  moldDeliveryShopId?: string;
   customerName: string;
   customerPhone: string;
   deliveryDatetime: string;
@@ -48,6 +50,8 @@ export interface CreateOrderInput {
 export interface OrderSummary {
   id: string;
   orderNumber: string;
+  shopId: string;
+  moldDeliveryShopId?: string | null;
   customerName: string;
   deliveryDatetime: string;
   status: OrderStatus;
@@ -55,6 +59,15 @@ export interface OrderSummary {
   isUrgent: boolean;
   totalPrice: number;
   shopName?: string;
+  moldDeliveryShopName?: string;
+}
+
+export interface ShopSummary {
+  id: string;
+  name: string;
+  location: string;
+  contactInfo?: string | null;
+  type: ShopType;
 }
 
 export interface DailyEssentialInput {

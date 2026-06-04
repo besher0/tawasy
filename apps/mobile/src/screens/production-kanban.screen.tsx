@@ -6,8 +6,18 @@ import { orderStatusLabel } from '../lib/labels';
 
 const columns = ['New', 'Reviewing', 'In_Production', 'Ready'];
 
+type KanbanOrder = {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  isUrgent: boolean;
+  moldDeliveryShop?: {
+    name: string;
+  } | null;
+};
+
 export function ProductionKanbanScreen() {
-  const [kanban, setKanban] = useState<Record<string, Array<{ id: string; orderNumber: string; customerName: string; isUrgent: boolean }>>>({});
+  const [kanban, setKanban] = useState<Record<string, KanbanOrder[]>>({});
 
   useEffect(() => {
     async function loadKanban() {
@@ -31,6 +41,7 @@ export function ProductionKanbanScreen() {
             <View key={order.id} style={styles.orderCard}>
               <Text style={styles.orderTitle}>{order.orderNumber}</Text>
               <Text style={styles.orderText}>{order.customerName}</Text>
+              <Text style={styles.orderText}>تسليم القالب: {order.moldDeliveryShop?.name ?? 'غير محدد'}</Text>
               <Text style={[styles.orderText, order.isUrgent ? styles.urgent : null]}>
                 {order.isUrgent ? 'عاجل' : 'عادي'}
               </Text>

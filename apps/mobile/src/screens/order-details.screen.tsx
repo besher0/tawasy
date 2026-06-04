@@ -45,7 +45,9 @@ export function OrderDetailsScreen() {
         <Text style={styles.orderNumber}>{order.orderNumber}</Text>
         <Text style={styles.title}>{order.customerName}</Text>
         <StatusBadge label={orderStatusLabel(order.status)} tone={order.isUrgent ? 'error' : 'neutral'} />
-        <Text style={styles.meta}>التسليم: {new Date(order.deliveryDatetime).toLocaleString()}</Text>
+        <Text style={styles.meta}>فرع الطلب: {order.shop?.name ?? '-'}</Text>
+        <Text style={styles.meta}>تسليم القالب: {order.moldDeliveryShop?.name ?? order.shop?.name ?? '-'}</Text>
+        <Text style={styles.meta}>موعد التسليم: {new Date(order.deliveryDatetime).toLocaleString()}</Text>
         <Text style={styles.meta}>الإجمالي: {order.totalPrice} ر.س</Text>
       </View>
 
@@ -75,7 +77,13 @@ export function OrderDetailsScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.surface },
-  content: { padding: theme.spacing.lg, gap: theme.spacing.lg },
+  content: {
+    padding: theme.spacing.lg,
+    gap: theme.spacing.lg,
+    width: '100%',
+    maxWidth: 1280,
+    alignSelf: 'center',
+  },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   card: {
     backgroundColor: theme.colors.surfaceContainerLowest,
@@ -88,7 +96,12 @@ const styles = StyleSheet.create({
   orderNumber: { ...theme.typography.title, color: theme.colors.primary, textAlign: 'right' },
   title: { ...theme.typography.title, color: theme.colors.onSurface, textAlign: 'right' },
   meta: { ...theme.typography.body, color: theme.colors.onSurfaceVariant, textAlign: 'right' },
-  actions: { gap: theme.spacing.sm },
+  actions: {
+    gap: theme.spacing.sm,
+    width: '100%',
+    maxWidth: 1280,
+    alignSelf: 'center',
+  },
   secondaryButton: {
     height: 44,
     borderRadius: theme.radius.lg,

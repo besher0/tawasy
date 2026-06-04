@@ -1,4 +1,12 @@
-﻿import { PrismaClient, UserRole, PaymentStatus, OrderStatus, CakeType, CakeShape } from '@prisma/client';
+import {
+  CakeShape,
+  CakeType,
+  OrderStatus,
+  PaymentStatus,
+  PrismaClient,
+  ShopType,
+  UserRole,
+} from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -8,21 +16,23 @@ async function main() {
 
   const factory = await prisma.shop.upsert({
     where: { name: 'Factory HQ' },
-    update: {},
+    update: { type: ShopType.Factory },
     create: {
       name: 'Factory HQ',
       location: 'Riyadh Industrial District',
       contactInfo: '+966500000000',
+      type: ShopType.Factory,
     },
   });
 
   const branchA = await prisma.shop.upsert({
     where: { name: 'Branch Riyadh - Olaya' },
-    update: {},
+    update: { type: ShopType.Branch },
     create: {
       name: 'Branch Riyadh - Olaya',
       location: 'Riyadh - Olaya',
       contactInfo: '+966511111111',
+      type: ShopType.Branch,
     },
   });
 
@@ -65,7 +75,8 @@ async function main() {
     data: {
       orderNumber: `SP-${Date.now()}`,
       shopId: branchA.id,
-      customerName: 'ط·آ·ط¢آ³ط·آ·ط¢آ§ط·آ·ط¢آ±ط·آ·ط¢آ© ط·آ·ط¢آ£ط·آ·ط¢آ­ط·آ¸أ¢â‚¬آ¦ط·آ·ط¢آ¯',
+      moldDeliveryShopId: branchA.id,
+      customerName: 'سارة أحمد',
       customerPhone: '0501234567',
       deliveryDatetime: new Date(Date.now() + 24 * 60 * 60 * 1000),
       totalPrice: 1250,
@@ -73,7 +84,7 @@ async function main() {
       paymentStatus: PaymentStatus.Partial,
       status: OrderStatus.Reviewing,
       isUrgent: true,
-      notes: 'ط·آ·ط¢آ·ط·آ¸أ¢â‚¬â€چط·آ·ط¢آ¨ ط·آ·ط¹آ¾ط·آ·ط¢آ¬ط·آ·ط¢آ±ط·آ¸ط¸آ¹ط·آ·ط¢آ¨ط·آ¸ط¸آ¹ ط·آ¸أ¢â‚¬آ¦ط·آ¸أ¢â‚¬آ  seed',
+      notes: 'طلب تجريبي من seed',
       createdById: shopEmployee.id,
       items: {
         create: [
@@ -81,8 +92,8 @@ async function main() {
             cakeType: CakeType.Cake,
             layers: 2,
             shape: CakeShape.Round,
-            filling: 'Chocolate Hazelnut',
-            specialDetails: 'Pink floral design',
+            filling: 'شوكولاتة بالبندق',
+            specialDetails: 'تصميم وردي مع زهور',
             peopleCount: 12,
             referenceImages: [],
           },

@@ -1,3 +1,8 @@
+export enum ShopType {
+  BRANCH = 'Branch',
+  FACTORY = 'Factory',
+}
+
 export enum UserRole {
   ADMIN = 'Admin',
   FACTORY_MANAGER = 'FactoryManager',

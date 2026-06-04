@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { ShopType } from '@sugarprecision/shared-types';
+import { IsEnum, IsOptional, IsString } from 'class-validator';
 
 export class CreateShopDto {
   @ApiProperty()
@@ -14,4 +15,9 @@ export class CreateShopDto {
   @IsOptional()
   @IsString()
   contactInfo?: string;
+
+  @ApiProperty({ enum: ShopType, required: false, default: ShopType.BRANCH })
+  @IsOptional()
+  @IsEnum(ShopType)
+  type?: ShopType;
 }

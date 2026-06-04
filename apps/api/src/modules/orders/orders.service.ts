@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, OrderStatus } from '@prisma/client';
+import { Prisma, OrderStatus, ShopType } from '@prisma/client';
 import { UserRole } from '@sugarprecision/shared-types';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -40,11 +40,14 @@ export class OrdersService {
   async create(dto: CreateOrderDto, actor: RequestActor) {
     this.assertDeposit(dto.depositAmount, dto.totalPrice);
     this.assertCanWriteShop(actor, dto.shopId);
+    const moldDeliveryShopId = dto.moldDeliveryShopId ?? dto.shopId;
+    await this.assertMoldDeliveryShop(moldDeliveryShopId);
 
     const order = await this.prisma.order.create({
       data: {
         orderNumber: this.generateOrderNumber(),
         shopId: dto.shopId,
+        moldDeliveryShopId,
         customerName: dto.customerName,
         customerPhone: dto.customerPhone,
         deliveryDatetime: new Date(dto.deliveryDatetime),
@@ -70,6 +73,7 @@ export class OrdersService {
       include: {
         items: true,
         shop: true,
+        moldDeliveryShop: true,
       },
     });
 
@@ -134,6 +138,7 @@ export class OrdersService {
       where,
       include: {
         shop: true,
+        moldDeliveryShop: true,
         items: true,
       },
       orderBy: [{ isUrgent: 'desc' }, { deliveryDatetime: 'asc' }],
@@ -146,6 +151,7 @@ export class OrdersService {
       include: {
         items: true,
         shop: true,
+        moldDeliveryShop: true,
         statusHistory: {
           orderBy: { createdAt: 'desc' },
         },
@@ -182,10 +188,15 @@ export class OrdersService {
       );
     }
 
+    if (dto.moldDeliveryShopId !== undefined) {
+      await this.assertMoldDeliveryShop(dto.moldDeliveryShopId);
+    }
+
     const order = await this.prisma.order.update({
       where: { id },
       data: {
         shopId: dto.shopId,
+        moldDeliveryShopId: dto.moldDeliveryShopId,
         customerName: dto.customerName,
         customerPhone: dto.customerPhone,
         deliveryDatetime: dto.deliveryDatetime ? new Date(dto.deliveryDatetime) : undefined,
@@ -195,7 +206,7 @@ export class OrdersService {
         isUrgent: dto.isUrgent,
         notes: dto.notes,
       },
-      include: { items: true, shop: true },
+      include: { items: true, shop: true, moldDeliveryShop: true },
     });
 
     await this.auditService.log({
@@ -232,7 +243,7 @@ export class OrdersService {
     const updated = await this.prisma.order.update({
       where: { id },
       data: { status },
-      include: { shop: true, items: true },
+      include: { shop: true, moldDeliveryShop: true, items: true },
     });
 
     await this.prisma.orderStatusHistory.create({
@@ -311,6 +322,25 @@ export class OrdersService {
   private assertCanAccessOrder(orderShopId: string, actor: RequestActor) {
     if (this.isShopScopedRole(actor.role) && actor.shopId !== orderShopId) {
       throw new ForbiddenException('You can only access orders for your own shop');
+    }
+  }
+
+  private async assertMoldDeliveryShop(shopId: string) {
+    if (!shopId?.trim()) {
+      throw new BadRequestException('Mold delivery branch is required');
+    }
+
+    const shop = await this.prisma.shop.findUnique({
+      where: { id: shopId },
+      select: { id: true, type: true },
+    });
+
+    if (!shop) {
+      throw new NotFoundException('Mold delivery branch not found');
+    }
+
+    if (shop.type !== ShopType.Branch) {
+      throw new BadRequestException('Mold delivery location must be a branch');
     }
   }
 

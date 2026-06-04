@@ -1,5 +1,6 @@
 import { CakeShape, CakeType } from '@sugarprecision/shared-types';
-import React, { useMemo, useState } from 'react';
+import type { ShopSummary } from '@sugarprecision/shared-types';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   ScrollView,
@@ -12,6 +13,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { cakeShapeLabel, cakeTypeLabel } from '../lib/labels';
 import api from '../lib/api';
+import { useAuth } from '../context/auth-context';
 import theme from '../theme';
 
 type DraftOrderItem = {
@@ -70,8 +72,11 @@ function createEmptyItem(): DraftOrderItem {
 }
 
 export function NewOrderScreen() {
+  const { user } = useAuth();
   const defaults = useMemo(() => buildDefaultDelivery(), []);
+  const [shops, setShops] = useState<ShopSummary[]>([]);
   const [shopId, setShopId] = useState('');
+  const [moldDeliveryShopId, setMoldDeliveryShopId] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [deliveryDate, setDeliveryDate] = useState(defaults.deliveryDate);
@@ -81,6 +86,47 @@ export function NewOrderScreen() {
   const [notes, setNotes] = useState('');
   const [isUrgent, setIsUrgent] = useState(false);
   const [items, setItems] = useState<DraftOrderItem[]>(() => [createEmptyItem()]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadShops() {
+      try {
+        const response = await api.get<ShopSummary[]>('/shops', {
+          params: { type: 'Branch' },
+        });
+
+        if (!active) {
+          return;
+        }
+
+        const branches = response.data ?? [];
+        const userBranch = user?.shopId ? branches.find((shop) => shop.id === user.shopId) : undefined;
+        const fallbackBranchId = userBranch?.id ?? branches[0]?.id ?? '';
+
+        setShops(branches);
+        setShopId((current) => current || fallbackBranchId);
+        setMoldDeliveryShopId((current) => current || fallbackBranchId);
+      } catch {
+        Alert.alert('خطأ', 'تعذر تحميل الفروع. تحقق من اتصال الباكند.');
+      }
+    }
+
+    void loadShops();
+
+    return () => {
+      active = false;
+    };
+  }, [user?.shopId]);
+
+  const orderShopOptions = useMemo(() => {
+    if (!user?.shopId) {
+      return shops;
+    }
+
+    const scopedShop = shops.find((shop) => shop.id === user.shopId);
+    return scopedShop ? [scopedShop] : shops;
+  }, [shops, user?.shopId]);
 
   const remainingAmount = useMemo(() => {
     const total = Number(totalPrice);
@@ -138,9 +184,30 @@ export function NewOrderScreen() {
     }
   };
 
+  const resetForm = () => {
+    const fallbackBranchId = user?.shopId ?? shops[0]?.id ?? '';
+
+    setShopId(fallbackBranchId);
+    setMoldDeliveryShopId(fallbackBranchId);
+    setCustomerName('');
+    setCustomerPhone('');
+    setTotalPrice('1250');
+    setDepositAmount('500');
+    setNotes('');
+    setIsUrgent(false);
+    setItems([createEmptyItem()]);
+    setDeliveryDate(defaults.deliveryDate);
+    setDeliveryTime(defaults.deliveryTime);
+  };
+
   const submit = async () => {
     if (!shopId.trim()) {
-      Alert.alert('تنبيه', 'أدخل معرف الفرع');
+      Alert.alert('تنبيه', 'اختر فرع تسجيل الطلب');
+      return;
+    }
+
+    if (!moldDeliveryShopId.trim()) {
+      Alert.alert('تنبيه', 'اختر فرع تسليم القالب');
       return;
     }
 
@@ -185,6 +252,7 @@ export function NewOrderScreen() {
     try {
       await api.post('/orders', {
         shopId: shopId.trim(),
+        moldDeliveryShopId: moldDeliveryShopId.trim(),
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),
         deliveryDatetime: delivery.toISOString(),
@@ -205,19 +273,45 @@ export function NewOrderScreen() {
       });
 
       Alert.alert('تم', 'تم إنشاء الطلب بنجاح');
-      setCustomerName('');
-      setCustomerPhone('');
-      setTotalPrice('1250');
-      setDepositAmount('500');
-      setNotes('');
-      setIsUrgent(false);
-      setItems([createEmptyItem()]);
-      setDeliveryDate(defaults.deliveryDate);
-      setDeliveryTime(defaults.deliveryTime);
+      resetForm();
     } catch {
-      Alert.alert('خطأ', 'فشل إنشاء الطلب. تحقق من البيانات.');
+      Alert.alert('خطأ', 'فشل إنشاء الطلب. تحقق من البيانات ومكان تسليم القالب.');
     }
   };
+
+  const renderShopSelector = (
+    label: string,
+    selectedId: string,
+    options: ShopSummary[],
+    onSelect: (id: string) => void,
+    helperText?: string,
+  ) => (
+    <View style={styles.selectorBlock}>
+      <Text style={styles.label}>{label}</Text>
+      {helperText ? <Text style={styles.note}>{helperText}</Text> : null}
+      <View style={styles.optionRow}>
+        {options.length ? (
+          options.map((shop) => {
+            const active = selectedId === shop.id;
+            return (
+              <TouchableOpacity
+                key={shop.id}
+                style={[styles.shopChip, active && styles.shopChipActive]}
+                onPress={() => onSelect(shop.id)}
+              >
+                <Text style={[styles.shopChipTitle, active && styles.shopChipTitleActive]}>{shop.name}</Text>
+                <Text style={[styles.shopChipLocation, active && styles.shopChipLocationActive]}>
+                  {shop.location}
+                </Text>
+              </TouchableOpacity>
+            );
+          })
+        ) : (
+          <Text style={styles.emptyText}>لا توجد فروع متاحة حالياً</Text>
+        )}
+      </View>
+    </View>
+  );
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -226,14 +320,21 @@ export function NewOrderScreen() {
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>بيانات العميل والاستلام</Text>
 
-        <Text style={styles.label}>معرف الفرع</Text>
-        <TextInput
-          style={styles.input}
-          value={shopId}
-          onChangeText={setShopId}
-          placeholder="أدخل معرف الفرع"
-          textAlign="right"
-        />
+        {renderShopSelector(
+          'فرع تسجيل الطلب',
+          shopId,
+          orderShopOptions,
+          setShopId,
+          user?.shopId ? 'صلاحياتك مرتبطة بهذا الفرع.' : undefined,
+        )}
+
+        {renderShopSelector(
+          'مكان تسليم القالب',
+          moldDeliveryShopId,
+          shops,
+          setMoldDeliveryShopId,
+          'اختر فرعاً موجوداً فقط. لا يتم قبول نص حر أو المعمل كمكان تسليم.',
+        )}
 
         <Text style={styles.label}>اسم العميل</Text>
         <TextInput style={styles.input} value={customerName} onChangeText={setCustomerName} textAlign="right" />
@@ -535,6 +636,9 @@ const styles = StyleSheet.create({
     ...theme.typography.label,
     color: theme.colors.error,
   },
+  selectorBlock: {
+    gap: theme.spacing.xs,
+  },
   label: {
     ...theme.typography.label,
     color: theme.colors.onSurfaceVariant,
@@ -556,6 +660,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     paddingHorizontal: theme.spacing.md,
     color: theme.colors.onSurface,
+    ...theme.typography.body,
   },
   textArea: {
     minHeight: 96,
@@ -566,6 +671,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     color: theme.colors.onSurface,
+    ...theme.typography.body,
   },
   optionRow: {
     flexDirection: 'row-reverse',
@@ -591,6 +697,36 @@ const styles = StyleSheet.create({
   optionChipTextActive: {
     color: theme.colors.primary,
     fontFamily: 'Cairo_600SemiBold',
+  },
+  shopChip: {
+    minWidth: 180,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.outlineVariant,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+    gap: 2,
+  },
+  shopChipActive: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.secondaryContainer,
+  },
+  shopChipTitle: {
+    ...theme.typography.title,
+    color: theme.colors.onSurface,
+    textAlign: 'right',
+  },
+  shopChipTitleActive: {
+    color: theme.colors.primary,
+  },
+  shopChipLocation: {
+    ...theme.typography.label,
+    color: theme.colors.onSurfaceVariant,
+    textAlign: 'right',
+  },
+  shopChipLocationActive: {
+    color: theme.colors.primary,
   },
   stepper: {
     flexDirection: 'row-reverse',
@@ -654,6 +790,11 @@ const styles = StyleSheet.create({
   addButtonText: {
     ...theme.typography.title,
     color: theme.colors.primary,
+  },
+  emptyText: {
+    ...theme.typography.body,
+    color: theme.colors.error,
+    textAlign: 'right',
   },
   note: {
     ...theme.typography.label,

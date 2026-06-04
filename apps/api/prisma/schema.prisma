@@ -7,6 +7,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum ShopType {
+  Branch
+  Factory
+}
+
 enum UserRole {
   Admin
   FactoryManager
@@ -101,18 +106,24 @@ model Shop {
   name           String          @unique
   location       String
   contactInfo    String?
+  type           ShopType        @default(Branch)
   users          User[]
-  orders         Order[]
+  orders         Order[]         @relation("OrderShop")
+  moldDeliveryOrders Order[]     @relation("OrderMoldDeliveryShop")
   dailyEssentials DailyEssential[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
+
+  @@index([type])
 }
 
 model Order {
   id               String               @id @default(uuid())
   orderNumber      String               @unique
   shopId           String
-  shop             Shop                 @relation(fields: [shopId], references: [id], onDelete: Restrict)
+  shop             Shop                 @relation("OrderShop", fields: [shopId], references: [id], onDelete: Restrict)
+  moldDeliveryShopId String?
+  moldDeliveryShop Shop?                @relation("OrderMoldDeliveryShop", fields: [moldDeliveryShopId], references: [id], onDelete: SetNull)
   customerName     String
   customerPhone    String
   deliveryDatetime DateTime
@@ -131,6 +142,7 @@ model Order {
   updatedAt        DateTime             @updatedAt
 
   @@index([shopId])
+  @@index([moldDeliveryShopId])
   @@index([status])
   @@index([deliveryDatetime])
   @@index([isUrgent])
