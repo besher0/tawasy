@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -13,18 +13,26 @@ interface AuditLogInput {
 
 @Injectable()
 export class AuditService {
+  private readonly logger = new Logger(AuditService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async log(input: AuditLogInput) {
-    return this.prisma.auditLog.create({
-      data: {
-        actorId: input.actorId,
-        action: input.action,
-        entity: input.entity,
-        entityId: input.entityId,
-        details: input.details as Prisma.InputJsonValue | undefined,
-        ipAddress: input.ipAddress,
-      },
-    });
+    try {
+      return await this.prisma.auditLog.create({
+        data: {
+          actorId: input.actorId,
+          action: input.action,
+          entity: input.entity,
+          entityId: input.entityId,
+          details: input.details as Prisma.InputJsonValue | undefined,
+          ipAddress: input.ipAddress,
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown audit error';
+      this.logger.warn(`Audit log skipped: ${input.action} ${input.entity}:${input.entityId}. ${message}`);
+      return null;
+    }
   }
 }

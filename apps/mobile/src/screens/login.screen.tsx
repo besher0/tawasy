@@ -14,8 +14,8 @@ export function LoginScreen() {
     try {
       setSubmitting(true);
       await login(phone, password);
-    } catch (error) {
-      Alert.alert('فشل تسجيل الدخول', 'تحقق من رقم الهاتف أو كلمة المرور.');
+    } catch {
+      Alert.alert('ظپط´ظ„ طھط³ط¬ظٹظ„ ط§ظ„ط¯ط®ظˆظ„', 'طھط­ظ‚ظ‚ ظ…ظ† ط±ظ‚ظ… ط§ظ„ظ‡ط§طھظپ ط£ظˆ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±.');
     } finally {
       setSubmitting(false);
     }
@@ -24,13 +24,13 @@ export function LoginScreen() {
   return (
     <ScreenContainer style={styles.container}>
       <Text style={styles.title}>SugarPrecision</Text>
-      <Text style={styles.subtitle}>تسجيل دخول فريق الإنتاج</Text>
+      <Text style={styles.subtitle}>طھط³ط¬ظٹظ„ ط¯ط®ظˆظ„ ظپط±ظٹظ‚ ط§ظ„ط¥ظ†طھط§ط¬</Text>
 
       <View style={styles.formCard}>
-        <Text style={styles.label}>رقم الهاتف</Text>
+        <Text style={styles.label}>ط±ظ‚ظ… ط§ظ„ظ‡ط§طھظپ</Text>
         <TextInput style={styles.input} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
 
-        <Text style={styles.label}>كلمة المرور</Text>
+        <Text style={styles.label}>ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±</Text>
         <TextInput
           style={styles.input}
           value={password}
@@ -39,7 +39,7 @@ export function LoginScreen() {
         />
 
         <TouchableOpacity style={styles.button} onPress={submit} disabled={submitting}>
-          <Text style={styles.buttonText}>{submitting ? 'جاري الدخول...' : 'دخول'}</Text>
+          <Text style={styles.buttonText}>{submitting ? 'ط¬ط§ط±ظٹ ط§ظ„ط¯ط®ظˆظ„...' : 'ط¯ط®ظˆظ„'}</Text>
         </TouchableOpacity>
       </View>
     </ScreenContainer>
