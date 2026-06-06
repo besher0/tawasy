@@ -34,7 +34,7 @@ export interface OrderItemInput {
 }
 
 export interface CreateOrderInput {
-  shopId: string;
+  shopId?: string;
   moldDeliveryShopId?: string;
   customerName: string;
   customerPhone: string;
@@ -71,7 +71,7 @@ export interface ShopSummary {
 }
 
 export interface DailyEssentialInput {
-  shopId: string;
+  shopId?: string;
   category: EssentialsCategory;
   itemName: string;
   quantity: number;

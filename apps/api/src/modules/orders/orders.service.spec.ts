@@ -59,6 +59,44 @@ describe('OrdersService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+
+  it('uses the actor shop when a shop user creates an order without shopId', async () => {
+    prisma.order.create = jest.fn().mockResolvedValue({
+      id: 'order-branch-scoped',
+      status: 'New',
+      shop: { id: 'shop-actor' },
+      items: [],
+    });
+    prisma.shop.findUnique.mockResolvedValue({ id: 'shop-actor', type: 'Branch' });
+
+    await service.create(
+      {
+        customerName: 'Customer',
+        customerPhone: '0500000000',
+        deliveryDatetime: new Date().toISOString(),
+        totalPrice: 100,
+        depositAmount: 50,
+        paymentStatus: 'Partial' as never,
+        isUrgent: false,
+        items: [],
+      },
+      {
+        sub: 'user-branch',
+        role: 'ShopEmployee' as never,
+        shopId: 'shop-actor',
+      },
+    );
+
+    expect(prisma.order.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          shopId: 'shop-actor',
+          moldDeliveryShopId: 'shop-actor',
+        }),
+      }),
+    );
+  });
+
   it('creates a new order when payload is valid', async () => {
     prisma.order.create = jest.fn().mockResolvedValue({
       id: 'order-1',

@@ -1,5 +1,10 @@
-import { CakeShape, CakeType } from '@sugarprecision/shared-types';
-import type { ShopSummary } from '@sugarprecision/shared-types';
+import {
+  CakeShape,
+  CakeType,
+  PaymentStatus,
+  UserRole,
+} from '@sugarprecision/shared-types';
+import type { CreateOrderInput, ShopSummary } from '@sugarprecision/shared-types';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
@@ -27,8 +32,6 @@ type DraftOrderItem = {
   referenceImages: string[];
 };
 
-type PaymentStatusValue = 'Unpaid' | 'Partial' | 'Paid';
-
 let orderItemCounter = 0;
 
 const cakeTypeOptions: CakeType[] = [
@@ -44,6 +47,11 @@ const cakeShapeOptions: CakeShape[] = [
   CakeShape.HEART,
   CakeShape.CUSTOM,
 ];
+
+const shopScopedRoles = new Set<UserRole>([
+  UserRole.SHOP_MANAGER,
+  UserRole.SHOP_EMPLOYEE,
+]);
 
 function buildDefaultDelivery() {
   const date = new Date();
@@ -74,6 +82,8 @@ function createEmptyItem(): DraftOrderItem {
 export function NewOrderScreen() {
   const { user } = useAuth();
   const defaults = useMemo(() => buildDefaultDelivery(), []);
+  const isShopScoped = user?.role ? shopScopedRoles.has(user.role) : false;
+
   const [shops, setShops] = useState<ShopSummary[]>([]);
   const [shopId, setShopId] = useState('');
   const [moldDeliveryShopId, setMoldDeliveryShopId] = useState('');
@@ -101,14 +111,16 @@ export function NewOrderScreen() {
         }
 
         const branches = response.data ?? [];
-        const userBranch = user?.shopId ? branches.find((shop) => shop.id === user.shopId) : undefined;
-        const fallbackBranchId = userBranch?.id ?? branches[0]?.id ?? '';
+        const userBranch = user?.shopId
+          ? branches.find((shop) => shop.id === user.shopId)
+          : undefined;
+        const defaultBranchId = userBranch?.id ?? branches[0]?.id ?? '';
 
         setShops(branches);
-        setShopId((current) => current || fallbackBranchId);
-        setMoldDeliveryShopId((current) => current || fallbackBranchId);
+        setShopId((current) => current || defaultBranchId);
+        setMoldDeliveryShopId((current) => current || defaultBranchId);
       } catch {
-        Alert.alert('خطأ', 'تعذر تحميل الفروع. تحقق من اتصال الباكند.');
+        Alert.alert('خطأ', 'تعذر تحميل الفروع. تأكد أن الباكند يعمل ومتصل بقاعدة البيانات.');
       }
     }
 
@@ -119,14 +131,15 @@ export function NewOrderScreen() {
     };
   }, [user?.shopId]);
 
-  const orderShopOptions = useMemo(() => {
+  const accountShop = useMemo(() => {
     if (!user?.shopId) {
-      return shops;
+      return undefined;
     }
 
-    const scopedShop = shops.find((shop) => shop.id === user.shopId);
-    return scopedShop ? [scopedShop] : shops;
+    return shops.find((shop) => shop.id === user.shopId);
   }, [shops, user?.shopId]);
+
+  const orderBranchId = isShopScoped ? user?.shopId ?? '' : shopId;
 
   const remainingAmount = useMemo(() => {
     const total = Number(totalPrice);
@@ -140,15 +153,7 @@ export function NewOrderScreen() {
   }, [depositAmount, totalPrice]);
 
   const updateItem = (itemId: string, updater: (item: DraftOrderItem) => DraftOrderItem) => {
-    setItems((prev) =>
-      prev.map((item) => {
-        if (item.id !== itemId) {
-          return item;
-        }
-
-        return updater(item);
-      }),
-    );
+    setItems((prev) => prev.map((item) => (item.id === itemId ? updater(item) : item)));
   };
 
   const pickImage = async (itemId: string) => {
@@ -201,8 +206,8 @@ export function NewOrderScreen() {
   };
 
   const submit = async () => {
-    if (!shopId.trim()) {
-      Alert.alert('تنبيه', 'اختر فرع تسجيل الطلب');
+    if (!orderBranchId.trim()) {
+      Alert.alert('تنبيه', 'لا يوجد فرع مربوط بهذا الحساب. راجع حساب المستخدم أو اختر فرع الطلب للمدير.');
       return;
     }
 
@@ -240,38 +245,51 @@ export function NewOrderScreen() {
       return;
     }
 
+    if (normalizedDeposit > normalizedTotal) {
+      Alert.alert('تنبيه', 'العربون لا يمكن أن يتجاوز الإجمالي');
+      return;
+    }
+
     const emptyItemIndex = items.findIndex((item) => !item.filling.trim());
     if (emptyItemIndex >= 0) {
       Alert.alert('تنبيه', `أدخل نوع الحشوة للكيك رقم ${emptyItemIndex + 1}`);
       return;
     }
 
-    const paymentStatus: PaymentStatusValue =
-      normalizedDeposit <= 0 ? 'Unpaid' : normalizedDeposit >= normalizedTotal ? 'Paid' : 'Partial';
+    const paymentStatus =
+      normalizedDeposit <= 0
+        ? PaymentStatus.UNPAID
+        : normalizedDeposit >= normalizedTotal
+          ? PaymentStatus.PAID
+          : PaymentStatus.PARTIAL;
+
+    const payload: CreateOrderInput = {
+      moldDeliveryShopId: moldDeliveryShopId.trim(),
+      customerName: customerName.trim(),
+      customerPhone: customerPhone.trim(),
+      deliveryDatetime: delivery.toISOString(),
+      totalPrice: normalizedTotal,
+      depositAmount: normalizedDeposit,
+      paymentStatus,
+      isUrgent,
+      notes: notes.trim() || undefined,
+      items: items.map((item) => ({
+        cakeType: item.cakeType,
+        layers: item.layers,
+        shape: item.shape,
+        filling: item.filling.trim(),
+        specialDetails: item.specialDetails.trim() || undefined,
+        peopleCount: item.peopleCount,
+        referenceImages: item.referenceImages,
+      })),
+    };
+
+    if (!isShopScoped) {
+      payload.shopId = orderBranchId.trim();
+    }
 
     try {
-      await api.post('/orders', {
-        shopId: shopId.trim(),
-        moldDeliveryShopId: moldDeliveryShopId.trim(),
-        customerName: customerName.trim(),
-        customerPhone: customerPhone.trim(),
-        deliveryDatetime: delivery.toISOString(),
-        totalPrice: normalizedTotal,
-        depositAmount: normalizedDeposit,
-        paymentStatus,
-        isUrgent,
-        notes: notes.trim() || undefined,
-        items: items.map((item) => ({
-          cakeType: item.cakeType,
-          layers: item.layers,
-          shape: item.shape,
-          filling: item.filling.trim(),
-          specialDetails: item.specialDetails.trim() || undefined,
-          peopleCount: item.peopleCount,
-          referenceImages: item.referenceImages,
-        })),
-      });
-
+      await api.post('/orders', payload);
       Alert.alert('تم', 'تم إنشاء الطلب بنجاح');
       resetForm();
     } catch {
@@ -320,12 +338,14 @@ export function NewOrderScreen() {
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>بيانات العميل والاستلام</Text>
 
-        {renderShopSelector(
-          'فرع تسجيل الطلب',
-          shopId,
-          orderShopOptions,
-          setShopId,
-          user?.shopId ? 'صلاحياتك مرتبطة بهذا الفرع.' : undefined,
+        {isShopScoped ? (
+          <View style={styles.infoBox}>
+            <Text style={styles.infoTitle}>فرع تسجيل الطلب من حسابك</Text>
+            <Text style={styles.infoValue}>{accountShop?.name ?? 'فرع الحساب الحالي'}</Text>
+            <Text style={styles.note}>سيتم ربط الطلب بهذا الفرع تلقائياً ولا يمكن تغييره من شاشة الطلب.</Text>
+          </View>
+        ) : (
+          renderShopSelector('فرع تسجيل الطلب', shopId, shops, setShopId, 'هذا الحقل يظهر للمدير فقط لأن حسابه غير مربوط بفرع واحد.')
         )}
 
         {renderShopSelector(
@@ -412,12 +432,7 @@ export function NewOrderScreen() {
           <View style={styles.stepper}>
             <TouchableOpacity
               style={styles.stepperButton}
-              onPress={() =>
-                updateItem(item.id, (current) => ({
-                  ...current,
-                  layers: Math.max(1, current.layers - 1),
-                }))
-              }
+              onPress={() => updateItem(item.id, (current) => ({ ...current, layers: Math.max(1, current.layers - 1) }))}
             >
               <Text style={styles.stepperButtonText}>-</Text>
             </TouchableOpacity>
@@ -425,29 +440,15 @@ export function NewOrderScreen() {
               style={styles.stepperValue}
               value={String(item.layers)}
               keyboardType="numeric"
-              onChangeText={(value) =>
-                updateItem(item.id, (current) => {
-                  const nextValue = Number(value);
-                  if (!Number.isFinite(nextValue)) {
-                    return current;
-                  }
-
-                  return {
-                    ...current,
-                    layers: Math.max(1, Math.floor(nextValue)),
-                  };
-                })
-              }
+              onChangeText={(value) => updateItem(item.id, (current) => {
+                const nextValue = Number(value);
+                return Number.isFinite(nextValue) ? { ...current, layers: Math.max(1, Math.floor(nextValue)) } : current;
+              })}
               textAlign="center"
             />
             <TouchableOpacity
               style={styles.stepperButton}
-              onPress={() =>
-                updateItem(item.id, (current) => ({
-                  ...current,
-                  layers: current.layers + 1,
-                }))
-              }
+              onPress={() => updateItem(item.id, (current) => ({ ...current, layers: current.layers + 1 }))}
             >
               <Text style={styles.stepperButtonText}>+</Text>
             </TouchableOpacity>
@@ -457,12 +458,7 @@ export function NewOrderScreen() {
           <View style={styles.stepper}>
             <TouchableOpacity
               style={styles.stepperButton}
-              onPress={() =>
-                updateItem(item.id, (current) => ({
-                  ...current,
-                  peopleCount: Math.max(1, current.peopleCount - 1),
-                }))
-              }
+              onPress={() => updateItem(item.id, (current) => ({ ...current, peopleCount: Math.max(1, current.peopleCount - 1) }))}
             >
               <Text style={styles.stepperButtonText}>-</Text>
             </TouchableOpacity>
@@ -470,29 +466,15 @@ export function NewOrderScreen() {
               style={styles.stepperValue}
               value={String(item.peopleCount)}
               keyboardType="numeric"
-              onChangeText={(value) =>
-                updateItem(item.id, (current) => {
-                  const nextValue = Number(value);
-                  if (!Number.isFinite(nextValue)) {
-                    return current;
-                  }
-
-                  return {
-                    ...current,
-                    peopleCount: Math.max(1, Math.floor(nextValue)),
-                  };
-                })
-              }
+              onChangeText={(value) => updateItem(item.id, (current) => {
+                const nextValue = Number(value);
+                return Number.isFinite(nextValue) ? { ...current, peopleCount: Math.max(1, Math.floor(nextValue)) } : current;
+              })}
               textAlign="center"
             />
             <TouchableOpacity
               style={styles.stepperButton}
-              onPress={() =>
-                updateItem(item.id, (current) => ({
-                  ...current,
-                  peopleCount: current.peopleCount + 1,
-                }))
-              }
+              onPress={() => updateItem(item.id, (current) => ({ ...current, peopleCount: current.peopleCount + 1 }))}
             >
               <Text style={styles.stepperButtonText}>+</Text>
             </TouchableOpacity>
@@ -638,6 +620,24 @@ const styles = StyleSheet.create({
   },
   selectorBlock: {
     gap: theme.spacing.xs,
+  },
+  infoBox: {
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.secondaryContainer,
+    padding: theme.spacing.md,
+    gap: theme.spacing.xs,
+  },
+  infoTitle: {
+    ...theme.typography.label,
+    color: theme.colors.primary,
+    textAlign: 'right',
+  },
+  infoValue: {
+    ...theme.typography.title,
+    color: theme.colors.onSurface,
+    textAlign: 'right',
   },
   label: {
     ...theme.typography.label,

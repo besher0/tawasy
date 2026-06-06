@@ -15,9 +15,10 @@ import { Type } from 'class-transformer';
 import { CreateOrderItemDto } from './create-order-item.dto';
 
 export class CreateOrderDto {
-  @ApiProperty()
+  @ApiPropertyOptional({ description: 'Required only for admin/factory users. Shop users use their account shop automatically.' })
+  @IsOptional()
   @IsString()
-  shopId!: string;
+  shopId?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

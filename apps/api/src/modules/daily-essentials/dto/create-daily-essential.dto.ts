@@ -1,11 +1,12 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { EssentialsCategory, EssentialsStatus } from '@sugarprecision/shared-types';
 import { IsDateString, IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateDailyEssentialDto {
-  @ApiProperty()
+  @ApiPropertyOptional({ description: 'Required only for admin/factory users. Shop users use their account shop automatically.' })
+  @IsOptional()
   @IsString()
-  shopId!: string;
+  shopId?: string;
 
   @ApiProperty({ enum: EssentialsCategory })
   @IsEnum(EssentialsCategory)

@@ -39,14 +39,14 @@ export class OrdersService {
 
   async create(dto: CreateOrderDto, actor: RequestActor) {
     this.assertDeposit(dto.depositAmount, dto.totalPrice);
-    this.assertCanWriteShop(actor, dto.shopId);
-    const moldDeliveryShopId = dto.moldDeliveryShopId ?? dto.shopId;
+    const shopId = this.resolveWritableShopId(actor, dto.shopId);
+    const moldDeliveryShopId = dto.moldDeliveryShopId ?? shopId;
     await this.assertMoldDeliveryShop(moldDeliveryShopId);
 
     const order = await this.prisma.order.create({
       data: {
         orderNumber: this.generateOrderNumber(),
-        shopId: dto.shopId,
+        shopId,
         moldDeliveryShopId,
         customerName: dto.customerName,
         customerPhone: dto.customerPhone,
@@ -188,6 +188,11 @@ export class OrdersService {
       );
     }
 
+    const nextShopId =
+      dto.shopId !== undefined
+        ? this.resolveWritableShopId(actor, dto.shopId)
+        : undefined;
+
     if (dto.moldDeliveryShopId !== undefined) {
       await this.assertMoldDeliveryShop(dto.moldDeliveryShopId);
     }
@@ -195,7 +200,7 @@ export class OrdersService {
     const order = await this.prisma.order.update({
       where: { id },
       data: {
-        shopId: dto.shopId,
+        shopId: nextShopId,
         moldDeliveryShopId: dto.moldDeliveryShopId,
         customerName: dto.customerName,
         customerPhone: dto.customerPhone,
@@ -313,10 +318,24 @@ export class OrdersService {
     }
   }
 
-  private assertCanWriteShop(actor: RequestActor, shopId: string) {
-    if (this.isShopScopedRole(actor.role) && actor.shopId !== shopId) {
-      throw new ForbiddenException('Cannot create order for another shop');
+  private resolveWritableShopId(actor: RequestActor, requestedShopId?: string | null) {
+    if (this.isShopScopedRole(actor.role)) {
+      if (!actor.shopId) {
+        throw new ForbiddenException('Your account is not linked to a shop');
+      }
+
+      if (requestedShopId && requestedShopId !== actor.shopId) {
+        throw new ForbiddenException('Cannot create order for another shop');
+      }
+
+      return actor.shopId;
     }
+
+    if (!requestedShopId) {
+      throw new BadRequestException('shopId is required for admin and factory users');
+    }
+
+    return requestedShopId;
   }
 
   private assertCanAccessOrder(orderShopId: string, actor: RequestActor) {

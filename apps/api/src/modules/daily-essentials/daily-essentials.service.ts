@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -24,11 +25,16 @@ export class DailyEssentialsService {
   ) {}
 
   async create(dto: CreateDailyEssentialDto, actor: RequestActor) {
-    this.assertCanWriteShop(actor, dto.shopId);
+    const shopId = this.resolveWritableShopId(actor, dto.shopId);
 
     const record = await this.prisma.dailyEssential.create({
       data: {
-        ...dto,
+        shopId,
+        category: dto.category as never,
+        itemName: dto.itemName,
+        quantity: dto.quantity,
+        notes: dto.notes,
+        status: dto.status as never,
         targetDate: new Date(dto.targetDate),
       },
     });
@@ -38,7 +44,7 @@ export class DailyEssentialsService {
       action: 'DAILY_ESSENTIAL_CREATED',
       entity: 'DailyEssential',
       entityId: record.id,
-      details: dto as unknown as Record<string, unknown>,
+      details: { ...dto, shopId } as unknown as Record<string, unknown>,
     });
 
     return record;
@@ -76,11 +82,17 @@ export class DailyEssentialsService {
     }
 
     this.assertCanWriteShop(actor, existing.shopId);
+    const nextShopId = dto.shopId ? this.resolveWritableShopId(actor, dto.shopId) : undefined;
 
     const updated = await this.prisma.dailyEssential.update({
       where: { id },
       data: {
-        ...dto,
+        shopId: nextShopId,
+        category: dto.category as never,
+        itemName: dto.itemName,
+        quantity: dto.quantity,
+        notes: dto.notes,
+        status: dto.status as never,
         targetDate: dto.targetDate ? new Date(dto.targetDate) : undefined,
       },
     });
@@ -114,6 +126,26 @@ export class DailyEssentialsService {
     });
 
     return { message: 'Deleted successfully' };
+  }
+
+  private resolveWritableShopId(actor: RequestActor, requestedShopId?: string | null) {
+    if (this.isShopScopedRole(actor.role)) {
+      if (!actor.shopId) {
+        throw new ForbiddenException('Your account is not linked to a shop');
+      }
+
+      if (requestedShopId && requestedShopId !== actor.shopId) {
+        throw new ForbiddenException('Cannot mutate records for another shop');
+      }
+
+      return actor.shopId;
+    }
+
+    if (!requestedShopId) {
+      throw new BadRequestException('shopId is required for admin and factory users');
+    }
+
+    return requestedShopId;
   }
 
   private assertCanWriteShop(actor: RequestActor, shopId: string) {

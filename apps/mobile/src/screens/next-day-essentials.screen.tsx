@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -8,8 +8,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { UserRole } from '@sugarprecision/shared-types';
 import api from '../lib/api';
 import theme from '../theme';
+import { useAuth } from '../context/auth-context';
 import { essentialsCategoryLabel, essentialsStatusLabel } from '../lib/labels';
 
 interface EssentialRow {
@@ -18,13 +20,30 @@ interface EssentialRow {
   category: string;
   quantity: number;
   status: string;
+  shop?: {
+    id: string;
+    name: string;
+  } | null;
 }
 
+const shopScopedRoles = new Set<string>([UserRole.SHOP_MANAGER, UserRole.SHOP_EMPLOYEE]);
+
 export function NextDayEssentialsScreen() {
+  const { user } = useAuth();
   const [list, setList] = useState<EssentialRow[]>([]);
-  const [shopId, setShopId] = useState('');
   const [itemName, setItemName] = useState('');
   const [quantity, setQuantity] = useState('10');
+
+  const isShopScoped = shopScopedRoles.has(user?.role ?? '');
+  const canCreate = !isShopScoped || Boolean(user?.shopId);
+
+  const branchLabel = useMemo(() => {
+    if (!isShopScoped) {
+      return 'يتم عرض مستلزمات كل الفروع حسب الصلاحيات.';
+    }
+
+    return user?.shopId ? `سيتم ربط الطلب بفرع حسابك تلقائياً: ${user.shopId}` : 'حسابك غير مرتبط بفرع.';
+  }, [isShopScoped, user?.shopId]);
 
   const load = async () => {
     const tomorrow = new Date();
@@ -40,15 +59,30 @@ export function NextDayEssentialsScreen() {
   }, []);
 
   const addItem = async () => {
+    if (!itemName.trim()) {
+      Alert.alert('تنبيه', 'أدخل اسم المادة');
+      return;
+    }
+
+    const normalizedQuantity = Number(quantity);
+    if (!Number.isFinite(normalizedQuantity) || normalizedQuantity <= 0) {
+      Alert.alert('تنبيه', 'أدخل كمية صحيحة');
+      return;
+    }
+
+    if (!canCreate) {
+      Alert.alert('تنبيه', 'لا يمكن إضافة مستلزمات لأن حسابك غير مرتبط بفرع.');
+      return;
+    }
+
     try {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
 
       await api.post('/daily-essentials', {
-        shopId,
         category: 'Supplies',
-        itemName,
-        quantity: Number(quantity),
+        itemName: itemName.trim(),
+        quantity: normalizedQuantity,
         targetDate: tomorrow.toISOString(),
         status: 'Pending',
       });
@@ -64,7 +98,7 @@ export function NextDayEssentialsScreen() {
     <View style={styles.wrapper}>
       <View style={styles.formCard}>
         <Text style={styles.heading}>طلبيات اليوم التالي</Text>
-        <TextInput style={styles.input} value={shopId} onChangeText={setShopId} placeholder="معرّف الفرع" />
+        <Text style={styles.helper}>{branchLabel}</Text>
         <TextInput style={styles.input} value={itemName} onChangeText={setItemName} placeholder="اسم المادة" />
         <TextInput
           style={styles.input}
@@ -73,7 +107,7 @@ export function NextDayEssentialsScreen() {
           keyboardType="numeric"
           placeholder="الكمية"
         />
-        <TouchableOpacity style={styles.button} onPress={addItem}>
+        <TouchableOpacity style={[styles.button, !canCreate ? styles.buttonDisabled : null]} onPress={addItem}>
           <Text style={styles.buttonText}>إضافة</Text>
         </TouchableOpacity>
       </View>
@@ -85,6 +119,7 @@ export function NextDayEssentialsScreen() {
         renderItem={({ item }) => (
           <View style={styles.card}>
             <Text style={styles.itemName}>{item.itemName}</Text>
+            {item.shop?.name ? <Text style={styles.itemMeta}>الفرع: {item.shop.name}</Text> : null}
             <Text style={styles.itemMeta}>الفئة: {essentialsCategoryLabel(item.category)}</Text>
             <Text style={styles.itemMeta}>الكمية: {item.quantity}</Text>
             <Text style={styles.itemMeta}>الحالة: {essentialsStatusLabel(item.status)}</Text>
@@ -110,13 +145,16 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   heading: { ...theme.typography.heading, color: theme.colors.onSurface, textAlign: 'right' },
+  helper: { ...theme.typography.label, color: theme.colors.onSurfaceVariant, textAlign: 'right' },
   input: {
     height: 44,
     borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.outlineVariant,
+    backgroundColor: theme.colors.surface,
     paddingHorizontal: theme.spacing.md,
     textAlign: 'right',
+    ...theme.typography.body,
   },
   button: {
     height: 44,
@@ -124,6 +162,9 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  buttonDisabled: {
+    backgroundColor: theme.colors.surfaceVariant,
   },
   buttonText: { ...theme.typography.title, color: theme.colors.onPrimary },
   list: {
