@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   Alert,
   FlatList,
@@ -14,7 +16,12 @@ import api from '../lib/api';
 import { getApiErrorMessage } from '../lib/api-error';
 import theme from '../theme';
 import { useAuth } from '../context/auth-context';
-import { essentialsCategoryLabel, essentialsStatusLabel } from '../lib/labels';
+import {
+  essentialsCategoryLabel,
+  essentialsStatusLabel,
+  orderStatusLabel,
+} from '../lib/labels';
+import { RootStackParamList } from '../navigation/types';
 
 interface EssentialRow {
   id: string;
@@ -24,6 +31,18 @@ interface EssentialRow {
   status: string;
   shop?: {
     id: string;
+    name: string;
+  } | null;
+}
+
+interface TomorrowOrder {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  deliveryDatetime: string;
+  status: string;
+  isUrgent: boolean;
+  shop?: {
     name: string;
   } | null;
 }
@@ -42,7 +61,9 @@ function getTomorrowDate() {
 
 export function NextDayEssentialsScreen() {
   const { user } = useAuth();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [list, setList] = useState<EssentialRow[]>([]);
+  const [orders, setOrders] = useState<TomorrowOrder[]>([]);
   const [shops, setShops] = useState<ShopSummary[]>([]);
   const [selectedShopId, setSelectedShopId] = useState('');
   const [itemName, setItemName] = useState('');
@@ -64,10 +85,18 @@ export function NextDayEssentialsScreen() {
   }, [isShopScoped, selectedShop]);
 
   const load = useCallback(async () => {
-    const response = await api.get('/daily-essentials', {
-      params: { targetDate: getTomorrowDate() },
-    });
-    setList(response.data);
+    const tomorrow = getTomorrowDate();
+    const [essentialsResponse, ordersResponse] = await Promise.all([
+      api.get('/daily-essentials', {
+        params: { targetDate: tomorrow },
+      }),
+      api.get<TomorrowOrder[]>('/orders', {
+        params: { date: tomorrow },
+      }),
+    ]);
+
+    setList(essentialsResponse.data);
+    setOrders(ordersResponse.data);
   }, []);
 
   useEffect(() => {
@@ -97,6 +126,12 @@ export function NextDayEssentialsScreen() {
 
     void initialize();
   }, [isShopScoped, load, user?.shopId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
 
   const addItem = async () => {
     if (!itemName.trim()) {
@@ -175,6 +210,40 @@ export function NextDayEssentialsScreen() {
         data={list}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
+        ListHeaderComponent={
+          <View style={styles.ordersSection}>
+            <Text style={styles.sectionTitle}>طلبات التسليم غداً</Text>
+            {orders.length ? (
+              orders.map((order) => (
+                <TouchableOpacity
+                  key={order.id}
+                  style={styles.orderCard}
+                  onPress={() => navigation.navigate('OrderDetails', { orderId: order.id })}
+                >
+                  <View style={styles.orderHeader}>
+                    <Text style={styles.orderNumber}>{order.orderNumber}</Text>
+                    <Text style={order.isUrgent ? styles.urgent : styles.itemMeta}>
+                      {order.isUrgent ? 'عاجل' : 'عادي'}
+                    </Text>
+                  </View>
+                  <Text style={styles.itemName}>{order.customerName}</Text>
+                  <Text style={styles.itemMeta}>
+                    الفرع: {order.shop?.name ?? 'غير محدد'}
+                  </Text>
+                  <Text style={styles.itemMeta}>
+                    الحالة: {orderStatusLabel(order.status)}
+                  </Text>
+                  <Text style={styles.itemMeta}>
+                    الموعد: {new Date(order.deliveryDatetime).toLocaleString()}
+                  </Text>
+                </TouchableOpacity>
+              ))
+            ) : (
+              <Text style={styles.emptyText}>لا توجد طلبات تسليم للغد.</Text>
+            )}
+            <Text style={styles.sectionTitle}>مستلزمات الغد</Text>
+          </View>
+        }
         renderItem={({ item }) => (
           <View style={styles.card}>
             <Text style={styles.itemName}>{item.itemName}</Text>
@@ -257,6 +326,41 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 1280,
     alignSelf: 'center',
+  },
+  ordersSection: {
+    gap: theme.spacing.sm,
+  },
+  sectionTitle: {
+    ...theme.typography.title,
+    color: theme.colors.primary,
+    textAlign: 'right',
+    marginTop: theme.spacing.sm,
+  },
+  orderCard: {
+    backgroundColor: theme.colors.surfaceContainerLowest,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    padding: theme.spacing.md,
+    gap: 2,
+  },
+  orderHeader: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  orderNumber: {
+    ...theme.typography.title,
+    color: theme.colors.primary,
+  },
+  urgent: {
+    ...theme.typography.label,
+    color: theme.colors.error,
+  },
+  emptyText: {
+    ...theme.typography.body,
+    color: theme.colors.onSurfaceVariant,
+    textAlign: 'right',
   },
   card: {
     backgroundColor: theme.colors.surfaceContainerLowest,

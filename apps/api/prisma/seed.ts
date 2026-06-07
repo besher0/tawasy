@@ -121,7 +121,7 @@ async function main() {
       totalPrice: 1250,
       depositAmount: 500,
       paymentStatus: PaymentStatus.Partial,
-      status: OrderStatus.Reviewing,
+      status: OrderStatus.New,
       isUrgent: true,
       notes: 'طلب تجريبي من seed',
       createdById: shopEmployee.id,
@@ -149,10 +149,9 @@ async function main() {
   await prisma.orderStatusHistory.create({
     data: {
       orderId: order.id,
-      previousStatus: OrderStatus.New,
-      newStatus: OrderStatus.Reviewing,
+      newStatus: OrderStatus.New,
       changedById: factoryManager.id,
-      note: 'Seed review state',
+      note: 'Seed new order',
     },
   });
 

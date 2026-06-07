@@ -172,4 +172,94 @@ describe('OrdersService', () => {
       }),
     );
   });
+
+  it('notifies the shop and factory when a new order is created', async () => {
+    prisma.order.create.mockResolvedValue({
+      id: 'order-notification',
+      orderNumber: 'SP-NEW-1',
+      customerName: 'Customer',
+      status: 'New',
+      items: [],
+    });
+    prisma.user.findMany.mockResolvedValueOnce([
+      { id: 'shop-user' },
+      { id: 'factory-user' },
+    ]);
+
+    await service.create(
+      {
+        shopId: 'shop-1',
+        customerName: 'Customer',
+        customerPhone: '0500000000',
+        deliveryDatetime: new Date().toISOString(),
+        totalPrice: 100,
+        depositAmount: 50,
+        paymentStatus: 'Partial' as never,
+        isUrgent: false,
+        items: [],
+      },
+      {
+        sub: 'user-1',
+        role: 'Admin' as never,
+        shopId: null,
+      },
+    );
+
+    expect(notificationsService.pushInternalNotification).toHaveBeenCalledTimes(2);
+    expect(notificationsService.pushInternalNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'factory-user',
+        payload: { orderId: 'order-notification', status: 'New' },
+      }),
+    );
+  });
+
+  it('allows the factory to move a new order directly into production', async () => {
+    prisma.order.findUnique.mockResolvedValue({
+      id: 'order-new',
+      shopId: 'shop-1',
+      status: 'New',
+    });
+    prisma.order.update.mockResolvedValue({
+      id: 'order-new',
+      orderNumber: 'SP-NEW-2',
+      shopId: 'shop-1',
+      status: 'In_Production',
+    });
+
+    await service.changeStatus(
+      'order-new',
+      'In_Production' as never,
+      {
+        sub: 'factory-user',
+        role: 'FactoryManager' as never,
+        shopId: 'factory-1',
+      },
+    );
+
+    expect(prisma.order.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'order-new' },
+        data: { status: 'In_Production' },
+      }),
+    );
+  });
+
+  it('keeps submit as a no-op so new orders do not wait for review', async () => {
+    prisma.order.findUnique.mockResolvedValue({
+      id: 'order-new',
+      shopId: 'shop-1',
+      status: 'New',
+      items: [],
+    });
+
+    const result = await service.submit('order-new', {
+      sub: 'shop-user',
+      role: 'ShopEmployee' as never,
+      shopId: 'shop-1',
+    });
+
+    expect(result.status).toBe('New');
+    expect(prisma.order.update).not.toHaveBeenCalled();
+  });
 });

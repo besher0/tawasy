@@ -13,6 +13,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Image,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -89,7 +90,7 @@ const finishOptions: Choice<CakeFinish>[] = [
 
 function buildDefaultDelivery() {
   const date = new Date();
-  date.setDate(date.getDate() + 2);
+  date.setDate(date.getDate() + 1);
   date.setHours(16, 0, 0, 0);
 
   return {
@@ -172,6 +173,8 @@ export function NewOrderScreen() {
   const [notes, setNotes] = useState('');
   const [isUrgent, setIsUrgent] = useState(false);
   const [items, setItems] = useState<DraftOrderItem[]>(() => [createEmptyItem()]);
+  const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -246,6 +249,10 @@ export function NewOrderScreen() {
   };
 
   const pickImages = async (itemId: string) => {
+    if (uploadingItemId) {
+      return;
+    }
+
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -258,19 +265,29 @@ export function NewOrderScreen() {
         return;
       }
 
+      setUploadingItemId(itemId);
       const uploadedUrls: string[] = [];
 
       for (const asset of result.assets) {
         const form = new FormData();
-        form.append('file', {
-          uri: asset.uri,
-          name: asset.fileName ?? `reference-${Date.now()}.jpg`,
-          type: asset.mimeType ?? 'image/jpeg',
-        } as never);
+        const fileName = asset.fileName ?? `reference-${Date.now()}.jpg`;
 
-        const response = await api.post('/uploads/order-reference', form, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
+        if (Platform.OS === 'web') {
+          const webFile =
+            asset.file ??
+            new File([await (await fetch(asset.uri)).blob()], fileName, {
+              type: asset.mimeType ?? 'image/jpeg',
+            });
+          form.append('file', webFile, fileName);
+        } else {
+          form.append('file', {
+            uri: asset.uri,
+            name: fileName,
+            type: asset.mimeType ?? 'image/jpeg',
+          } as never);
+        }
+
+        const response = await api.post('/uploads/order-reference', form);
         uploadedUrls.push(response.data.url as string);
       }
 
@@ -278,8 +295,13 @@ export function NewOrderScreen() {
         ...item,
         referenceImages: [...item.referenceImages, ...uploadedUrls],
       }));
-    } catch {
-      Alert.alert('خطأ', 'تعذر رفع الصور المرجعية');
+    } catch (error) {
+      Alert.alert(
+        'خطأ',
+        getApiErrorMessage(error, 'تعذر رفع الصور المرجعية. حاول بصورة أصغر من 5 ميغابايت.'),
+      );
+    } finally {
+      setUploadingItemId(null);
     }
   };
 
@@ -333,6 +355,10 @@ export function NewOrderScreen() {
   };
 
   const submit = async () => {
+    if (isSubmitting) {
+      return;
+    }
+
     if (!validateItems()) {
       return;
     }
@@ -424,14 +450,17 @@ export function NewOrderScreen() {
     }
 
     try {
+      setIsSubmitting(true);
       await api.post('/orders', payload);
-      Alert.alert('تم', 'تم إنشاء الطلب بنجاح');
+      Alert.alert('تم', 'تم إرسال الطلب للمعمل بنجاح');
       resetForm();
     } catch (error) {
       Alert.alert(
         'خطأ',
-        getApiErrorMessage(error, 'فشل إنشاء الطلب. تحقق من البيانات ومكان التسليم.'),
+        getApiErrorMessage(error, 'فشل إرسال الطلب. تحقق من البيانات ومكان التسليم.'),
       );
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -691,10 +720,16 @@ export function NewOrderScreen() {
 
             <Text style={styles.label}>الصور المرجعية</Text>
             <TouchableOpacity
-              style={styles.uploadButton}
+              style={[
+                styles.uploadButton,
+                uploadingItemId === item.id ? styles.uploadButtonDisabled : null,
+              ]}
+              disabled={uploadingItemId !== null}
               onPress={() => void pickImages(item.id)}
             >
-              <Text style={styles.uploadButtonText}>رفع صورة أو عدة صور</Text>
+              <Text style={styles.uploadButtonText}>
+                {uploadingItemId === item.id ? 'جاري رفع الصور...' : 'رفع صورة أو عدة صور'}
+              </Text>
             </TouchableOpacity>
 
             {item.referenceImages.length ? (
@@ -848,8 +883,19 @@ export function NewOrderScreen() {
           textAlignVertical="top"
         />
 
-        <TouchableOpacity style={styles.primaryButton} onPress={() => void submit()}>
-          <Text style={styles.primaryButtonText}>إرسال الطلب للمعمل</Text>
+        <TouchableOpacity
+          style={[
+            styles.primaryButton,
+            isSubmitting ? styles.primaryButtonDisabled : null,
+          ]}
+          onPress={() => void submit()}
+          disabled={isSubmitting}
+        >
+          <Text style={styles.primaryButtonText}>
+            {isSubmitting
+              ? 'جاري إرسال الطلب...'
+              : 'إرسال الطلب للمعمل'}
+          </Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -1073,6 +1119,9 @@ const styles = StyleSheet.create({
     ...theme.typography.title,
     color: theme.colors.primary,
   },
+  uploadButtonDisabled: {
+    opacity: 0.6,
+  },
   imageGrid: {
     flexDirection: 'row-reverse',
     flexWrap: 'wrap',
@@ -1140,6 +1189,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     height: 50,
     marginTop: theme.spacing.sm,
+  },
+  primaryButtonDisabled: {
+    opacity: 0.6,
   },
   primaryButtonText: {
     ...theme.typography.title,

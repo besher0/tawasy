@@ -21,7 +21,7 @@ interface RequestActor {
 
 const editableStatuses: OrderStatus[] = [OrderStatus.New, OrderStatus.Reviewing];
 const statusTransitions: Record<OrderStatus, OrderStatus[]> = {
-  New: [OrderStatus.Reviewing, OrderStatus.Cancelled],
+  New: [OrderStatus.In_Production, OrderStatus.Cancelled],
   Reviewing: [OrderStatus.In_Production, OrderStatus.Cancelled],
   In_Production: [OrderStatus.Ready, OrderStatus.Cancelled],
   Ready: [OrderStatus.Delivered],
@@ -102,6 +102,29 @@ export class OrdersService {
       entityId: order.id,
       details: { status: order.status },
     });
+
+    const usersToNotify = await this.prisma.user.findMany({
+      where: {
+        OR: [
+          { shopId },
+          { role: UserRole.ADMIN as never },
+          { role: UserRole.FACTORY_MANAGER as never },
+        ],
+      },
+      select: { id: true },
+    });
+
+    await Promise.allSettled(
+      usersToNotify.map((user) =>
+        this.notificationsService.pushInternalNotification({
+          userId: user.id,
+          type: 'OrderStatus',
+          title: `طلب جديد ${order.orderNumber}`,
+          body: `تم تسجيل طلب جديد للزبون ${order.customerName}.`,
+          payload: { orderId: order.id, status: order.status },
+        }),
+      ),
+    );
 
     return order;
   }
@@ -235,7 +258,17 @@ export class OrdersService {
   }
 
   async submit(id: string, actor: RequestActor) {
-    return this.changeStatus(id, OrderStatus.Reviewing, actor, 'Submitted to factory');
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      include: { shop: true, moldDeliveryShop: true, items: true },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    this.assertCanAccessOrder(order.shopId, actor);
+    return order;
   }
 
   async changeStatus(id: string, status: OrderStatus, actor: RequestActor, note?: string) {
