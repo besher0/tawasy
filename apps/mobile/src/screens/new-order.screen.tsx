@@ -9,6 +9,8 @@ import {
 } from '@sugarprecision/shared-types';
 import type { CreateOrderInput, ShopSummary } from '@sugarprecision/shared-types';
 import * as ImagePicker from 'expo-image-picker';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
@@ -24,6 +26,7 @@ import {
 import { useAuth } from '../context/auth-context';
 import api from '../lib/api';
 import { getApiErrorMessage } from '../lib/api-error';
+import { RootStackParamList } from '../navigation/types';
 import theme from '../theme';
 
 type DraftOrderItem = {
@@ -158,6 +161,7 @@ function ChoiceRow<T extends string>({
 
 export function NewOrderScreen() {
   const { user } = useAuth();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const defaults = useMemo(() => buildDefaultDelivery(), []);
   const isShopScoped = user?.role ? shopScopedRoles.has(user.role) : false;
 
@@ -451,9 +455,10 @@ export function NewOrderScreen() {
 
     try {
       setIsSubmitting(true);
-      await api.post('/orders', payload);
-      Alert.alert('تم', 'تم إرسال الطلب للمعمل بنجاح');
+      const response = await api.post<{ id: string; orderNumber: string }>('/orders', payload);
       resetForm();
+      navigation.navigate('OrderDetails', { orderId: response.data.id });
+      Alert.alert('تم', `تمت إضافة الطلب ${response.data.orderNumber} بنجاح`);
     } catch (error) {
       Alert.alert(
         'خطأ',
