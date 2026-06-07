@@ -8,7 +8,6 @@ import { CakeType, Prisma, OrderStatus } from '@prisma/client';
 import { UserRole } from '@sugarprecision/shared-types';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { NotificationsService } from '../notifications/notifications.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrdersQueryDto } from './dto/orders-query.dto';
@@ -34,7 +33,6 @@ export class OrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
-    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(dto: CreateOrderDto, actor: RequestActor) {
@@ -69,6 +67,7 @@ export class OrdersService {
             layers: item.layers,
             shape: item.shape,
             moldFlavor: item.moldFlavor,
+            moldColor: item.moldColor,
             hasFillings: item.hasFillings,
             filling: item.filling,
             withFoam: item.withFoam,
@@ -102,29 +101,6 @@ export class OrdersService {
       entityId: order.id,
       details: { status: order.status },
     });
-
-    const usersToNotify = await this.prisma.user.findMany({
-      where: {
-        OR: [
-          { shopId },
-          { role: UserRole.ADMIN as never },
-          { role: UserRole.FACTORY_MANAGER as never },
-        ],
-      },
-      select: { id: true },
-    });
-
-    await Promise.allSettled(
-      usersToNotify.map((user) =>
-        this.notificationsService.pushInternalNotification({
-          userId: user.id,
-          type: 'OrderStatus',
-          title: `طلب جديد ${order.orderNumber}`,
-          body: `تم تسجيل طلب جديد للزبون ${order.customerName}.`,
-          payload: { orderId: order.id, status: order.status },
-        }),
-      ),
-    );
 
     return order;
   }
@@ -314,29 +290,6 @@ export class OrdersService {
         note,
       },
     });
-
-    const usersToNotify = await this.prisma.user.findMany({
-      where: {
-        OR: [
-          { shopId: existing.shopId },
-          { role: UserRole.ADMIN as never },
-          { role: UserRole.FACTORY_MANAGER as never },
-        ],
-      },
-      select: { id: true },
-    });
-
-    await Promise.all(
-      usersToNotify.map((user) =>
-        this.notificationsService.pushInternalNotification({
-          userId: user.id,
-          type: 'OrderStatus',
-          title: `Order ${updated.orderNumber} status updated`,
-          body: `Status changed from ${existing.status} to ${status}.`,
-          payload: { orderId: updated.id, status },
-        }),
-      ),
-    );
 
     return updated;
   }

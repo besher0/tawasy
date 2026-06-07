@@ -11,6 +11,7 @@ import {
   IsBoolean,
   IsEnum,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsString,
   Min,
@@ -50,6 +51,12 @@ export class CreateOrderItemDto {
   @ValidateIf((item: CreateOrderItemDto) => item.itemKind === OrderItemKind.MOLD)
   @IsEnum(MoldFlavor)
   moldFlavor?: MoldFlavor;
+
+  @ApiPropertyOptional({ description: 'Requested mold color' })
+  @ValidateIf((item: CreateOrderItemDto) => item.itemKind === OrderItemKind.MOLD)
+  @IsString()
+  @IsNotEmpty()
+  moldColor?: string;
 
   @ApiProperty({ default: false })
   @IsBoolean()

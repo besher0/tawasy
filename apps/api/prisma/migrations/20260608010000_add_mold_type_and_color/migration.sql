@@ -1,0 +1,6 @@
+ALTER TYPE "MoldFlavor" ADD VALUE IF NOT EXISTS 'Cream';
+ALTER TYPE "MoldFlavor" ADD VALUE IF NOT EXISTS 'Chocolate';
+ALTER TYPE "MoldFlavor" ADD VALUE IF NOT EXISTS 'Harissa';
+
+ALTER TABLE "OrderItem"
+  ADD COLUMN IF NOT EXISTS "moldColor" TEXT;

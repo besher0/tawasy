@@ -58,6 +58,9 @@ enum MoldFlavor {
   White
   Black
   Mixed
+  Cream
+  Chocolate
+  Harissa
 }
 
 enum CakeFinish {
@@ -79,14 +82,6 @@ enum EssentialsStatus {
   Out_for_Delivery
 }
 
-enum NotificationType {
-  Info
-  Alert
-  OrderStatus
-  Stock
-  System
-}
-
 enum PrintJobStatus {
   Pending
   Sent
@@ -99,21 +94,19 @@ enum PrinterProtocol {
 }
 
 model User {
-  id               String         @id @default(uuid())
+  id               String     @id @default(uuid())
   name             String
-  phone            String         @unique
+  phone            String     @unique
   role             UserRole
   passwordHash     String
   refreshTokenHash String?
-  isActive         Boolean        @default(true)
+  isActive         Boolean    @default(true)
   shopId           String?
-  shop             Shop?          @relation(fields: [shopId], references: [id], onDelete: SetNull)
-  createdOrders    Order[]        @relation("OrderCreatedBy")
-  notifications    Notification[]
-  pushTokens       PushToken[]
+  shop             Shop?      @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  createdOrders    Order[]    @relation("OrderCreatedBy")
   auditLogs        AuditLog[]
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
 
   @@index([role])
   @@index([shopId])
@@ -177,6 +170,7 @@ model OrderItem {
   layers           Int
   shape            CakeShape?
   moldFlavor       MoldFlavor?
+  moldColor        String?
   hasFillings      Boolean       @default(false)
   filling          String?
   withFoam         Boolean       @default(false)
@@ -223,34 +217,6 @@ model OrderStatusHistory {
 
   @@index([orderId])
   @@index([newStatus])
-}
-
-model Notification {
-  id        String           @id @default(uuid())
-  userId    String
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      NotificationType
-  title     String
-  body      String
-  payload   Json?
-  isRead    Boolean          @default(false)
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-
-  @@index([userId, isRead])
-}
-
-model PushToken {
-  id         String   @id @default(uuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token      String   @unique
-  platform   String
-  lastSeenAt DateTime @default(now())
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@index([userId])
 }
 
 model Printer {

@@ -2,7 +2,7 @@
 
 ## Role-Based Screens
 
-- Shared: Dashboard, Notifications, Profile, Settings
+- Shared: Profile
 - Shop roles: New Order, Incoming Orders, Next-Day Essentials
 - Factory/Admin roles: Incoming Orders, Production Kanban, Analytics
 

@@ -74,6 +74,7 @@ export function OrderDetailsScreen() {
             ) : (
               <>
                 <Text style={styles.meta}>نوع القالب: {moldFlavorLabel(item.moldFlavor)}</Text>
+                <Text style={styles.meta}>لون القالب: {item.moldColor ?? '-'}</Text>
                 <Text style={styles.meta}>الحشوات: {item.hasFillings ? item.filling ?? 'نعم' : 'لا'}</Text>
                 <Text style={styles.meta}>الشكل: {cakeShapeLabel(item.shape)}</Text>
                 <Text style={styles.meta}>الفلين: {item.withFoam ? 'مع فلين' : 'بدون فلين'}</Text>

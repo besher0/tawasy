@@ -4,6 +4,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   Alert,
   FlatList,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -19,6 +20,7 @@ import { useAuth } from '../context/auth-context';
 import {
   essentialsCategoryLabel,
   essentialsStatusLabel,
+  moldConfigurationLabel,
   orderStatusLabel,
 } from '../lib/labels';
 import { RootStackParamList } from '../navigation/types';
@@ -42,21 +44,59 @@ interface TomorrowOrder {
   deliveryDatetime: string;
   status: string;
   isUrgent: boolean;
+  items?: {
+    id: string;
+    itemKind: string;
+    moldFlavor?: string | null;
+    moldColor?: string | null;
+  }[];
   shop?: {
+    id: string;
     name: string;
   } | null;
 }
 
+interface DailyBranchGroup {
+  id: string;
+  name: string;
+  orders: TomorrowOrder[];
+  essentials: EssentialRow[];
+}
+
 const shopScopedRoles = new Set<string>([UserRole.SHOP_MANAGER, UserRole.SHOP_EMPLOYEE]);
 
-function getTomorrowDate() {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  const year = tomorrow.getFullYear();
-  const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
-  const day = String(tomorrow.getDate()).padStart(2, '0');
+function getDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function getTomorrowDate() {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  return getDateKey(date);
+}
+
+function buildDayOptions() {
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() + index);
+
+    return {
+      dateKey: getDateKey(date),
+      dayLabel:
+        index === 0
+          ? 'اليوم'
+          : index === 1
+            ? 'غداً'
+            : date.toLocaleDateString('ar-SY', { weekday: 'long' }),
+      dateLabel: date.toLocaleDateString('ar-SY', {
+        day: 'numeric',
+        month: 'short',
+      }),
+    };
+  });
 }
 
 export function NextDayEssentialsScreen() {
@@ -68,11 +108,47 @@ export function NextDayEssentialsScreen() {
   const [selectedShopId, setSelectedShopId] = useState('');
   const [itemName, setItemName] = useState('');
   const [quantity, setQuantity] = useState('10');
+  const [selectedDate, setSelectedDate] = useState(getTomorrowDate);
+  const dayOptions = useMemo(() => buildDayOptions(), []);
+  const selectedDay = dayOptions.find((day) => day.dateKey === selectedDate);
 
   const isShopScoped = shopScopedRoles.has(user?.role ?? '');
   const writableShopId = selectedShopId;
   const canCreate = Boolean(writableShopId);
   const selectedShop = shops.find((shop) => shop.id === writableShopId);
+  const branchGroups = useMemo(() => {
+    const groups = new Map<string, DailyBranchGroup>();
+
+    orders.forEach((order) => {
+      const branchId = order.shop?.id ?? 'unassigned';
+      const group = groups.get(branchId) ?? {
+        id: branchId,
+        name: order.shop?.name ?? 'فرع غير محدد',
+        orders: [],
+        essentials: [],
+      };
+
+      group.orders.push(order);
+      groups.set(branchId, group);
+    });
+
+    list.forEach((item) => {
+      const branchId = item.shop?.id ?? 'unassigned';
+      const group = groups.get(branchId) ?? {
+        id: branchId,
+        name: item.shop?.name ?? 'فرع غير محدد',
+        orders: [],
+        essentials: [],
+      };
+
+      group.essentials.push(item);
+      groups.set(branchId, group);
+    });
+
+    return [...groups.values()].sort((first, second) =>
+      first.name.localeCompare(second.name, 'ar'),
+    );
+  }, [list, orders]);
 
   const branchLabel = useMemo(() => {
     if (selectedShop) {
@@ -85,19 +161,18 @@ export function NextDayEssentialsScreen() {
   }, [isShopScoped, selectedShop]);
 
   const load = useCallback(async () => {
-    const tomorrow = getTomorrowDate();
     const [essentialsResponse, ordersResponse] = await Promise.all([
       api.get('/daily-essentials', {
-        params: { targetDate: tomorrow },
+        params: { targetDate: selectedDate },
       }),
       api.get<TomorrowOrder[]>('/orders', {
-        params: { date: tomorrow },
+        params: { date: selectedDate },
       }),
     ]);
 
     setList(essentialsResponse.data);
     setOrders(ordersResponse.data);
-  }, []);
+  }, [selectedDate]);
 
   useEffect(() => {
     async function initialize() {
@@ -115,17 +190,16 @@ export function NextDayEssentialsScreen() {
 
         setShops(branches);
         setSelectedShopId(defaultShopId);
-        await load();
       } catch (error) {
         Alert.alert(
           'خطأ',
-          getApiErrorMessage(error, 'تعذر تحميل الفروع أو مستلزمات الغد.'),
+          getApiErrorMessage(error, 'تعذر تحميل الفروع.'),
         );
       }
     }
 
     void initialize();
-  }, [isShopScoped, load, user?.shopId]);
+  }, [isShopScoped, user?.shopId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -156,7 +230,7 @@ export function NextDayEssentialsScreen() {
         category: 'Supplies',
         itemName: itemName.trim(),
         quantity: normalizedQuantity,
-        targetDate: getTomorrowDate(),
+        targetDate: selectedDate,
         status: 'Pending',
       });
 
@@ -173,7 +247,31 @@ export function NextDayEssentialsScreen() {
   return (
     <View style={styles.wrapper}>
       <View style={styles.formCard}>
-        <Text style={styles.heading}>طلبيات اليوم التالي</Text>
+        <Text style={styles.heading}>الطلبيات حسب اليوم</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.dayOptions}
+        >
+          {dayOptions.map((day) => {
+            const active = selectedDate === day.dateKey;
+
+            return (
+              <TouchableOpacity
+                key={day.dateKey}
+                style={[styles.dayChip, active ? styles.dayChipActive : null]}
+                onPress={() => setSelectedDate(day.dateKey)}
+              >
+                <Text style={[styles.dayChipTitle, active ? styles.dayChipTextActive : null]}>
+                  {day.dayLabel}
+                </Text>
+                <Text style={[styles.dayChipDate, active ? styles.dayChipTextActive : null]}>
+                  {day.dateLabel}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
         <Text style={styles.helper}>{branchLabel}</Text>
         {!isShopScoped ? (
           <View style={styles.shopOptions}>
@@ -207,14 +305,28 @@ export function NextDayEssentialsScreen() {
       </View>
 
       <FlatList
-        data={list}
+        data={branchGroups}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         ListHeaderComponent={
-          <View style={styles.ordersSection}>
-            <Text style={styles.sectionTitle}>طلبات التسليم غداً</Text>
-            {orders.length ? (
-              orders.map((order) => (
+          <Text style={styles.dayResultsTitle}>
+            تفاصيل {selectedDay?.dayLabel ?? selectedDate} حسب الفروع
+          </Text>
+        }
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>لا توجد طلبيات أو مستلزمات في هذا اليوم.</Text>
+        }
+        renderItem={({ item: branch }) => (
+          <View style={styles.branchSection}>
+            {!isShopScoped ? (
+              <View style={styles.branchHeader}>
+                <Text style={styles.branchTitle}>{branch.name}</Text>
+              </View>
+            ) : null}
+
+            <Text style={styles.sectionTitle}>طلبات التسليم</Text>
+            {branch.orders.length ? (
+              branch.orders.map((order) => (
                 <TouchableOpacity
                   key={order.id}
                   style={styles.orderCard}
@@ -227,6 +339,17 @@ export function NextDayEssentialsScreen() {
                     </Text>
                   </View>
                   <Text style={styles.itemName}>{order.customerName}</Text>
+                  {order.items?.some((item) => item.itemKind === 'Mold') ? (
+                    <Text style={styles.moldSummary}>
+                      القوالب:{' '}
+                      {order.items
+                        .filter((item) => item.itemKind === 'Mold')
+                        .map((item) =>
+                          moldConfigurationLabel(item.moldFlavor, item.moldColor),
+                        )
+                        .join('، ')}
+                    </Text>
+                  ) : null}
                   <Text style={styles.itemMeta}>
                     الفرع: {order.shop?.name ?? 'غير محدد'}
                   </Text>
@@ -239,18 +362,26 @@ export function NextDayEssentialsScreen() {
                 </TouchableOpacity>
               ))
             ) : (
-              <Text style={styles.emptyText}>لا توجد طلبات تسليم للغد.</Text>
+              <Text style={styles.emptyText}>لا توجد طلبات تسليم لهذا الفرع.</Text>
             )}
-            <Text style={styles.sectionTitle}>مستلزمات الغد</Text>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <Text style={styles.itemName}>{item.itemName}</Text>
-            {item.shop?.name ? <Text style={styles.itemMeta}>الفرع: {item.shop.name}</Text> : null}
-            <Text style={styles.itemMeta}>الفئة: {essentialsCategoryLabel(item.category)}</Text>
-            <Text style={styles.itemMeta}>الكمية: {item.quantity}</Text>
-            <Text style={styles.itemMeta}>الحالة: {essentialsStatusLabel(item.status)}</Text>
+
+            <Text style={styles.sectionTitle}>المستلزمات</Text>
+            {branch.essentials.length ? (
+              branch.essentials.map((essential) => (
+                <View key={essential.id} style={styles.card}>
+                  <Text style={styles.itemName}>{essential.itemName}</Text>
+                  <Text style={styles.itemMeta}>
+                    الفئة: {essentialsCategoryLabel(essential.category)}
+                  </Text>
+                  <Text style={styles.itemMeta}>الكمية: {essential.quantity}</Text>
+                  <Text style={styles.itemMeta}>
+                    الحالة: {essentialsStatusLabel(essential.status)}
+                  </Text>
+                </View>
+              ))
+            ) : (
+              <Text style={styles.emptyText}>لا توجد مستلزمات لهذا الفرع.</Text>
+            )}
           </View>
         )}
       />
@@ -274,6 +405,37 @@ const styles = StyleSheet.create({
   },
   heading: { ...theme.typography.heading, color: theme.colors.onSurface, textAlign: 'right' },
   helper: { ...theme.typography.label, color: theme.colors.onSurfaceVariant, textAlign: 'right' },
+  dayOptions: {
+    gap: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+  },
+  dayChip: {
+    width: 92,
+    minHeight: 62,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.outlineVariant,
+    backgroundColor: theme.colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.sm,
+  },
+  dayChipActive: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.secondaryContainer,
+  },
+  dayChipTitle: {
+    ...theme.typography.label,
+    color: theme.colors.onSurface,
+  },
+  dayChipDate: {
+    ...theme.typography.label,
+    color: theme.colors.onSurfaceVariant,
+  },
+  dayChipTextActive: {
+    color: theme.colors.primary,
+    fontFamily: 'Cairo_700Bold',
+  },
   shopOptions: {
     flexDirection: 'row-reverse',
     flexWrap: 'wrap',
@@ -327,8 +489,27 @@ const styles = StyleSheet.create({
     maxWidth: 1280,
     alignSelf: 'center',
   },
-  ordersSection: {
+  dayResultsTitle: {
+    ...theme.typography.title,
+    color: theme.colors.onSurface,
+    textAlign: 'right',
+    marginBottom: theme.spacing.sm,
+  },
+  branchSection: {
     gap: theme.spacing.sm,
+    marginBottom: theme.spacing.lg,
+  },
+  branchHeader: {
+    borderRightWidth: 4,
+    borderRightColor: theme.colors.primary,
+    backgroundColor: theme.colors.secondaryContainer,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+  },
+  branchTitle: {
+    ...theme.typography.heading,
+    color: theme.colors.primary,
+    textAlign: 'right',
   },
   sectionTitle: {
     ...theme.typography.title,
@@ -372,4 +553,5 @@ const styles = StyleSheet.create({
   },
   itemName: { ...theme.typography.title, color: theme.colors.onSurface, textAlign: 'right' },
   itemMeta: { ...theme.typography.body, color: theme.colors.onSurfaceVariant, textAlign: 'right' },
+  moldSummary: { ...theme.typography.body, color: theme.colors.primary, textAlign: 'right' },
 });

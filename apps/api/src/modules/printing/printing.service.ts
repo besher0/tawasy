@@ -65,6 +65,9 @@ export class PrintingService {
       if (item.moldFlavor) {
         doc.text(`- Mold flavor: ${item.moldFlavor}`);
       }
+      if (item.moldColor) {
+        doc.text(`- Mold color: ${item.moldColor}`);
+      }
       if (item.shape) {
         doc.text(`- Shape: ${item.shape}`);
       }

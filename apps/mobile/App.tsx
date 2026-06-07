@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
-import React from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import {
   Cairo_400Regular,
@@ -9,15 +9,8 @@ import {
   Cairo_700Bold,
   useFonts,
 } from '@expo-google-fonts/cairo';
-import { AuthProvider, useAuth } from './src/context/auth-context';
+import { AuthProvider } from './src/context/auth-context';
 import { AppNavigator } from './src/navigation/app-navigator';
-import { usePushRegistration } from './src/hooks/use-push-registration';
-
-function PushRegistrationBinder() {
-  const { user } = useAuth();
-  usePushRegistration(Boolean(user));
-  return null;
-}
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -26,6 +19,16 @@ export default function App() {
     Cairo_600SemiBold,
     Cairo_700Bold,
   });
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      return;
+    }
+
+    document.documentElement.lang = 'ar';
+    document.documentElement.dir = 'rtl';
+    document.body.dir = 'rtl';
+  }, []);
 
   if (!fontsLoaded) {
     return (
@@ -38,7 +41,6 @@ export default function App() {
   return (
     <AuthProvider>
       <StatusBar style="dark" />
-      <PushRegistrationBinder />
       <AppNavigator />
     </AuthProvider>
   );

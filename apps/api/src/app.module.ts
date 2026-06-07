@@ -9,8 +9,6 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { ProductionModule } from './modules/production/production.module';
 import { DailyEssentialsModule } from './modules/daily-essentials/daily-essentials.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
-import { NotificationsModule } from './modules/notifications/notifications.module';
-import { DevicesModule } from './modules/devices/devices.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { ExportsModule } from './modules/exports/exports.module';
 import { PrintingModule } from './modules/printing/printing.module';
@@ -34,8 +32,6 @@ import { AppController } from './app.controller';
     ProductionModule,
     DailyEssentialsModule,
     AnalyticsModule,
-    NotificationsModule,
-    DevicesModule,
     UploadsModule,
     ExportsModule,
     PrintingModule,

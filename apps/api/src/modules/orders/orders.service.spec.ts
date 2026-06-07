@@ -12,9 +12,6 @@ describe('OrdersService', () => {
     orderStatusHistory: {
       create: jest.fn(),
     },
-    user: {
-      findMany: jest.fn().mockResolvedValue([]),
-    },
     shop: {
       findUnique: jest.fn(),
     },
@@ -24,16 +21,12 @@ describe('OrdersService', () => {
     log: jest.fn(),
   };
 
-  const notificationsService: any = {
-    pushInternalNotification: jest.fn(),
-  };
-
   let service: OrdersService;
 
   beforeEach(() => {
     jest.clearAllMocks();
     prisma.shop.findUnique.mockResolvedValue({ id: 'shop-1' });
-    service = new OrdersService(prisma, auditService, notificationsService);
+    service = new OrdersService(prisma, auditService);
   });
 
   it('rejects when deposit exceeds total', async () => {
@@ -136,6 +129,64 @@ describe('OrdersService', () => {
     expect(prisma.orderStatusHistory.create).toHaveBeenCalled();
   });
 
+  it('stores the selected mold type and color', async () => {
+    prisma.order.create = jest.fn().mockResolvedValue({
+      id: 'order-mold',
+      orderNumber: 'SP-MOLD-1',
+      customerName: 'Customer',
+      status: 'New',
+      items: [],
+    });
+
+    await service.create(
+      {
+        shopId: 'shop-1',
+        customerName: 'Customer',
+        customerPhone: '0500000000',
+        deliveryDatetime: new Date().toISOString(),
+        totalPrice: 100,
+        depositAmount: 50,
+        paymentStatus: 'Partial' as never,
+        isUrgent: false,
+        items: [
+          {
+            itemKind: 'Mold' as never,
+            hasTopDecoration: false,
+            layers: 1,
+            shape: 'Round' as never,
+            moldFlavor: 'Cream' as never,
+            moldColor: 'White',
+            hasFillings: false,
+            withFoam: false,
+            finishType: 'None' as never,
+            peopleCount: 8,
+            referenceImages: [],
+          },
+        ],
+      },
+      {
+        sub: 'user-1',
+        role: 'Admin' as never,
+        shopId: null,
+      },
+    );
+
+    expect(prisma.order.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          items: {
+            create: [
+              expect.objectContaining({
+                moldFlavor: 'Cream',
+                moldColor: 'White',
+              }),
+            ],
+          },
+        }),
+      }),
+    );
+  });
+
   it('accepts the factory as a delivery location', async () => {
     prisma.order.create = jest.fn().mockResolvedValue({
       id: 'order-factory-delivery',
@@ -169,47 +220,6 @@ describe('OrdersService', () => {
         data: expect.objectContaining({
           moldDeliveryShopId: 'factory-1',
         }),
-      }),
-    );
-  });
-
-  it('notifies the shop and factory when a new order is created', async () => {
-    prisma.order.create.mockResolvedValue({
-      id: 'order-notification',
-      orderNumber: 'SP-NEW-1',
-      customerName: 'Customer',
-      status: 'New',
-      items: [],
-    });
-    prisma.user.findMany.mockResolvedValueOnce([
-      { id: 'shop-user' },
-      { id: 'factory-user' },
-    ]);
-
-    await service.create(
-      {
-        shopId: 'shop-1',
-        customerName: 'Customer',
-        customerPhone: '0500000000',
-        deliveryDatetime: new Date().toISOString(),
-        totalPrice: 100,
-        depositAmount: 50,
-        paymentStatus: 'Partial' as never,
-        isUrgent: false,
-        items: [],
-      },
-      {
-        sub: 'user-1',
-        role: 'Admin' as never,
-        shopId: null,
-      },
-    );
-
-    expect(notificationsService.pushInternalNotification).toHaveBeenCalledTimes(2);
-    expect(notificationsService.pushInternalNotification).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: 'factory-user',
-        payload: { orderId: 'order-notification', status: 'New' },
       }),
     );
   });

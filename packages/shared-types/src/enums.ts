@@ -48,6 +48,9 @@ export enum MoldFlavor {
   WHITE = 'White',
   BLACK = 'Black',
   MIXED = 'Mixed',
+  CREAM = 'Cream',
+  CHOCOLATE = 'Chocolate',
+  HARISSA = 'Harissa',
 }
 
 export enum CakeFinish {
@@ -67,14 +70,6 @@ export enum EssentialsStatus {
   PENDING = 'Pending',
   PREPARED = 'Prepared',
   OUT_FOR_DELIVERY = 'Out_for_Delivery',
-}
-
-export enum NotificationType {
-  INFO = 'Info',
-  ALERT = 'Alert',
-  ORDER_STATUS = 'OrderStatus',
-  STOCK = 'Stock',
-  SYSTEM = 'System',
 }
 
 export enum OrderPriority {

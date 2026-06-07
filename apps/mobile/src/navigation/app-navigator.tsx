@@ -13,40 +13,31 @@ import { useAuth } from '../context/auth-context';
 import theme from '../theme';
 import { RootStackParamList } from './types';
 import { LoginScreen } from '../screens/login.screen';
-import { DashboardScreen } from '../screens/dashboard.screen';
 import { IncomingOrdersScreen } from '../screens/incoming-orders.screen';
 import { ProductionKanbanScreen } from '../screens/production-kanban.screen';
 import { NewOrderScreen } from '../screens/new-order.screen';
 import { NextDayEssentialsScreen } from '../screens/next-day-essentials.screen';
 import { AnalyticsScreen } from '../screens/analytics.screen';
-import { NotificationsScreen } from '../screens/notifications.screen';
 import { OrderDetailsScreen } from '../screens/order-details.screen';
 import { ProfileScreen } from '../screens/profile.screen';
-import { SettingsScreen } from '../screens/settings.screen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tabs = createBottomTabNavigator();
 
 const TAB_LABELS: Record<string, string> = {
-  Dashboard: 'لوحة التحكم',
   Orders: 'الطلبات',
   Production: 'الإنتاج',
   'New Order': 'طلب جديد',
-  Essentials: 'مستلزمات الغد',
+  Essentials: 'الطلبيات اليومية',
   Analytics: 'التحليلات',
-  Notifications: 'الإشعارات',
-  Settings: 'الإعدادات',
 };
 
 const TAB_ICONS: Record<string, keyof typeof MaterialIcons.glyphMap> = {
-  Dashboard: 'dashboard',
   Orders: 'shopping-cart',
   Production: 'factory',
   'New Order': 'add-shopping-cart',
   Essentials: 'inventory',
   Analytics: 'analytics',
-  Notifications: 'notifications',
-  Settings: 'settings',
 };
 
 const navigationTheme = {
@@ -72,7 +63,6 @@ function WebTabBar(props: BottomTabBarProps) {
     <>
       <View style={styles.webHeader}>
         <View style={styles.webHeaderActions}>
-          <MaterialIcons name="notifications" size={22} color={theme.colors.onSurfaceVariant} />
           <View style={styles.avatar}>
             <MaterialIcons name="person" size={22} color={theme.colors.onPrimary} />
           </View>
@@ -151,7 +141,6 @@ function AppTabs() {
         tabBarStyle: styles.mobileTabBar,
       }}
     >
-      <Tabs.Screen name="Dashboard" component={DashboardScreen} options={{ title: 'لوحة التحكم', tabBarLabel: 'الرئيسية' }} />
       <Tabs.Screen name="Orders" component={IncomingOrdersScreen} options={{ title: 'الطلبات', tabBarLabel: 'الطلبات' }} />
       {isFactory ? (
         <Tabs.Screen name="Production" component={ProductionKanbanScreen} options={{ title: 'الإنتاج', tabBarLabel: 'الإنتاج' }} />
@@ -159,12 +148,10 @@ function AppTabs() {
       {canCreateOrder ? (
         <Tabs.Screen name="New Order" component={NewOrderScreen} options={{ title: 'طلب جديد', tabBarLabel: 'طلب جديد' }} />
       ) : null}
-      <Tabs.Screen name="Essentials" component={NextDayEssentialsScreen} options={{ title: 'مستلزمات الغد', tabBarLabel: 'الغد' }} />
+      <Tabs.Screen name="Essentials" component={NextDayEssentialsScreen} options={{ title: 'الطلبيات اليومية', tabBarLabel: 'الطلبيات' }} />
       {isFactory ? (
         <Tabs.Screen name="Analytics" component={AnalyticsScreen} options={{ title: 'التحليلات', tabBarLabel: 'التحليلات' }} />
       ) : null}
-      <Tabs.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'الإشعارات', tabBarLabel: 'الإشعارات' }} />
-      <Tabs.Screen name="Settings" component={SettingsScreen} options={{ title: 'الإعدادات', tabBarLabel: 'الإعدادات' }} />
     </Tabs.Navigator>
   );
 }
@@ -187,9 +174,7 @@ export function AppNavigator() {
           <>
             <Stack.Screen name="App" component={AppTabs} options={{ headerShown: false }} />
             <Stack.Screen name="OrderDetails" component={OrderDetailsScreen} options={{ title: 'تفاصيل الطلب' }} />
-            <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'الإشعارات' }} />
             <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'الملف الشخصي' }} />
-            <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'الإعدادات' }} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />

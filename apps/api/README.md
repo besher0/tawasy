@@ -9,8 +9,6 @@
 - `production`
 - `daily-essentials`
 - `analytics`
-- `notifications`
-- `devices`
 - `uploads`
 - `exports`
 - `printing`

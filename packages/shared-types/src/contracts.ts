@@ -5,7 +5,6 @@ import {
   EssentialsCategory,
   EssentialsStatus,
   MoldFlavor,
-  NotificationType,
   OrderItemKind,
   OrderStatus,
   PaymentStatus,
@@ -34,6 +33,7 @@ export interface OrderItemInput {
   layers: number;
   shape?: CakeShape;
   moldFlavor?: MoldFlavor;
+  moldColor?: string;
   hasFillings: boolean;
   filling?: string;
   withFoam: boolean;
@@ -88,15 +88,4 @@ export interface DailyEssentialInput {
   notes?: string;
   targetDate: string;
   status?: EssentialsStatus;
-}
-
-export interface AppNotification {
-  id: string;
-  userId: string;
-  type: NotificationType;
-  title: string;
-  body: string;
-  isRead: boolean;
-  payload?: Record<string, unknown>;
-  createdAt: string;
 }

@@ -11,7 +11,7 @@ import type { CreateOrderInput, ShopSummary } from '@sugarprecision/shared-types
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Image,
@@ -37,6 +37,7 @@ type DraftOrderItem = {
   layers: number;
   shape: CakeShape;
   moldFlavor: MoldFlavor;
+  moldColor: string;
   hasFillings: boolean;
   filling: string;
   withFoam: boolean;
@@ -49,6 +50,11 @@ type DraftOrderItem = {
 type Choice<T extends string> = {
   value: T;
   label: string;
+};
+
+type CreatedOrder = {
+  id: string;
+  orderNumber: string;
 };
 
 let orderItemCounter = 0;
@@ -69,9 +75,9 @@ const yesNoOptions: Choice<'yes' | 'no'>[] = [
 ];
 
 const moldFlavorOptions: Choice<MoldFlavor>[] = [
-  { value: MoldFlavor.WHITE, label: 'أبيض' },
-  { value: MoldFlavor.BLACK, label: 'أسود' },
-  { value: MoldFlavor.MIXED, label: 'مشكل' },
+  { value: MoldFlavor.CREAM, label: 'كريمة' },
+  { value: MoldFlavor.CHOCOLATE, label: 'شوكولا' },
+  { value: MoldFlavor.HARISSA, label: 'هريسة' },
 ];
 
 const cakeShapeOptions: Choice<CakeShape>[] = [
@@ -112,7 +118,8 @@ function createEmptyItem(): DraftOrderItem {
     hasTopDecoration: false,
     layers: 1,
     shape: CakeShape.ROUND,
-    moldFlavor: MoldFlavor.WHITE,
+    moldFlavor: MoldFlavor.CREAM,
+    moldColor: '',
     hasFillings: false,
     filling: '',
     withFoam: false,
@@ -179,43 +186,42 @@ export function NewOrderScreen() {
   const [items, setItems] = useState<DraftOrderItem[]>(() => [createEmptyItem()]);
   const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [shopsLoading, setShopsLoading] = useState(true);
+  const [shopsError, setShopsError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [createdOrder, setCreatedOrder] = useState<CreatedOrder | null>(null);
+
+  const loadShops = useCallback(async () => {
+    try {
+      setShopsLoading(true);
+      setShopsError(null);
+      const response = await api.get<ShopSummary[]>('/shops');
+      const locations = response.data ?? [];
+      const branches = locations.filter((shop) => shop.type === ShopType.BRANCH);
+      const userShop = user?.shopId
+        ? locations.find((shop) => shop.id === user.shopId)
+        : undefined;
+      const defaultOrderShopId = userShop?.id ?? branches[0]?.id ?? '';
+      const defaultDeliveryShopId = userShop?.id ?? locations[0]?.id ?? '';
+
+      setShops(locations);
+      setShopId((current) => current || defaultOrderShopId);
+      setDeliveryShopId((current) => current || defaultDeliveryShopId);
+    } catch (error) {
+      setShopsError(
+        getApiErrorMessage(
+          error,
+          'تعذر تحميل الفروع والمعمل. حاول مرة أخرى.',
+        ),
+      );
+    } finally {
+      setShopsLoading(false);
+    }
+  }, [user?.shopId]);
 
   useEffect(() => {
-    let active = true;
-
-    async function loadShops() {
-      try {
-        const response = await api.get<ShopSummary[]>('/shops');
-
-        if (!active) {
-          return;
-        }
-
-        const locations = response.data ?? [];
-        const branches = locations.filter((shop) => shop.type === ShopType.BRANCH);
-        const userShop = user?.shopId
-          ? locations.find((shop) => shop.id === user.shopId)
-          : undefined;
-        const defaultOrderShopId = userShop?.id ?? branches[0]?.id ?? '';
-        const defaultDeliveryShopId = userShop?.id ?? locations[0]?.id ?? '';
-
-        setShops(locations);
-        setShopId((current) => current || defaultOrderShopId);
-        setDeliveryShopId((current) => current || defaultDeliveryShopId);
-      } catch {
-        Alert.alert(
-          'خطأ',
-          'تعذر تحميل الفروع والمعمل. تأكد أن الباكند يعمل ومتصل بقاعدة البيانات.',
-        );
-      }
-    }
-
     void loadShops();
-
-    return () => {
-      active = false;
-    };
-  }, [user?.shopId]);
+  }, [loadShops]);
 
   const branches = useMemo(
     () => shops.filter((shop) => shop.type === ShopType.BRANCH),
@@ -339,7 +345,18 @@ export function NewOrderScreen() {
     );
 
     if (invalidPieceIndex >= 0) {
-      Alert.alert('تنبيه', `حدد نوع القطع في المنتج رقم ${invalidPieceIndex + 1}`);
+      setSubmitError(`حدد نوع القطع في المنتج رقم ${invalidPieceIndex + 1}`);
+      return false;
+    }
+
+    const invalidMoldColorIndex = items.findIndex(
+      (item) =>
+        item.itemKind === OrderItemKind.MOLD &&
+        !item.moldColor.trim(),
+    );
+
+    if (invalidMoldColorIndex >= 0) {
+      setSubmitError(`اكتب لون القالب رقم ${invalidMoldColorIndex + 1}`);
       return false;
     }
 
@@ -351,7 +368,7 @@ export function NewOrderScreen() {
     );
 
     if (invalidFillingIndex >= 0) {
-      Alert.alert('تنبيه', `اكتب الحشوات في القالب رقم ${invalidFillingIndex + 1}`);
+      setSubmitError(`اكتب الحشوات في القالب رقم ${invalidFillingIndex + 1}`);
       return false;
     }
 
@@ -363,33 +380,46 @@ export function NewOrderScreen() {
       return;
     }
 
+    setSubmitError(null);
+    setCreatedOrder(null);
+
     if (!validateItems()) {
       return;
     }
 
+    if (shopsLoading) {
+      setSubmitError('انتظر قليلاً حتى يكتمل تحميل الفروع والمعمل.');
+      return;
+    }
+
+    if (shopsError) {
+      setSubmitError('تعذر تحميل الفروع والمعمل. اضغط إعادة المحاولة.');
+      return;
+    }
+
     if (!orderBranchId.trim()) {
-      Alert.alert('تنبيه', 'لا يوجد فرع مربوط بالحساب أو محدد للطلب.');
+      setSubmitError('لا يوجد فرع مربوط بالحساب أو محدد للطلب.');
       return;
     }
 
     if (!deliveryShopId.trim()) {
-      Alert.alert('تنبيه', 'اختر مكان التسليم');
+      setSubmitError('اختر مكان التسليم.');
       return;
     }
 
     if (!customerName.trim()) {
-      Alert.alert('تنبيه', 'أدخل اسم الزبون');
+      setSubmitError('أدخل اسم الزبون.');
       return;
     }
 
     if (!customerPhone.trim()) {
-      Alert.alert('تنبيه', 'أدخل رقم الهاتف');
+      setSubmitError('أدخل رقم الهاتف.');
       return;
     }
 
     const delivery = new Date(`${deliveryDate}T${deliveryTime}:00`);
     if (Number.isNaN(delivery.getTime())) {
-      Alert.alert('تنبيه', 'تاريخ أو وقت التسليم غير صالح');
+      setSubmitError('تاريخ أو وقت التسليم غير صالح.');
       return;
     }
 
@@ -397,17 +427,17 @@ export function NewOrderScreen() {
     const normalizedDeposit = Number(depositAmount);
 
     if (!Number.isFinite(normalizedTotal) || normalizedTotal < 0) {
-      Alert.alert('تنبيه', 'الإجمالي غير صحيح');
+      setSubmitError('الإجمالي غير صحيح.');
       return;
     }
 
     if (!Number.isFinite(normalizedDeposit) || normalizedDeposit < 0) {
-      Alert.alert('تنبيه', 'العربون غير صحيح');
+      setSubmitError('العربون غير صحيح.');
       return;
     }
 
     if (normalizedDeposit > normalizedTotal) {
-      Alert.alert('تنبيه', 'العربون لا يمكن أن يتجاوز الإجمالي');
+      setSubmitError('العربون لا يمكن أن يتجاوز الإجمالي.');
       return;
     }
 
@@ -438,6 +468,7 @@ export function NewOrderScreen() {
           layers: item.layers,
           shape: isMold ? item.shape : undefined,
           moldFlavor: isMold ? item.moldFlavor : undefined,
+          moldColor: isMold ? item.moldColor.trim() : undefined,
           hasFillings: isMold && item.hasFillings,
           filling: isMold && item.hasFillings ? item.filling.trim() : undefined,
           withFoam: isMold && item.withFoam,
@@ -457,12 +488,13 @@ export function NewOrderScreen() {
       setIsSubmitting(true);
       const response = await api.post<{ id: string; orderNumber: string }>('/orders', payload);
       resetForm();
-      navigation.navigate('OrderDetails', { orderId: response.data.id });
-      Alert.alert('تم', `تمت إضافة الطلب ${response.data.orderNumber} بنجاح`);
+      setCreatedOrder(response.data);
     } catch (error) {
-      Alert.alert(
-        'خطأ',
-        getApiErrorMessage(error, 'فشل إرسال الطلب. تحقق من البيانات ومكان التسليم.'),
+      setSubmitError(
+        getApiErrorMessage(
+          error,
+          'فشل إرسال الطلب. تحقق من البيانات ومكان التسليم.',
+        ),
       );
     } finally {
       setIsSubmitting(false);
@@ -480,7 +512,16 @@ export function NewOrderScreen() {
       <Text style={styles.label}>{label}</Text>
       {helperText ? <Text style={styles.note}>{helperText}</Text> : null}
       <View style={styles.optionRow}>
-        {options.length ? (
+        {shopsLoading ? (
+          <Text style={styles.note}>جاري تحميل الفروع والمعمل...</Text>
+        ) : shopsError ? (
+          <View style={styles.inlineMessage}>
+            <Text style={styles.errorText}>{shopsError}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={() => void loadShops()}>
+              <Text style={styles.retryButtonText}>إعادة المحاولة</Text>
+            </TouchableOpacity>
+          </View>
+        ) : options.length ? (
           options.map((shop) => {
             const active = selectedId === shop.id;
             const locationType = shop.type === ShopType.FACTORY ? 'المعمل' : 'فرع';
@@ -631,6 +672,17 @@ export function NewOrderScreen() {
                   onSelect={(moldFlavor) =>
                     updateItem(item.id, (current) => ({ ...current, moldFlavor }))
                   }
+                />
+
+                <Text style={styles.label}>لون القالب</Text>
+                <TextInput
+                  style={styles.input}
+                  value={item.moldColor}
+                  onChangeText={(moldColor) =>
+                    updateItem(item.id, (current) => ({ ...current, moldColor }))
+                  }
+                  placeholder="مثال: أبيض، زهري، أزرق سماوي..."
+                  textAlign="right"
                 />
 
                 <Text style={styles.label}>هل يوجد حشوات؟</Text>
@@ -891,10 +943,10 @@ export function NewOrderScreen() {
         <TouchableOpacity
           style={[
             styles.primaryButton,
-            isSubmitting ? styles.primaryButtonDisabled : null,
+            isSubmitting || shopsLoading ? styles.primaryButtonDisabled : null,
           ]}
           onPress={() => void submit()}
-          disabled={isSubmitting}
+          disabled={isSubmitting || shopsLoading}
         >
           <Text style={styles.primaryButtonText}>
             {isSubmitting
@@ -902,6 +954,27 @@ export function NewOrderScreen() {
               : 'إرسال الطلب للمعمل'}
           </Text>
         </TouchableOpacity>
+
+        {submitError ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{submitError}</Text>
+          </View>
+        ) : null}
+
+        {createdOrder ? (
+          <View style={styles.successBox}>
+            <Text style={styles.successTitle}>تمت إضافة الطلب بنجاح</Text>
+            <Text style={styles.successText}>رقم الطلب: {createdOrder.orderNumber}</Text>
+            <TouchableOpacity
+              style={styles.successButton}
+              onPress={() =>
+                navigation.navigate('OrderDetails', { orderId: createdOrder.id })
+              }
+            >
+              <Text style={styles.successButtonText}>عرض تفاصيل الطلب</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
       </View>
     </ScrollView>
   );
@@ -1200,6 +1273,63 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     ...theme.typography.title,
+    color: theme.colors.onPrimary,
+  },
+  inlineMessage: {
+    width: '100%',
+    gap: theme.spacing.sm,
+  },
+  retryButton: {
+    alignSelf: 'flex-end',
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.error,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+  },
+  retryButtonText: {
+    ...theme.typography.label,
+    color: theme.colors.error,
+  },
+  errorBox: {
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.error,
+    backgroundColor: theme.colors.errorContainer,
+    padding: theme.spacing.md,
+  },
+  errorText: {
+    ...theme.typography.body,
+    color: theme.colors.error,
+    textAlign: 'right',
+  },
+  successBox: {
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.secondaryContainer,
+    padding: theme.spacing.md,
+    gap: theme.spacing.xs,
+  },
+  successTitle: {
+    ...theme.typography.title,
+    color: theme.colors.primary,
+    textAlign: 'right',
+  },
+  successText: {
+    ...theme.typography.body,
+    color: theme.colors.onSurface,
+    textAlign: 'right',
+  },
+  successButton: {
+    alignSelf: 'flex-end',
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+  },
+  successButtonText: {
+    ...theme.typography.label,
     color: theme.colors.onPrimary,
   },
   emptyText: {

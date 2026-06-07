@@ -56,6 +56,9 @@ const moldFlavorLabels: Record<string, string> = {
   White: 'أبيض',
   Black: 'أسود',
   Mixed: 'مشكل',
+  Cream: 'كريمة',
+  Chocolate: 'شوكولا',
+  Harissa: 'هريسة',
 };
 
 const cakeFinishLabels: Record<string, string> = {
@@ -98,6 +101,13 @@ export function orderItemKindLabel(value?: string | null) {
 
 export function moldFlavorLabel(value?: string | null) {
   return value ? moldFlavorLabels[value] ?? value : '-';
+}
+
+export function moldConfigurationLabel(
+  flavor?: string | null,
+  color?: string | null,
+) {
+  return `${moldFlavorLabel(flavor)} - ${color?.trim() || 'لون غير محدد'}`;
 }
 
 export function cakeFinishLabel(value?: string | null) {

@@ -15,23 +15,19 @@
 - Orders + Order Items + Status Workflow + Status History
 - Production Kanban API
 - Daily Essentials API
-- Notifications + Push Token Registration
 - Analytics (Overview / Trends / Top Products / Top Shops)
 - Exports (Orders + Analytics Excel)
 - Printing (Production Sheet PDF + Print Job + IPP fallback)
 - Audit Logs
 - Mobile Screens:
   - Login
-  - Dashboard
-  - Incoming Orders
+  - Incoming Orders (grouped by delivery day)
   - Production Kanban
   - New Order
-  - Next-Day Essentials
+  - Daily Orders and Essentials
   - Analytics
-  - Notifications
   - Order Details
   - Profile
-  - Settings
 
 ## Quick Start
 
