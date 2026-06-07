@@ -19,6 +19,7 @@ import { PrismaModule } from './modules/prisma/prisma.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -53,5 +54,6 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
       useClass: AuditInterceptor,
     },
   ],
+  controllers: [AppController],
 })
 export class AppModule {}
