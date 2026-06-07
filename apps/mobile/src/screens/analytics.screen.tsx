@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import api from '../lib/api';
 import theme from '../theme';
 import { StatCard } from '../components/stat-card';
-import { cakeTypeLabel } from '../lib/labels';
+import { topProductLabel } from '../lib/labels';
 
 export function AnalyticsScreen() {
   const [overview, setOverview] = useState<any>(null);
@@ -47,7 +47,7 @@ export function AnalyticsScreen() {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>أكثر المنتجات طلباً</Text>
         {topProducts.map((product) => (
-          <Text key={product.label} style={styles.rowText}>{`${cakeTypeLabel(product.label)} (${product.quantity})`}</Text>
+          <Text key={product.label} style={styles.rowText}>{`${topProductLabel(product.label)} (${product.quantity})`}</Text>
         ))}
       </View>
 

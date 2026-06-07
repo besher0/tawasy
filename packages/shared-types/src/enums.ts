@@ -39,6 +39,23 @@ export enum CakeShape {
   CUSTOM = 'Custom',
 }
 
+export enum OrderItemKind {
+  PIECES = 'Pieces',
+  MOLD = 'Mold',
+}
+
+export enum MoldFlavor {
+  WHITE = 'White',
+  BLACK = 'Black',
+  MIXED = 'Mixed',
+}
+
+export enum CakeFinish {
+  NONE = 'None',
+  DISK_ENLARGEMENT = 'Disk_Enlargement',
+  COVERING = 'Covering',
+}
+
 export enum EssentialsCategory {
   READY_CAKE = 'Ready_Cake',
   RAW_MATERIALS = 'Raw_Materials',

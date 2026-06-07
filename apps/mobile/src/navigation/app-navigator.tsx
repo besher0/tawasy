@@ -134,6 +134,10 @@ function WebTabBar(props: BottomTabBarProps) {
 function AppTabs() {
   const { user } = useAuth();
   const isFactory = user?.role === UserRole.ADMIN || user?.role === UserRole.FACTORY_MANAGER;
+  const canCreateOrder =
+    user?.role === UserRole.ADMIN ||
+    user?.role === UserRole.SHOP_MANAGER ||
+    user?.role === UserRole.SHOP_EMPLOYEE;
 
   return (
     <Tabs.Navigator
@@ -151,9 +155,10 @@ function AppTabs() {
       <Tabs.Screen name="Orders" component={IncomingOrdersScreen} options={{ title: 'الطلبات', tabBarLabel: 'الطلبات' }} />
       {isFactory ? (
         <Tabs.Screen name="Production" component={ProductionKanbanScreen} options={{ title: 'الإنتاج', tabBarLabel: 'الإنتاج' }} />
-      ) : (
+      ) : null}
+      {canCreateOrder ? (
         <Tabs.Screen name="New Order" component={NewOrderScreen} options={{ title: 'طلب جديد', tabBarLabel: 'طلب جديد' }} />
-      )}
+      ) : null}
       <Tabs.Screen name="Essentials" component={NextDayEssentialsScreen} options={{ title: 'مستلزمات الغد', tabBarLabel: 'الغد' }} />
       {isFactory ? (
         <Tabs.Screen name="Analytics" component={AnalyticsScreen} options={{ title: 'التحليلات', tabBarLabel: 'التحليلات' }} />

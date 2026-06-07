@@ -1,26 +1,74 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { CakeShape, CakeType } from '@sugarprecision/shared-types';
-import { IsArray, IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  CakeFinish,
+  CakeShape,
+  CakeType,
+  MoldFlavor,
+  OrderItemKind,
+} from '@sugarprecision/shared-types';
+import {
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  Min,
+  ValidateIf,
+} from 'class-validator';
 
 export class CreateOrderItemDto {
-  @ApiProperty({ enum: CakeType })
+  @ApiProperty({ enum: OrderItemKind })
+  @IsEnum(OrderItemKind)
+  itemKind!: OrderItemKind;
+
+  @ApiPropertyOptional()
+  @ValidateIf((item: CreateOrderItemDto) => item.itemKind === OrderItemKind.PIECES)
+  @IsString()
+  pieceType?: string;
+
+  @ApiProperty({ default: false })
+  @IsBoolean()
+  hasTopDecoration!: boolean;
+
+  @ApiPropertyOptional({ enum: CakeType })
+  @IsOptional()
   @IsEnum(CakeType)
-  cakeType!: CakeType;
+  cakeType?: CakeType;
 
   @ApiProperty({ minimum: 1 })
   @IsInt()
   @Min(1)
   layers!: number;
 
-  @ApiProperty({ enum: CakeShape })
+  @ApiPropertyOptional({ enum: CakeShape })
+  @ValidateIf((item: CreateOrderItemDto) => item.itemKind === OrderItemKind.MOLD)
   @IsEnum(CakeShape)
-  shape!: CakeShape;
+  shape?: CakeShape;
 
-  @ApiProperty()
+  @ApiPropertyOptional({ enum: MoldFlavor })
+  @ValidateIf((item: CreateOrderItemDto) => item.itemKind === OrderItemKind.MOLD)
+  @IsEnum(MoldFlavor)
+  moldFlavor?: MoldFlavor;
+
+  @ApiProperty({ default: false })
+  @IsBoolean()
+  hasFillings!: boolean;
+
+  @ApiPropertyOptional()
+  @ValidateIf((item: CreateOrderItemDto) => item.hasFillings)
   @IsString()
-  filling!: string;
+  filling?: string;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ default: false })
+  @IsBoolean()
+  withFoam!: boolean;
+
+  @ApiProperty({ enum: CakeFinish })
+  @IsEnum(CakeFinish)
+  finishType!: CakeFinish;
+
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   specialDetails?: string;

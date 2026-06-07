@@ -20,7 +20,7 @@ export class CreateOrderDto {
   @IsString()
   shopId?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Delivery shop or factory location.' })
   @IsOptional()
   @IsString()
   moldDeliveryShopId?: string;

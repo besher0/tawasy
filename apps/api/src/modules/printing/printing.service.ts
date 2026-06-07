@@ -44,7 +44,7 @@ export class PrintingService {
     doc.fontSize(12);
     doc.text(`Order Number: ${order.orderNumber}`);
     doc.text(`Shop: ${order.shop.name}`);
-    doc.text(`Mold Delivery Branch: ${order.moldDeliveryShop?.name ?? order.shop.name}`);
+    doc.text(`Delivery Location: ${order.moldDeliveryShop?.name ?? order.shop.name}`);
     doc.text(`Customer: ${order.customerName}`);
     doc.text(`Phone: ${order.customerPhone}`);
     doc.text(`Delivery: ${order.deliveryDatetime.toISOString()}`);
@@ -57,11 +57,21 @@ export class PrintingService {
 
     order.items.forEach((item, index) => {
       doc.fontSize(11).text(`Item ${index + 1}:`);
-      doc.text(`- Type: ${item.cakeType}`);
+      doc.text(`- Kind: ${item.itemKind}`);
+      if (item.pieceType) {
+        doc.text(`- Piece type: ${item.pieceType}`);
+      }
       doc.text(`- Layers: ${item.layers}`);
-      doc.text(`- Shape: ${item.shape}`);
-      doc.text(`- Filling: ${item.filling}`);
-      doc.text(`- People: ${item.peopleCount}`);
+      if (item.moldFlavor) {
+        doc.text(`- Mold flavor: ${item.moldFlavor}`);
+      }
+      if (item.shape) {
+        doc.text(`- Shape: ${item.shape}`);
+      }
+      doc.text(`- Fillings: ${item.hasFillings ? item.filling ?? 'Yes' : 'No'}`);
+      doc.text(`- Foam: ${item.withFoam ? 'Yes' : 'No'}`);
+      doc.text(`- Finish: ${item.finishType}`);
+      doc.text(`- Quantity/people: ${item.peopleCount}`);
       if (item.specialDetails) {
         doc.text(`- Notes: ${item.specialDetails}`);
       }

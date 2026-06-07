@@ -78,7 +78,7 @@ export function IncomingOrdersScreen() {
             <Text style={styles.customer}>{item.customerName}</Text>
             <Text style={styles.meta}>الحالة: {orderStatusLabel(item.status)}</Text>
             <Text style={styles.meta}>التسليم: {new Date(item.deliveryDatetime).toLocaleString()}</Text>
-            <Text style={styles.meta}>تسليم القالب: {item.moldDeliveryShop?.name ?? 'غير محدد'}</Text>
+            <Text style={styles.meta}>مكان التسليم: {item.moldDeliveryShop?.name ?? 'غير محدد'}</Text>
           </TouchableOpacity>
         )}
       />

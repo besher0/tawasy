@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
 import api from '../lib/api';
 import theme from '../theme';
 import { StatusBadge } from '../components/status-badge';
-import { cakeShapeLabel, cakeTypeLabel, orderStatusLabel } from '../lib/labels';
+import {
+  cakeFinishLabel,
+  cakeShapeLabel,
+  moldFlavorLabel,
+  orderItemKindLabel,
+  orderStatusLabel,
+} from '../lib/labels';
 
 type ScreenRoute = RouteProp<RootStackParamList, 'OrderDetails'>;
 
@@ -46,17 +52,51 @@ export function OrderDetailsScreen() {
         <Text style={styles.title}>{order.customerName}</Text>
         <StatusBadge label={orderStatusLabel(order.status)} tone={order.isUrgent ? 'error' : 'neutral'} />
         <Text style={styles.meta}>فرع الطلب: {order.shop?.name ?? '-'}</Text>
-        <Text style={styles.meta}>تسليم القالب: {order.moldDeliveryShop?.name ?? order.shop?.name ?? '-'}</Text>
+        <Text style={styles.meta}>مكان التسليم: {order.moldDeliveryShop?.name ?? order.shop?.name ?? '-'}</Text>
         <Text style={styles.meta}>موعد التسليم: {new Date(order.deliveryDatetime).toLocaleString()}</Text>
         <Text style={styles.meta}>الإجمالي: {order.totalPrice} ر.س</Text>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.title}>تفاصيل الكيك</Text>
+        <Text style={styles.title}>تفاصيل المنتجات</Text>
         {order.items.map((item: any, index: number) => (
-          <Text key={item.id} style={styles.meta}>
-            {`${index + 1}. ${cakeTypeLabel(item.cakeType)} - ${cakeShapeLabel(item.shape)} - ${item.filling}`}
-          </Text>
+          <View key={item.id} style={styles.itemCard}>
+            <Text style={styles.itemTitle}>
+              {`${index + 1}. ${orderItemKindLabel(item.itemKind)}`}
+            </Text>
+            {item.itemKind === 'Pieces' ? (
+              <>
+                <Text style={styles.meta}>نوع القطع: {item.pieceType ?? '-'}</Text>
+                <Text style={styles.meta}>عدد الطبقات: {item.layers}</Text>
+                <Text style={styles.meta}>شيء فوقها: {item.hasTopDecoration ? 'نعم' : 'لا'}</Text>
+                <Text style={styles.meta}>عدد القطع: {item.peopleCount}</Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.meta}>نوع القالب: {moldFlavorLabel(item.moldFlavor)}</Text>
+                <Text style={styles.meta}>الحشوات: {item.hasFillings ? item.filling ?? 'نعم' : 'لا'}</Text>
+                <Text style={styles.meta}>الشكل: {cakeShapeLabel(item.shape)}</Text>
+                <Text style={styles.meta}>الفلين: {item.withFoam ? 'مع فلين' : 'بدون فلين'}</Text>
+                <Text style={styles.meta}>الطوابق: {item.layers}</Text>
+                <Text style={styles.meta}>التجهيز: {cakeFinishLabel(item.finishType)}</Text>
+                <Text style={styles.meta}>عدد الأشخاص: {item.peopleCount}</Text>
+              </>
+            )}
+            {item.specialDetails ? (
+              <Text style={styles.meta}>ملاحظات: {item.specialDetails}</Text>
+            ) : null}
+            {item.referenceImages?.length ? (
+              <View style={styles.imageRow}>
+                {item.referenceImages.map((imageUrl: string, imageIndex: number) => (
+                  <Image
+                    key={`${imageUrl}-${imageIndex}`}
+                    source={{ uri: imageUrl }}
+                    style={styles.referenceImage}
+                  />
+                ))}
+              </View>
+            ) : null}
+          </View>
         ))}
       </View>
 
@@ -96,6 +136,28 @@ const styles = StyleSheet.create({
   orderNumber: { ...theme.typography.title, color: theme.colors.primary, textAlign: 'right' },
   title: { ...theme.typography.title, color: theme.colors.onSurface, textAlign: 'right' },
   meta: { ...theme.typography.body, color: theme.colors.onSurfaceVariant, textAlign: 'right' },
+  itemCard: {
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.outlineVariant,
+    paddingTop: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+    gap: theme.spacing.xs,
+  },
+  itemTitle: {
+    ...theme.typography.title,
+    color: theme.colors.primary,
+    textAlign: 'right',
+  },
+  imageRow: {
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  referenceImage: {
+    width: 96,
+    height: 96,
+    borderRadius: theme.radius.md,
+  },
   actions: {
     gap: theme.spacing.sm,
     width: '100%',

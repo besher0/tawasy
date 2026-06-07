@@ -1,7 +1,10 @@
 import {
+  CakeFinish,
   CakeShape,
   CakeType,
+  MoldFlavor,
   OrderStatus,
+  OrderItemKind,
   PaymentStatus,
   PrismaClient,
   ShopType,
@@ -71,6 +74,42 @@ async function main() {
     },
   });
 
+  await prisma.user.upsert({
+    where: { phone: '0500000004' },
+    update: {
+      name: 'محافظة',
+      role: UserRole.ShopEmployee,
+      passwordHash,
+      shopId: branchA.id,
+      isActive: true,
+    },
+    create: {
+      name: 'محافظة',
+      phone: '0500000004',
+      role: UserRole.ShopEmployee,
+      passwordHash,
+      shopId: branchA.id,
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { phone: '0500000005' },
+    update: {
+      name: 'موغامبو',
+      role: UserRole.ShopEmployee,
+      passwordHash,
+      shopId: branchA.id,
+      isActive: true,
+    },
+    create: {
+      name: 'موغامبو',
+      phone: '0500000005',
+      role: UserRole.ShopEmployee,
+      passwordHash,
+      shopId: branchA.id,
+    },
+  });
+
   const order = await prisma.order.create({
     data: {
       orderNumber: `SP-${Date.now()}`,
@@ -89,10 +128,15 @@ async function main() {
       items: {
         create: [
           {
+            itemKind: OrderItemKind.Mold,
             cakeType: CakeType.Cake,
             layers: 2,
             shape: CakeShape.Round,
+            moldFlavor: MoldFlavor.Mixed,
+            hasFillings: true,
             filling: 'شوكولاتة بالبندق',
+            withFoam: false,
+            finishType: CakeFinish.Covering,
             specialDetails: 'تصميم وردي مع زهور',
             peopleCount: 12,
             referenceImages: [],

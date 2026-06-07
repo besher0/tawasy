@@ -44,7 +44,7 @@ export function ProductionKanbanScreen() {
             <View key={order.id} style={styles.orderCard}>
               <Text style={styles.orderTitle}>{order.orderNumber}</Text>
               <Text style={styles.orderText}>{order.customerName}</Text>
-              <Text style={styles.orderText}>تسليم القالب: {order.moldDeliveryShop?.name ?? 'غير محدد'}</Text>
+              <Text style={styles.orderText}>مكان التسليم: {order.moldDeliveryShop?.name ?? 'غير محدد'}</Text>
               <Text style={[styles.orderText, order.isUrgent ? styles.urgent : null]}>
                 {order.isUrgent ? 'عاجل' : 'عادي'}
               </Text>

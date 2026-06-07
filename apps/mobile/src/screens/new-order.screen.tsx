@@ -1,13 +1,18 @@
 import {
+  CakeFinish,
   CakeShape,
-  CakeType,
+  MoldFlavor,
+  OrderItemKind,
   PaymentStatus,
+  ShopType,
   UserRole,
 } from '@sugarprecision/shared-types';
 import type { CreateOrderInput, ShopSummary } from '@sugarprecision/shared-types';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,44 +20,72 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import { cakeShapeLabel, cakeTypeLabel } from '../lib/labels';
+import { useAuth } from '../context/auth-context';
 import api from '../lib/api';
 import { getApiErrorMessage } from '../lib/api-error';
-import { useAuth } from '../context/auth-context';
 import theme from '../theme';
 
 type DraftOrderItem = {
   id: string;
-  cakeType: CakeType;
+  itemKind: OrderItemKind;
+  pieceType: string;
+  hasTopDecoration: boolean;
   layers: number;
   shape: CakeShape;
+  moldFlavor: MoldFlavor;
+  hasFillings: boolean;
   filling: string;
+  withFoam: boolean;
+  finishType: CakeFinish;
   peopleCount: number;
   specialDetails: string;
   referenceImages: string[];
 };
 
+type Choice<T extends string> = {
+  value: T;
+  label: string;
+};
+
 let orderItemCounter = 0;
-
-const cakeTypeOptions: CakeType[] = [
-  CakeType.CAKE,
-  CakeType.DUMMY,
-  CakeType.COVERED,
-  CakeType.UNCOVERED,
-];
-
-const cakeShapeOptions: CakeShape[] = [
-  CakeShape.ROUND,
-  CakeShape.SQUARE,
-  CakeShape.HEART,
-  CakeShape.CUSTOM,
-];
 
 const shopScopedRoles = new Set<UserRole>([
   UserRole.SHOP_MANAGER,
   UserRole.SHOP_EMPLOYEE,
 ]);
+
+const itemKindOptions: Choice<OrderItemKind>[] = [
+  { value: OrderItemKind.PIECES, label: 'قطع' },
+  { value: OrderItemKind.MOLD, label: 'قالب' },
+];
+
+const yesNoOptions: Choice<'yes' | 'no'>[] = [
+  { value: 'yes', label: 'نعم' },
+  { value: 'no', label: 'لا' },
+];
+
+const moldFlavorOptions: Choice<MoldFlavor>[] = [
+  { value: MoldFlavor.WHITE, label: 'أبيض' },
+  { value: MoldFlavor.BLACK, label: 'أسود' },
+  { value: MoldFlavor.MIXED, label: 'مشكل' },
+];
+
+const cakeShapeOptions: Choice<CakeShape>[] = [
+  { value: CakeShape.ROUND, label: 'مدور' },
+  { value: CakeShape.SQUARE, label: 'مربع' },
+  { value: CakeShape.HEART, label: 'قلب' },
+];
+
+const layerOptions: Choice<'1' | '2'>[] = [
+  { value: '1', label: 'طابق واحد' },
+  { value: '2', label: 'طابقين' },
+];
+
+const finishOptions: Choice<CakeFinish>[] = [
+  { value: CakeFinish.NONE, label: 'ما في' },
+  { value: CakeFinish.DISK_ENLARGEMENT, label: 'تكبير ديسك' },
+  { value: CakeFinish.COVERING, label: 'تلبيس' },
+];
 
 function buildDefaultDelivery() {
   const date = new Date();
@@ -69,15 +102,57 @@ function createEmptyItem(): DraftOrderItem {
   orderItemCounter += 1;
 
   return {
-    id: `cake-${Date.now()}-${orderItemCounter}`,
-    cakeType: CakeType.CAKE,
+    id: `item-${Date.now()}-${orderItemCounter}`,
+    itemKind: OrderItemKind.MOLD,
+    pieceType: '',
+    hasTopDecoration: false,
     layers: 1,
     shape: CakeShape.ROUND,
+    moldFlavor: MoldFlavor.WHITE,
+    hasFillings: false,
     filling: '',
-    peopleCount: 12,
+    withFoam: false,
+    finishType: CakeFinish.NONE,
+    peopleCount: 1,
     specialDetails: '',
     referenceImages: [],
   };
+}
+
+function ChoiceRow<T extends string>({
+  options,
+  selected,
+  onSelect,
+  large = false,
+}: {
+  options: Choice<T>[];
+  selected: T;
+  onSelect: (value: T) => void;
+  large?: boolean;
+}) {
+  return (
+    <View style={styles.optionRow}>
+      {options.map((option) => {
+        const active = selected === option.value;
+
+        return (
+          <TouchableOpacity
+            key={option.value}
+            style={[
+              styles.optionChip,
+              large ? styles.optionChipLarge : null,
+              active ? styles.optionChipActive : null,
+            ]}
+            onPress={() => onSelect(option.value)}
+          >
+            <Text style={[styles.optionChipText, active ? styles.optionChipTextActive : null]}>
+              {option.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
 }
 
 export function NewOrderScreen() {
@@ -87,7 +162,7 @@ export function NewOrderScreen() {
 
   const [shops, setShops] = useState<ShopSummary[]>([]);
   const [shopId, setShopId] = useState('');
-  const [moldDeliveryShopId, setMoldDeliveryShopId] = useState('');
+  const [deliveryShopId, setDeliveryShopId] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [deliveryDate, setDeliveryDate] = useState(defaults.deliveryDate);
@@ -103,25 +178,28 @@ export function NewOrderScreen() {
 
     async function loadShops() {
       try {
-        const response = await api.get<ShopSummary[]>('/shops', {
-          params: { type: 'Branch' },
-        });
+        const response = await api.get<ShopSummary[]>('/shops');
 
         if (!active) {
           return;
         }
 
-        const branches = response.data ?? [];
-        const userBranch = user?.shopId
-          ? branches.find((shop) => shop.id === user.shopId)
+        const locations = response.data ?? [];
+        const branches = locations.filter((shop) => shop.type === ShopType.BRANCH);
+        const userShop = user?.shopId
+          ? locations.find((shop) => shop.id === user.shopId)
           : undefined;
-        const defaultBranchId = userBranch?.id ?? branches[0]?.id ?? '';
+        const defaultOrderShopId = userShop?.id ?? branches[0]?.id ?? '';
+        const defaultDeliveryShopId = userShop?.id ?? locations[0]?.id ?? '';
 
-        setShops(branches);
-        setShopId((current) => current || defaultBranchId);
-        setMoldDeliveryShopId((current) => current || defaultBranchId);
+        setShops(locations);
+        setShopId((current) => current || defaultOrderShopId);
+        setDeliveryShopId((current) => current || defaultDeliveryShopId);
       } catch {
-        Alert.alert('خطأ', 'تعذر تحميل الفروع. تأكد أن الباكند يعمل ومتصل بقاعدة البيانات.');
+        Alert.alert(
+          'خطأ',
+          'تعذر تحميل الفروع والمعمل. تأكد أن الباكند يعمل ومتصل بقاعدة البيانات.',
+        );
       }
     }
 
@@ -131,6 +209,11 @@ export function NewOrderScreen() {
       active = false;
     };
   }, [user?.shopId]);
+
+  const branches = useMemo(
+    () => shops.filter((shop) => shop.type === ShopType.BRANCH),
+    [shops],
+  );
 
   const accountShop = useMemo(() => {
     if (!user?.shopId) {
@@ -153,48 +236,66 @@ export function NewOrderScreen() {
     return Math.max(total - deposit, 0);
   }, [depositAmount, totalPrice]);
 
-  const updateItem = (itemId: string, updater: (item: DraftOrderItem) => DraftOrderItem) => {
-    setItems((prev) => prev.map((item) => (item.id === itemId ? updater(item) : item)));
+  const updateItem = (
+    itemId: string,
+    updater: (item: DraftOrderItem) => DraftOrderItem,
+  ) => {
+    setItems((current) =>
+      current.map((item) => (item.id === itemId ? updater(item) : item)),
+    );
   };
 
-  const pickImage = async (itemId: string) => {
+  const pickImages = async (itemId: string) => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.8,
+        allowsMultipleSelection: true,
+        selectionLimit: 0,
       });
 
       if (result.canceled || !result.assets.length) {
         return;
       }
 
-      const asset = result.assets[0];
-      const form = new FormData();
-      form.append('file', {
-        uri: asset.uri,
-        name: asset.fileName ?? `reference-${Date.now()}.jpg`,
-        type: asset.mimeType ?? 'image/jpeg',
-      } as never);
+      const uploadedUrls: string[] = [];
 
-      const response = await api.post('/uploads/order-reference', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      for (const asset of result.assets) {
+        const form = new FormData();
+        form.append('file', {
+          uri: asset.uri,
+          name: asset.fileName ?? `reference-${Date.now()}.jpg`,
+          type: asset.mimeType ?? 'image/jpeg',
+        } as never);
 
-      const imageUrl = response.data.url as string;
+        const response = await api.post('/uploads/order-reference', form, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        uploadedUrls.push(response.data.url as string);
+      }
+
       updateItem(itemId, (item) => ({
         ...item,
-        referenceImages: [...item.referenceImages, imageUrl],
+        referenceImages: [...item.referenceImages, ...uploadedUrls],
       }));
     } catch {
-      Alert.alert('خطأ', 'تعذر رفع الصورة المرجعية');
+      Alert.alert('خطأ', 'تعذر رفع الصور المرجعية');
     }
   };
 
-  const resetForm = () => {
-    const fallbackBranchId = accountShop?.id ?? shops[0]?.id ?? '';
+  const removeImage = (itemId: string, imageIndex: number) => {
+    updateItem(itemId, (item) => ({
+      ...item,
+      referenceImages: item.referenceImages.filter((_, index) => index !== imageIndex),
+    }));
+  };
 
-    setShopId(fallbackBranchId);
-    setMoldDeliveryShopId(fallbackBranchId);
+  const resetForm = () => {
+    const fallbackOrderShopId = accountShop?.id ?? branches[0]?.id ?? '';
+    const fallbackDeliveryShopId = accountShop?.id ?? shops[0]?.id ?? '';
+
+    setShopId(fallbackOrderShopId);
+    setDeliveryShopId(fallbackDeliveryShopId);
     setCustomerName('');
     setCustomerPhone('');
     setTotalPrice('1250');
@@ -206,19 +307,48 @@ export function NewOrderScreen() {
     setDeliveryTime(defaults.deliveryTime);
   };
 
+  const validateItems = () => {
+    const invalidPieceIndex = items.findIndex(
+      (item) => item.itemKind === OrderItemKind.PIECES && !item.pieceType.trim(),
+    );
+
+    if (invalidPieceIndex >= 0) {
+      Alert.alert('تنبيه', `حدد نوع القطع في المنتج رقم ${invalidPieceIndex + 1}`);
+      return false;
+    }
+
+    const invalidFillingIndex = items.findIndex(
+      (item) =>
+        item.itemKind === OrderItemKind.MOLD &&
+        item.hasFillings &&
+        !item.filling.trim(),
+    );
+
+    if (invalidFillingIndex >= 0) {
+      Alert.alert('تنبيه', `اكتب الحشوات في القالب رقم ${invalidFillingIndex + 1}`);
+      return false;
+    }
+
+    return true;
+  };
+
   const submit = async () => {
-    if (!orderBranchId.trim()) {
-      Alert.alert('تنبيه', 'لا يوجد فرع مربوط بهذا الحساب. راجع حساب المستخدم أو اختر فرع الطلب للمدير.');
+    if (!validateItems()) {
       return;
     }
 
-    if (!moldDeliveryShopId.trim()) {
-      Alert.alert('تنبيه', 'اختر فرع تسليم القالب');
+    if (!orderBranchId.trim()) {
+      Alert.alert('تنبيه', 'لا يوجد فرع مربوط بالحساب أو محدد للطلب.');
+      return;
+    }
+
+    if (!deliveryShopId.trim()) {
+      Alert.alert('تنبيه', 'اختر مكان التسليم');
       return;
     }
 
     if (!customerName.trim()) {
-      Alert.alert('تنبيه', 'أدخل اسم العميل');
+      Alert.alert('تنبيه', 'أدخل اسم الزبون');
       return;
     }
 
@@ -251,12 +381,6 @@ export function NewOrderScreen() {
       return;
     }
 
-    const emptyItemIndex = items.findIndex((item) => !item.filling.trim());
-    if (emptyItemIndex >= 0) {
-      Alert.alert('تنبيه', `أدخل نوع الحشوة للكيك رقم ${emptyItemIndex + 1}`);
-      return;
-    }
-
     const paymentStatus =
       normalizedDeposit <= 0
         ? PaymentStatus.UNPAID
@@ -265,7 +389,7 @@ export function NewOrderScreen() {
           : PaymentStatus.PARTIAL;
 
     const payload: CreateOrderInput = {
-      moldDeliveryShopId: moldDeliveryShopId.trim(),
+      moldDeliveryShopId: deliveryShopId.trim(),
       customerName: customerName.trim(),
       customerPhone: customerPhone.trim(),
       deliveryDatetime: delivery.toISOString(),
@@ -274,15 +398,25 @@ export function NewOrderScreen() {
       paymentStatus,
       isUrgent,
       notes: notes.trim() || undefined,
-      items: items.map((item) => ({
-        cakeType: item.cakeType,
-        layers: item.layers,
-        shape: item.shape,
-        filling: item.filling.trim(),
-        specialDetails: item.specialDetails.trim() || undefined,
-        peopleCount: item.peopleCount,
-        referenceImages: item.referenceImages,
-      })),
+      items: items.map((item) => {
+        const isMold = item.itemKind === OrderItemKind.MOLD;
+
+        return {
+          itemKind: item.itemKind,
+          pieceType: isMold ? undefined : item.pieceType.trim(),
+          hasTopDecoration: isMold ? false : item.hasTopDecoration,
+          layers: item.layers,
+          shape: isMold ? item.shape : undefined,
+          moldFlavor: isMold ? item.moldFlavor : undefined,
+          hasFillings: isMold && item.hasFillings,
+          filling: isMold && item.hasFillings ? item.filling.trim() : undefined,
+          withFoam: isMold && item.withFoam,
+          finishType: isMold ? item.finishType : CakeFinish.NONE,
+          peopleCount: item.peopleCount,
+          specialDetails: item.specialDetails.trim() || undefined,
+          referenceImages: item.referenceImages,
+        };
+      }),
     };
 
     if (!isShopScoped) {
@@ -296,7 +430,7 @@ export function NewOrderScreen() {
     } catch (error) {
       Alert.alert(
         'خطأ',
-        getApiErrorMessage(error, 'فشل إنشاء الطلب. تحقق من البيانات ومكان تسليم القالب.'),
+        getApiErrorMessage(error, 'فشل إنشاء الطلب. تحقق من البيانات ومكان التسليم.'),
       );
     }
   };
@@ -315,53 +449,317 @@ export function NewOrderScreen() {
         {options.length ? (
           options.map((shop) => {
             const active = selectedId === shop.id;
+            const locationType = shop.type === ShopType.FACTORY ? 'المعمل' : 'فرع';
+
             return (
               <TouchableOpacity
                 key={shop.id}
-                style={[styles.shopChip, active && styles.shopChipActive]}
+                style={[styles.shopChip, active ? styles.shopChipActive : null]}
                 onPress={() => onSelect(shop.id)}
               >
-                <Text style={[styles.shopChipTitle, active && styles.shopChipTitleActive]}>{shop.name}</Text>
-                <Text style={[styles.shopChipLocation, active && styles.shopChipLocationActive]}>
-                  {shop.location}
+                <Text
+                  style={[
+                    styles.shopChipTitle,
+                    active ? styles.shopChipTitleActive : null,
+                  ]}
+                >
+                  {shop.name}
+                </Text>
+                <Text
+                  style={[
+                    styles.shopChipLocation,
+                    active ? styles.shopChipLocationActive : null,
+                  ]}
+                >
+                  {locationType} - {shop.location}
                 </Text>
               </TouchableOpacity>
             );
           })
         ) : (
-          <Text style={styles.emptyText}>لا توجد فروع متاحة حالياً</Text>
+          <Text style={styles.emptyText}>لا توجد مواقع متاحة حالياً</Text>
         )}
       </View>
     </View>
   );
 
+  const renderStepper = (
+    value: number,
+    onChange: (value: number) => void,
+  ) => (
+    <View style={styles.stepper}>
+      <TouchableOpacity
+        style={styles.stepperButton}
+        onPress={() => onChange(Math.max(1, value - 1))}
+      >
+        <Text style={styles.stepperButtonText}>-</Text>
+      </TouchableOpacity>
+      <TextInput
+        style={styles.stepperValue}
+        value={String(value)}
+        keyboardType="numeric"
+        onChangeText={(text) => {
+          const nextValue = Number(text);
+          if (Number.isFinite(nextValue)) {
+            onChange(Math.max(1, Math.floor(nextValue)));
+          }
+        }}
+        textAlign="center"
+      />
+      <TouchableOpacity
+        style={styles.stepperButton}
+        onPress={() => onChange(value + 1)}
+      >
+        <Text style={styles.stepperButtonText}>+</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.heading}>إنشاء طلب جديد</Text>
+      <View style={styles.pageHeader}>
+        <Text style={styles.heading}>إنشاء طلب جديد</Text>
+        <Text style={styles.pageHint}>ابدأ بتحديد نوع كل منتج ثم أكمل بيانات الزبون والدفع.</Text>
+      </View>
+
+      {items.map((item, index) => {
+        const isMold = item.itemKind === OrderItemKind.MOLD;
+
+        return (
+          <View key={item.id} style={styles.card}>
+            <View style={styles.itemHeader}>
+              <Text style={styles.sectionTitle}>{`المنتج #${index + 1}`}</Text>
+              {items.length > 1 ? (
+                <TouchableOpacity
+                  onPress={() =>
+                    setItems((current) =>
+                      current.filter((entry) => entry.id !== item.id),
+                    )
+                  }
+                  style={styles.deleteButton}
+                >
+                  <Text style={styles.deleteButtonText}>حذف</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
+            <Text style={styles.primaryLabel}>نوع الطلب</Text>
+            <ChoiceRow
+              options={itemKindOptions}
+              selected={item.itemKind}
+              large
+              onSelect={(itemKind) =>
+                updateItem(item.id, (current) => ({ ...current, itemKind }))
+              }
+            />
+
+            {!isMold ? (
+              <>
+                <Text style={styles.label}>نوع القطع</Text>
+                <TextInput
+                  style={styles.input}
+                  value={item.pieceType}
+                  onChangeText={(pieceType) =>
+                    updateItem(item.id, (current) => ({ ...current, pieceType }))
+                  }
+                  placeholder="مثال: كب كيك، إكلير، قطع كيك..."
+                  textAlign="right"
+                />
+
+                <Text style={styles.label}>عدد الطبقات</Text>
+                {renderStepper(item.layers, (layers) =>
+                  updateItem(item.id, (current) => ({ ...current, layers })),
+                )}
+
+                <Text style={styles.label}>هل يوجد شيء فوق القطع؟</Text>
+                <ChoiceRow
+                  options={yesNoOptions}
+                  selected={item.hasTopDecoration ? 'yes' : 'no'}
+                  onSelect={(value) =>
+                    updateItem(item.id, (current) => ({
+                      ...current,
+                      hasTopDecoration: value === 'yes',
+                    }))
+                  }
+                />
+
+                <Text style={styles.label}>عدد القطع</Text>
+                {renderStepper(item.peopleCount, (peopleCount) =>
+                  updateItem(item.id, (current) => ({ ...current, peopleCount })),
+                )}
+              </>
+            ) : (
+              <>
+                <Text style={styles.label}>نوع القالب</Text>
+                <ChoiceRow
+                  options={moldFlavorOptions}
+                  selected={item.moldFlavor}
+                  onSelect={(moldFlavor) =>
+                    updateItem(item.id, (current) => ({ ...current, moldFlavor }))
+                  }
+                />
+
+                <Text style={styles.label}>هل يوجد حشوات؟</Text>
+                <ChoiceRow
+                  options={yesNoOptions}
+                  selected={item.hasFillings ? 'yes' : 'no'}
+                  onSelect={(value) =>
+                    updateItem(item.id, (current) => ({
+                      ...current,
+                      hasFillings: value === 'yes',
+                      filling: value === 'yes' ? current.filling : '',
+                    }))
+                  }
+                />
+
+                {item.hasFillings ? (
+                  <TextInput
+                    style={styles.input}
+                    value={item.filling}
+                    onChangeText={(filling) =>
+                      updateItem(item.id, (current) => ({ ...current, filling }))
+                    }
+                    placeholder="اكتب أنواع الحشوات"
+                    textAlign="right"
+                  />
+                ) : null}
+
+                <Text style={styles.label}>شكل القالب</Text>
+                <ChoiceRow
+                  options={cakeShapeOptions}
+                  selected={item.shape}
+                  onSelect={(shape) =>
+                    updateItem(item.id, (current) => ({ ...current, shape }))
+                  }
+                />
+
+                <Text style={styles.label}>الفلين</Text>
+                <ChoiceRow
+                  options={[
+                    { value: 'yes', label: 'مع فلين' },
+                    { value: 'no', label: 'بدون فلين' },
+                  ]}
+                  selected={item.withFoam ? 'yes' : 'no'}
+                  onSelect={(value) =>
+                    updateItem(item.id, (current) => ({
+                      ...current,
+                      withFoam: value === 'yes',
+                    }))
+                  }
+                />
+
+                <Text style={styles.label}>عدد الطوابق</Text>
+                <ChoiceRow
+                  options={layerOptions}
+                  selected={String(item.layers) === '2' ? '2' : '1'}
+                  onSelect={(value) =>
+                    updateItem(item.id, (current) => ({
+                      ...current,
+                      layers: Number(value),
+                    }))
+                  }
+                />
+
+                <Text style={styles.label}>التجهيز الخارجي</Text>
+                <ChoiceRow
+                  options={finishOptions}
+                  selected={item.finishType}
+                  onSelect={(finishType) =>
+                    updateItem(item.id, (current) => ({ ...current, finishType }))
+                  }
+                />
+
+                <Text style={styles.label}>عدد الأشخاص</Text>
+                {renderStepper(item.peopleCount, (peopleCount) =>
+                  updateItem(item.id, (current) => ({ ...current, peopleCount })),
+                )}
+              </>
+            )}
+
+            <Text style={styles.label}>الملاحظات والإضافات الأخرى</Text>
+            <TextInput
+              style={styles.textArea}
+              value={item.specialDetails}
+              onChangeText={(specialDetails) =>
+                updateItem(item.id, (current) => ({ ...current, specialDetails }))
+              }
+              placeholder="اكتب أي تفاصيل إضافية أو تعليمات خاصة..."
+              multiline
+              textAlign="right"
+              textAlignVertical="top"
+            />
+
+            <Text style={styles.label}>الصور المرجعية</Text>
+            <TouchableOpacity
+              style={styles.uploadButton}
+              onPress={() => void pickImages(item.id)}
+            >
+              <Text style={styles.uploadButtonText}>رفع صورة أو عدة صور</Text>
+            </TouchableOpacity>
+
+            {item.referenceImages.length ? (
+              <View style={styles.imageGrid}>
+                {item.referenceImages.map((imageUrl, imageIndex) => (
+                  <View key={`${imageUrl}-${imageIndex}`} style={styles.imageCard}>
+                    <Image source={{ uri: imageUrl }} style={styles.referenceImage} />
+                    <TouchableOpacity
+                      style={styles.removeImageButton}
+                      onPress={() => removeImage(item.id, imageIndex)}
+                    >
+                      <Text style={styles.removeImageText}>حذف</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.note}>لم تتم إضافة صور بعد</Text>
+            )}
+          </View>
+        );
+      })}
+
+      <TouchableOpacity
+        style={styles.addButton}
+        onPress={() => setItems((current) => [...current, createEmptyItem()])}
+      >
+        <Text style={styles.addButtonText}>إضافة منتج آخر للطلب</Text>
+      </TouchableOpacity>
 
       <View style={styles.card}>
-        <Text style={styles.sectionTitle}>بيانات العميل والاستلام</Text>
+        <Text style={styles.sectionTitle}>بيانات الزبون والاستلام</Text>
 
         {isShopScoped ? (
           <View style={styles.infoBox}>
-            <Text style={styles.infoTitle}>فرع تسجيل الطلب من حسابك</Text>
-            <Text style={styles.infoValue}>{accountShop?.name ?? 'فرع الحساب الحالي'}</Text>
-            <Text style={styles.note}>سيتم ربط الطلب بهذا الفرع تلقائياً ولا يمكن تغييره من شاشة الطلب.</Text>
+            <Text style={styles.infoTitle}>فرع تسجيل الطلب</Text>
+            <Text style={styles.infoValue}>
+              {accountShop?.name ?? 'فرع الحساب الحالي'}
+            </Text>
           </View>
         ) : (
-          renderShopSelector('فرع تسجيل الطلب', shopId, shops, setShopId, 'هذا الحقل يظهر للمدير فقط لأن حسابه غير مربوط بفرع واحد.')
+          renderShopSelector(
+            'فرع تسجيل الطلب',
+            shopId,
+            branches,
+            setShopId,
+            'هذا هو الفرع الذي تم تسجيل الطلب لصالحه.',
+          )
         )}
 
         {renderShopSelector(
-          'مكان تسليم القالب',
-          moldDeliveryShopId,
+          'مكان التسليم',
+          deliveryShopId,
           shops,
-          setMoldDeliveryShopId,
-          'اختر فرعاً موجوداً فقط. لا يتم قبول نص حر أو المعمل كمكان تسليم.',
+          setDeliveryShopId,
+          'يمكن اختيار أي فرع أو التسليم مباشرة في المعمل.',
         )}
 
-        <Text style={styles.label}>اسم العميل</Text>
-        <TextInput style={styles.input} value={customerName} onChangeText={setCustomerName} textAlign="right" />
+        <Text style={styles.label}>اسم الزبون</Text>
+        <TextInput
+          style={styles.input}
+          value={customerName}
+          onChangeText={setCustomerName}
+          textAlign="right"
+        />
 
         <Text style={styles.label}>رقم الهاتف</Text>
         <TextInput
@@ -395,143 +793,23 @@ export function NewOrderScreen() {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.secondaryButton} onPress={() => setIsUrgent((prev) => !prev)}>
-          <Text style={styles.secondaryButtonText}>{isUrgent ? 'طلب مستعجل' : 'طلب عادي'}</Text>
+        <TouchableOpacity
+          style={[
+            styles.urgentButton,
+            isUrgent ? styles.urgentButtonActive : null,
+          ]}
+          onPress={() => setIsUrgent((current) => !current)}
+        >
+          <Text
+            style={[
+              styles.urgentButtonText,
+              isUrgent ? styles.urgentButtonTextActive : null,
+            ]}
+          >
+            {isUrgent ? 'الطلب مستعجل' : 'الطلب عادي'}
+          </Text>
         </TouchableOpacity>
       </View>
-
-      {items.map((item, index) => (
-        <View key={item.id} style={styles.card}>
-          <View style={styles.itemHeader}>
-            <Text style={styles.sectionTitle}>{`تفاصيل الكيك #${index + 1}`}</Text>
-            {items.length > 1 ? (
-              <TouchableOpacity
-                onPress={() => setItems((prev) => prev.filter((entry) => entry.id !== item.id))}
-                style={styles.deleteButton}
-              >
-                <Text style={styles.deleteButtonText}>حذف</Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-
-          <Text style={styles.label}>نوع الكيك</Text>
-          <View style={styles.optionRow}>
-            {cakeTypeOptions.map((option) => {
-              const active = item.cakeType === option;
-              return (
-                <TouchableOpacity
-                  key={option}
-                  style={[styles.optionChip, active && styles.optionChipActive]}
-                  onPress={() => updateItem(item.id, (current) => ({ ...current, cakeType: option }))}
-                >
-                  <Text style={[styles.optionChipText, active && styles.optionChipTextActive]}>
-                    {cakeTypeLabel(option)}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <Text style={styles.label}>عدد الطوابق</Text>
-          <View style={styles.stepper}>
-            <TouchableOpacity
-              style={styles.stepperButton}
-              onPress={() => updateItem(item.id, (current) => ({ ...current, layers: Math.max(1, current.layers - 1) }))}
-            >
-              <Text style={styles.stepperButtonText}>-</Text>
-            </TouchableOpacity>
-            <TextInput
-              style={styles.stepperValue}
-              value={String(item.layers)}
-              keyboardType="numeric"
-              onChangeText={(value) => updateItem(item.id, (current) => {
-                const nextValue = Number(value);
-                return Number.isFinite(nextValue) ? { ...current, layers: Math.max(1, Math.floor(nextValue)) } : current;
-              })}
-              textAlign="center"
-            />
-            <TouchableOpacity
-              style={styles.stepperButton}
-              onPress={() => updateItem(item.id, (current) => ({ ...current, layers: current.layers + 1 }))}
-            >
-              <Text style={styles.stepperButtonText}>+</Text>
-            </TouchableOpacity>
-          </View>
-
-          <Text style={styles.label}>عدد القطع / الأشخاص</Text>
-          <View style={styles.stepper}>
-            <TouchableOpacity
-              style={styles.stepperButton}
-              onPress={() => updateItem(item.id, (current) => ({ ...current, peopleCount: Math.max(1, current.peopleCount - 1) }))}
-            >
-              <Text style={styles.stepperButtonText}>-</Text>
-            </TouchableOpacity>
-            <TextInput
-              style={styles.stepperValue}
-              value={String(item.peopleCount)}
-              keyboardType="numeric"
-              onChangeText={(value) => updateItem(item.id, (current) => {
-                const nextValue = Number(value);
-                return Number.isFinite(nextValue) ? { ...current, peopleCount: Math.max(1, Math.floor(nextValue)) } : current;
-              })}
-              textAlign="center"
-            />
-            <TouchableOpacity
-              style={styles.stepperButton}
-              onPress={() => updateItem(item.id, (current) => ({ ...current, peopleCount: current.peopleCount + 1 }))}
-            >
-              <Text style={styles.stepperButtonText}>+</Text>
-            </TouchableOpacity>
-          </View>
-
-          <Text style={styles.label}>شكل الكيك</Text>
-          <View style={styles.optionRow}>
-            {cakeShapeOptions.map((option) => {
-              const active = item.shape === option;
-              return (
-                <TouchableOpacity
-                  key={option}
-                  style={[styles.optionChip, active && styles.optionChipActive]}
-                  onPress={() => updateItem(item.id, (current) => ({ ...current, shape: option }))}
-                >
-                  <Text style={[styles.optionChipText, active && styles.optionChipTextActive]}>
-                    {cakeShapeLabel(option)}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <Text style={styles.label}>نوع الحشوة</Text>
-          <TextInput
-            style={styles.input}
-            value={item.filling}
-            onChangeText={(value) => updateItem(item.id, (current) => ({ ...current, filling: value }))}
-            placeholder="مثال: شوكولاتة بالبندق"
-            textAlign="right"
-          />
-
-          <Text style={styles.label}>الإضافات والتفاصيل الخاصة</Text>
-          <TextInput
-            style={styles.textArea}
-            value={item.specialDetails}
-            onChangeText={(value) => updateItem(item.id, (current) => ({ ...current, specialDetails: value }))}
-            placeholder="الكتابة على الكيك، لون محدد، إضافات خاصة..."
-            multiline
-            textAlign="right"
-            textAlignVertical="top"
-          />
-
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => void pickImage(item.id)}>
-            <Text style={styles.secondaryButtonText}>رفع صورة مرجعية</Text>
-          </TouchableOpacity>
-          <Text style={styles.note}>عدد الصور: {item.referenceImages.length}</Text>
-        </View>
-      ))}
-
-      <TouchableOpacity style={styles.addButton} onPress={() => setItems((prev) => [...prev, createEmptyItem()])}>
-        <Text style={styles.addButtonText}>إضافة كيك آخر للطلب</Text>
-      </TouchableOpacity>
 
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>الحساب والمدفوعات</Text>
@@ -559,19 +837,19 @@ export function NewOrderScreen() {
           <Text style={styles.summaryValue}>{remainingAmount.toFixed(2)} ر.س</Text>
         </View>
 
-        <Text style={styles.label}>ملاحظات الطلب</Text>
+        <Text style={styles.label}>ملاحظات الطلب العامة</Text>
         <TextInput
           style={styles.textArea}
           value={notes}
           onChangeText={setNotes}
-          placeholder="أي ملاحظات عامة على الطلب..."
+          placeholder="أي ملاحظات عامة على كامل الطلب..."
           multiline
           textAlign="right"
           textAlignVertical="top"
         />
 
         <TouchableOpacity style={styles.primaryButton} onPress={() => void submit()}>
-          <Text style={styles.primaryButtonText}>إرسال الطلب للمصنع</Text>
+          <Text style={styles.primaryButtonText}>إرسال الطلب للمعمل</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -579,22 +857,38 @@ export function NewOrderScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: theme.colors.surface },
+  screen: {
+    flex: 1,
+    backgroundColor: theme.colors.surface,
+  },
   content: {
-    padding: theme.spacing.lg,
-    gap: theme.spacing.lg,
     width: '100%',
     maxWidth: 1280,
     alignSelf: 'center',
+    padding: theme.spacing.lg,
+    gap: theme.spacing.lg,
+  },
+  pageHeader: {
+    gap: theme.spacing.xs,
   },
   heading: {
     ...theme.typography.heading,
     color: theme.colors.onSurface,
     textAlign: 'right',
   },
+  pageHint: {
+    ...theme.typography.body,
+    color: theme.colors.onSurfaceVariant,
+    textAlign: 'right',
+  },
   sectionTitle: {
     ...theme.typography.title,
     color: theme.colors.primary,
+    textAlign: 'right',
+  },
+  primaryLabel: {
+    ...theme.typography.title,
+    color: theme.colors.onSurface,
     textAlign: 'right',
   },
   card: {
@@ -647,6 +941,7 @@ const styles = StyleSheet.create({
     ...theme.typography.label,
     color: theme.colors.onSurfaceVariant,
     textAlign: 'right',
+    marginTop: theme.spacing.xs,
   },
   row: {
     flexDirection: 'row-reverse',
@@ -683,12 +978,19 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   optionChip: {
+    minWidth: 96,
     borderRadius: theme.radius.full,
     borderWidth: 1,
     borderColor: theme.colors.outlineVariant,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     backgroundColor: theme.colors.surface,
+    alignItems: 'center',
+  },
+  optionChipLarge: {
+    flex: 1,
+    minHeight: 52,
+    justifyContent: 'center',
   },
   optionChipActive: {
     borderColor: theme.colors.primary,
@@ -700,10 +1002,10 @@ const styles = StyleSheet.create({
   },
   optionChipTextActive: {
     color: theme.colors.primary,
-    fontFamily: 'Cairo_600SemiBold',
+    fontFamily: 'Cairo_700Bold',
   },
   shopChip: {
-    minWidth: 180,
+    minWidth: 200,
     borderRadius: theme.radius.lg,
     borderWidth: 1,
     borderColor: theme.colors.outlineVariant,
@@ -757,30 +1059,66 @@ const styles = StyleSheet.create({
     ...theme.typography.title,
     color: theme.colors.onSurface,
   },
-  primaryButton: {
-    backgroundColor: theme.colors.primary,
+  uploadButton: {
     borderRadius: theme.radius.lg,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: theme.colors.primary,
+    minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    height: 48,
-    marginTop: theme.spacing.sm,
+    backgroundColor: theme.colors.secondaryContainer,
   },
-  primaryButtonText: {
+  uploadButtonText: {
     ...theme.typography.title,
-    color: theme.colors.onPrimary,
+    color: theme.colors.primary,
   },
-  secondaryButton: {
+  imageGrid: {
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  imageCard: {
+    width: 116,
+    borderRadius: theme.radius.md,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: theme.colors.outlineVariant,
+    backgroundColor: theme.colors.surface,
+  },
+  referenceImage: {
+    width: '100%',
+    height: 96,
+  },
+  removeImageButton: {
+    minHeight: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removeImageText: {
+    ...theme.typography.label,
+    color: theme.colors.error,
+  },
+  urgentButton: {
     borderRadius: theme.radius.lg,
     borderWidth: 1,
     borderColor: theme.colors.outlineVariant,
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.surfaceContainerLowest,
+    backgroundColor: theme.colors.surface,
   },
-  secondaryButtonText: {
+  urgentButtonActive: {
+    borderColor: theme.colors.error,
+    backgroundColor: theme.colors.errorContainer,
+  },
+  urgentButtonText: {
     ...theme.typography.body,
     color: theme.colors.onSurface,
+  },
+  urgentButtonTextActive: {
+    color: theme.colors.error,
+    fontFamily: 'Cairo_700Bold',
   },
   addButton: {
     borderRadius: theme.radius.lg,
@@ -789,11 +1127,23 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 48,
+    height: 52,
   },
   addButtonText: {
     ...theme.typography.title,
     color: theme.colors.primary,
+  },
+  primaryButton: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 50,
+    marginTop: theme.spacing.sm,
+  },
+  primaryButtonText: {
+    ...theme.typography.title,
+    color: theme.colors.onPrimary,
   },
   emptyText: {
     ...theme.typography.body,

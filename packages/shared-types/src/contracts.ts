@@ -1,9 +1,12 @@
 import {
+  CakeFinish,
   CakeShape,
   CakeType,
   EssentialsCategory,
   EssentialsStatus,
+  MoldFlavor,
   NotificationType,
+  OrderItemKind,
   OrderStatus,
   PaymentStatus,
   ShopType,
@@ -24,10 +27,17 @@ export interface AuthUser {
 }
 
 export interface OrderItemInput {
-  cakeType: CakeType;
+  itemKind: OrderItemKind;
+  pieceType?: string;
+  hasTopDecoration: boolean;
+  cakeType?: CakeType;
   layers: number;
-  shape: CakeShape;
-  filling: string;
+  shape?: CakeShape;
+  moldFlavor?: MoldFlavor;
+  hasFillings: boolean;
+  filling?: string;
+  withFoam: boolean;
+  finishType: CakeFinish;
   specialDetails?: string;
   peopleCount: number;
   referenceImages: string[];

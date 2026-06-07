@@ -17,7 +17,7 @@ export class ExportsService {
     sheet.columns = [
       { header: 'Order Number', key: 'orderNumber', width: 20 },
       { header: 'Shop', key: 'shopName', width: 24 },
-      { header: 'Mold Delivery Branch', key: 'moldDeliveryShopName', width: 26 },
+      { header: 'Delivery Location', key: 'moldDeliveryShopName', width: 26 },
       { header: 'Customer Name', key: 'customerName', width: 24 },
       { header: 'Phone', key: 'customerPhone', width: 18 },
       { header: 'Delivery Date', key: 'deliveryDatetime', width: 22 },

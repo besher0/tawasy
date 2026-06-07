@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, OrderStatus, ShopType } from '@prisma/client';
+import { CakeType, Prisma, OrderStatus } from '@prisma/client';
 import { UserRole } from '@sugarprecision/shared-types';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -41,7 +41,7 @@ export class OrdersService {
     this.assertDeposit(dto.depositAmount, dto.totalPrice);
     const shopId = this.resolveWritableShopId(actor, dto.shopId);
     const moldDeliveryShopId = dto.moldDeliveryShopId ?? shopId;
-    await this.assertMoldDeliveryShop(moldDeliveryShopId);
+    await this.assertDeliveryLocation(moldDeliveryShopId);
 
     const order = await this.prisma.order.create({
       data: {
@@ -60,10 +60,19 @@ export class OrdersService {
         createdById: actor.sub,
         items: {
           create: dto.items.map((item) => ({
-            cakeType: item.cakeType,
+            itemKind: item.itemKind,
+            pieceType: item.pieceType,
+            hasTopDecoration: item.hasTopDecoration,
+            cakeType:
+              item.cakeType ??
+              (item.itemKind === 'Pieces' ? CakeType.Uncovered : CakeType.Cake),
             layers: item.layers,
             shape: item.shape,
+            moldFlavor: item.moldFlavor,
+            hasFillings: item.hasFillings,
             filling: item.filling,
+            withFoam: item.withFoam,
+            finishType: item.finishType,
             specialDetails: item.specialDetails,
             peopleCount: item.peopleCount,
             referenceImages: item.referenceImages ?? [],
@@ -194,7 +203,7 @@ export class OrdersService {
         : undefined;
 
     if (dto.moldDeliveryShopId !== undefined) {
-      await this.assertMoldDeliveryShop(dto.moldDeliveryShopId);
+      await this.assertDeliveryLocation(dto.moldDeliveryShopId);
     }
 
     const order = await this.prisma.order.update({
@@ -344,22 +353,18 @@ export class OrdersService {
     }
   }
 
-  private async assertMoldDeliveryShop(shopId: string) {
+  private async assertDeliveryLocation(shopId: string) {
     if (!shopId?.trim()) {
-      throw new BadRequestException('Mold delivery branch is required');
+      throw new BadRequestException('Delivery location is required');
     }
 
     const shop = await this.prisma.shop.findUnique({
       where: { id: shopId },
-      select: { id: true, type: true },
+      select: { id: true },
     });
 
     if (!shop) {
-      throw new NotFoundException('Mold delivery branch not found');
-    }
-
-    if (shop.type !== ShopType.Branch) {
-      throw new BadRequestException('Mold delivery location must be a branch');
+      throw new NotFoundException('Delivery location not found');
     }
   }
 

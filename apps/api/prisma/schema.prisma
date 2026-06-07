@@ -49,6 +49,23 @@ enum CakeShape {
   Custom
 }
 
+enum OrderItemKind {
+  Pieces
+  Mold
+}
+
+enum MoldFlavor {
+  White
+  Black
+  Mixed
+}
+
+enum CakeFinish {
+  None
+  Disk_Enlargement
+  Covering
+}
+
 enum EssentialsCategory {
   Ready_Cake
   Raw_Materials
@@ -82,65 +99,65 @@ enum PrinterProtocol {
 }
 
 model User {
-  id               String      @id @default(uuid())
+  id               String         @id @default(uuid())
   name             String
-  phone            String      @unique
+  phone            String         @unique
   role             UserRole
   passwordHash     String
   refreshTokenHash String?
-  isActive         Boolean     @default(true)
+  isActive         Boolean        @default(true)
   shopId           String?
-  shop             Shop?       @relation(fields: [shopId], references: [id], onDelete: SetNull)
-  createdOrders    Order[]     @relation("OrderCreatedBy")
+  shop             Shop?          @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  createdOrders    Order[]        @relation("OrderCreatedBy")
   notifications    Notification[]
   pushTokens       PushToken[]
   auditLogs        AuditLog[]
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
   @@index([role])
   @@index([shopId])
 }
 
 model Shop {
-  id             String          @id @default(uuid())
-  name           String          @unique
-  location       String
-  contactInfo    String?
-  type           ShopType        @default(Branch)
-  users          User[]
-  orders         Order[]         @relation("OrderShop")
-  moldDeliveryOrders Order[]     @relation("OrderMoldDeliveryShop")
-  dailyEssentials DailyEssential[]
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  id                 String           @id @default(uuid())
+  name               String           @unique
+  location           String
+  contactInfo        String?
+  type               ShopType         @default(Branch)
+  users              User[]
+  orders             Order[]          @relation("OrderShop")
+  moldDeliveryOrders Order[]          @relation("OrderMoldDeliveryShop")
+  dailyEssentials    DailyEssential[]
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
 
   @@index([type])
 }
 
 model Order {
-  id               String               @id @default(uuid())
-  orderNumber      String               @unique
-  shopId           String
-  shop             Shop                 @relation("OrderShop", fields: [shopId], references: [id], onDelete: Restrict)
+  id                 String               @id @default(uuid())
+  orderNumber        String               @unique
+  shopId             String
+  shop               Shop                 @relation("OrderShop", fields: [shopId], references: [id], onDelete: Restrict)
   moldDeliveryShopId String?
-  moldDeliveryShop Shop?                @relation("OrderMoldDeliveryShop", fields: [moldDeliveryShopId], references: [id], onDelete: SetNull)
-  customerName     String
-  customerPhone    String
-  deliveryDatetime DateTime
-  totalPrice       Float
-  depositAmount    Float
-  paymentStatus    PaymentStatus
-  status           OrderStatus          @default(New)
-  isUrgent         Boolean              @default(false)
-  notes            String?
-  createdById      String?
-  createdBy        User?                @relation("OrderCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  items            OrderItem[]
-  statusHistory    OrderStatusHistory[]
-  printJobs        PrintJob[]
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
+  moldDeliveryShop   Shop?                @relation("OrderMoldDeliveryShop", fields: [moldDeliveryShopId], references: [id], onDelete: SetNull)
+  customerName       String
+  customerPhone      String
+  deliveryDatetime   DateTime
+  totalPrice         Float
+  depositAmount      Float
+  paymentStatus      PaymentStatus
+  status             OrderStatus          @default(New)
+  isUrgent           Boolean              @default(false)
+  notes              String?
+  createdById        String?
+  createdBy          User?                @relation("OrderCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  items              OrderItem[]
+  statusHistory      OrderStatusHistory[]
+  printJobs          PrintJob[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
 
   @@index([shopId])
   @@index([moldDeliveryShopId])
@@ -150,36 +167,44 @@ model Order {
 }
 
 model OrderItem {
-  id             String    @id @default(uuid())
-  orderId        String
-  order          Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  cakeType       CakeType
-  layers         Int
-  shape          CakeShape
-  filling        String
-  specialDetails String?
-  peopleCount    Int
-  referenceImages String[]
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id               String        @id @default(uuid())
+  orderId          String
+  order            Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  itemKind         OrderItemKind @default(Mold)
+  pieceType        String?
+  hasTopDecoration Boolean       @default(false)
+  cakeType         CakeType      @default(Cake)
+  layers           Int
+  shape            CakeShape?
+  moldFlavor       MoldFlavor?
+  hasFillings      Boolean       @default(false)
+  filling          String?
+  withFoam         Boolean       @default(false)
+  finishType       CakeFinish    @default(None)
+  specialDetails   String?
+  peopleCount      Int           @default(1)
+  referenceImages  String[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   @@index([orderId])
+  @@index([itemKind])
   @@index([cakeType])
   @@index([shape])
 }
 
 model DailyEssential {
   id         String             @id @default(uuid())
-  shopId      String
-  shop        Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  category    EssentialsCategory
-  itemName    String
-  quantity    Float
-  notes       String?
-  status      EssentialsStatus  @default(Pending)
-  targetDate  DateTime
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  shopId     String
+  shop       Shop               @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  category   EssentialsCategory
+  itemName   String
+  quantity   Float
+  notes      String?
+  status     EssentialsStatus   @default(Pending)
+  targetDate DateTime
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
 
   @@index([shopId])
   @@index([targetDate])
@@ -187,70 +212,70 @@ model DailyEssential {
 }
 
 model OrderStatusHistory {
-  id          String      @id @default(uuid())
-  orderId      String
-  order        Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id             String       @id @default(uuid())
+  orderId        String
+  order          Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
   previousStatus OrderStatus?
-  newStatus    OrderStatus
-  changedById  String?
-  note         String?
-  createdAt    DateTime    @default(now())
+  newStatus      OrderStatus
+  changedById    String?
+  note           String?
+  createdAt      DateTime     @default(now())
 
   @@index([orderId])
   @@index([newStatus])
 }
 
 model Notification {
-  id         String           @id @default(uuid())
-  userId      String
-  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type        NotificationType
-  title       String
-  body        String
-  payload     Json?
-  isRead      Boolean          @default(false)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String
+  payload   Json?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
 
   @@index([userId, isRead])
 }
 
 model PushToken {
-  id          String    @id @default(uuid())
-  userId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token        String    @unique
-  platform     String
-  lastSeenAt   DateTime  @default(now())
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String   @unique
+  platform   String
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([userId])
 }
 
 model Printer {
-  id          String          @id @default(uuid())
-  name         String
-  ipAddress    String
-  port         Int             @default(631)
-  protocol     PrinterProtocol @default(IPP)
-  isActive     Boolean         @default(true)
-  printJobs    PrintJob[]
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  id        String          @id @default(uuid())
+  name      String
+  ipAddress String
+  port      Int             @default(631)
+  protocol  PrinterProtocol @default(IPP)
+  isActive  Boolean         @default(true)
+  printJobs PrintJob[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
 }
 
 model PrintJob {
-  id          String        @id @default(uuid())
-  orderId      String
-  order        Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  printerId    String?
-  printer      Printer?      @relation(fields: [printerId], references: [id], onDelete: SetNull)
-  status       PrintJobStatus @default(Pending)
-  errorMessage String?
+  id            String         @id @default(uuid())
+  orderId       String
+  order         Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  printerId     String?
+  printer       Printer?       @relation(fields: [printerId], references: [id], onDelete: SetNull)
+  status        PrintJobStatus @default(Pending)
+  errorMessage  String?
   requestedById String?
-  requestedAt  DateTime      @default(now())
-  completedAt  DateTime?
+  requestedAt   DateTime       @default(now())
+  completedAt   DateTime?
 
   @@index([orderId])
   @@index([printerId])
@@ -258,15 +283,15 @@ model PrintJob {
 }
 
 model AuditLog {
-  id         String   @id @default(uuid())
-  actorId     String?
-  actor       User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
-  action      String
-  entity      String
-  entityId    String
-  details     Json?
-  ipAddress   String?
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid())
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String
+  details   Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
 
   @@index([entity, entityId])
   @@index([actorId])

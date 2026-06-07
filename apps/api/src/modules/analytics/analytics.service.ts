@@ -125,7 +125,10 @@ export class AnalyticsService {
     const grouped = new Map<string, { label: string; quantity: number; revenue: number }>();
 
     for (const item of items) {
-      const label = `${item.cakeType} - ${item.filling}`;
+      const label =
+        item.itemKind === 'Pieces'
+          ? `Pieces - ${item.pieceType ?? 'Unspecified'}`
+          : `Mold - ${item.moldFlavor ?? 'Unspecified'}`;
       const existing = grouped.get(label) ?? { label, quantity: 0, revenue: 0 };
       existing.quantity += 1;
       existing.revenue += item.order.totalPrice;

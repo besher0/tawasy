@@ -47,6 +47,23 @@ const cakeShapeLabels: Record<string, string> = {
   Custom: 'مخصص',
 };
 
+const orderItemKindLabels: Record<string, string> = {
+  Pieces: 'قطع',
+  Mold: 'قالب',
+};
+
+const moldFlavorLabels: Record<string, string> = {
+  White: 'أبيض',
+  Black: 'أسود',
+  Mixed: 'مشكل',
+};
+
+const cakeFinishLabels: Record<string, string> = {
+  None: 'بدون',
+  Disk_Enlargement: 'تكبير ديسك',
+  Covering: 'تلبيس',
+};
+
 export function roleLabel(value?: string | null) {
   return value ? roleLabels[value] ?? value : '-';
 }
@@ -73,4 +90,34 @@ export function cakeTypeLabel(value?: string | null) {
 
 export function cakeShapeLabel(value?: string | null) {
   return value ? cakeShapeLabels[value] ?? value : '-';
+}
+
+export function orderItemKindLabel(value?: string | null) {
+  return value ? orderItemKindLabels[value] ?? value : '-';
+}
+
+export function moldFlavorLabel(value?: string | null) {
+  return value ? moldFlavorLabels[value] ?? value : '-';
+}
+
+export function cakeFinishLabel(value?: string | null) {
+  return value ? cakeFinishLabels[value] ?? value : '-';
+}
+
+export function topProductLabel(value?: string | null) {
+  if (!value) {
+    return '-';
+  }
+
+  const [kind, detail] = value.split(' - ');
+
+  if (kind === 'Pieces') {
+    return `قطع - ${detail ?? '-'}`;
+  }
+
+  if (kind === 'Mold') {
+    return `قالب - ${moldFlavorLabel(detail)}`;
+  }
+
+  return cakeTypeLabel(value);
 }

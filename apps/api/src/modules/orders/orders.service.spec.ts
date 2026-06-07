@@ -32,7 +32,7 @@ describe('OrdersService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    prisma.shop.findUnique.mockResolvedValue({ id: 'shop-1', type: 'Branch' });
+    prisma.shop.findUnique.mockResolvedValue({ id: 'shop-1' });
     service = new OrdersService(prisma, auditService, notificationsService);
   });
 
@@ -67,7 +67,7 @@ describe('OrdersService', () => {
       shop: { id: 'shop-actor' },
       items: [],
     });
-    prisma.shop.findUnique.mockResolvedValue({ id: 'shop-actor', type: 'Branch' });
+    prisma.shop.findUnique.mockResolvedValue({ id: 'shop-actor' });
 
     await service.create(
       {
@@ -134,5 +134,42 @@ describe('OrdersService', () => {
       }),
     );
     expect(prisma.orderStatusHistory.create).toHaveBeenCalled();
+  });
+
+  it('accepts the factory as a delivery location', async () => {
+    prisma.order.create = jest.fn().mockResolvedValue({
+      id: 'order-factory-delivery',
+      status: 'New',
+      items: [],
+    });
+    prisma.shop.findUnique.mockResolvedValue({ id: 'factory-1' });
+
+    await service.create(
+      {
+        shopId: 'shop-1',
+        moldDeliveryShopId: 'factory-1',
+        customerName: 'Customer',
+        customerPhone: '0500000000',
+        deliveryDatetime: new Date().toISOString(),
+        totalPrice: 100,
+        depositAmount: 50,
+        paymentStatus: 'Partial' as never,
+        isUrgent: false,
+        items: [],
+      },
+      {
+        sub: 'user-1',
+        role: 'Admin' as never,
+        shopId: null,
+      },
+    );
+
+    expect(prisma.order.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          moldDeliveryShopId: 'factory-1',
+        }),
+      }),
+    );
   });
 });
