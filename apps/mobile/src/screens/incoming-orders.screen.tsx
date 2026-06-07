@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   FlatList,
   StyleSheet,
@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import theme from '../theme';
@@ -42,9 +42,9 @@ export function IncomingOrdersScreen() {
     setOrders(response.data);
   }, [search]);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     void loadOrders();
-  }, [loadOrders]);
+  }, [loadOrders]));
 
   return (
     <View style={styles.wrapper}>

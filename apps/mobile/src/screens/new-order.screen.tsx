@@ -18,6 +18,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { cakeShapeLabel, cakeTypeLabel } from '../lib/labels';
 import api from '../lib/api';
+import { getApiErrorMessage } from '../lib/api-error';
 import { useAuth } from '../context/auth-context';
 import theme from '../theme';
 
@@ -139,7 +140,7 @@ export function NewOrderScreen() {
     return shops.find((shop) => shop.id === user.shopId);
   }, [shops, user?.shopId]);
 
-  const orderBranchId = isShopScoped ? user?.shopId ?? '' : shopId;
+  const orderBranchId = isShopScoped ? accountShop?.id ?? '' : shopId;
 
   const remainingAmount = useMemo(() => {
     const total = Number(totalPrice);
@@ -190,7 +191,7 @@ export function NewOrderScreen() {
   };
 
   const resetForm = () => {
-    const fallbackBranchId = user?.shopId ?? shops[0]?.id ?? '';
+    const fallbackBranchId = accountShop?.id ?? shops[0]?.id ?? '';
 
     setShopId(fallbackBranchId);
     setMoldDeliveryShopId(fallbackBranchId);
@@ -292,8 +293,11 @@ export function NewOrderScreen() {
       await api.post('/orders', payload);
       Alert.alert('تم', 'تم إنشاء الطلب بنجاح');
       resetForm();
-    } catch {
-      Alert.alert('خطأ', 'فشل إنشاء الطلب. تحقق من البيانات ومكان تسليم القالب.');
+    } catch (error) {
+      Alert.alert(
+        'خطأ',
+        getApiErrorMessage(error, 'فشل إنشاء الطلب. تحقق من البيانات ومكان تسليم القالب.'),
+      );
     }
   };
 

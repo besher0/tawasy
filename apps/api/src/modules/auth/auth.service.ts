@@ -44,6 +44,9 @@ const offlineUsers = [
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+  private readonly offlineAuthEnabled =
+    process.env.NODE_ENV !== 'production' &&
+    process.env.ENABLE_OFFLINE_AUTH === 'true';
 
   constructor(
     private readonly prisma: PrismaService,
@@ -89,7 +92,11 @@ export class AuthService {
         throw error;
       }
 
-      return this.loginOffline(dto, error);
+      if (this.offlineAuthEnabled) {
+        return this.loginOffline(dto, error);
+      }
+
+      throw error;
     }
   }
 
@@ -120,7 +127,7 @@ export class AuthService {
   }
 
   async logout(userId: string) {
-    if (userId.startsWith('offline-')) {
+    if (this.offlineAuthEnabled && userId.startsWith('offline-')) {
       return { message: 'Logged out' };
     }
 
@@ -133,7 +140,7 @@ export class AuthService {
   }
 
   async me(userId: string) {
-    if (userId.startsWith('offline-')) {
+    if (this.offlineAuthEnabled && userId.startsWith('offline-')) {
       const offlineUser = offlineUsers.find((user) => user.id === userId);
       if (!offlineUser) {
         throw new UnauthorizedException('User not found');

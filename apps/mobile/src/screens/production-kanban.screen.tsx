@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import api from '../lib/api';
 import theme from '../theme';
 import { orderStatusLabel } from '../lib/labels';
@@ -19,14 +20,16 @@ type KanbanOrder = {
 export function ProductionKanbanScreen() {
   const [kanban, setKanban] = useState<Record<string, KanbanOrder[]>>({});
 
-  useEffect(() => {
-    async function loadKanban() {
+  useFocusEffect(
+    useCallback(() => {
+      async function loadKanban() {
       const response = await api.get('/production/kanban');
       setKanban(response.data.columns ?? {});
-    }
+      }
 
-    void loadKanban();
-  }, []);
+      void loadKanban();
+    }, []),
+  );
 
   return (
     <ScrollView

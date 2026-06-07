@@ -1,7 +1,11 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
+import axios from 'axios';
 import { Platform } from 'react-native';
-import api, { setAccessToken } from '../lib/api';
+import api, {
+  setAuthTokens,
+  setAuthTokensListener,
+} from '../lib/api';
 import { UserRole } from '@sugarprecision/shared-types';
 
 interface AuthUser {
@@ -65,13 +69,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
+    setAuthTokensListener((tokens) => {
+      if (!tokens) {
+        const emptyState: AuthState = {
+          user: null,
+          accessToken: null,
+          refreshToken: null,
+        };
+        setState(emptyState);
+        void persistState(null);
+        return;
+      }
+
+      setState((current) => {
+        const nextState = {
+          ...current,
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+        };
+        void persistState(nextState);
+        return nextState;
+      });
+    });
+
+    return () => setAuthTokensListener(null);
+  }, []);
+
+  useEffect(() => {
     async function load() {
       try {
         const raw = await getPersistedState();
         if (raw) {
           const parsed = JSON.parse(raw) as AuthState;
-          setState(parsed);
-          setAccessToken(parsed.accessToken);
+          setAuthTokens({
+            accessToken: parsed.accessToken ?? '',
+            refreshToken: parsed.refreshToken ?? '',
+          });
+
+          try {
+            const response = await api.get<AuthUser>('/auth/me');
+            const nextState = { ...parsed, user: response.data };
+            setState(nextState);
+            await persistState(nextState);
+          } catch (error) {
+            const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+
+            if (status === 401 || status === 403) {
+              setAuthTokens(null);
+              await persistState(null);
+            } else {
+              setState(parsed);
+            }
+          }
         }
       } catch (error) {
         console.warn('Failed to load persisted auth state', error);
@@ -96,7 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
 
         setState(nextState);
-        setAccessToken(nextState.accessToken);
+        setAuthTokens(response.data.tokens);
         try {
           await persistState(nextState);
         } catch (error) {
@@ -112,7 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
 
         setState(emptyState);
-        setAccessToken(null);
+        setAuthTokens(null);
 
         try {
           await persistState(null);

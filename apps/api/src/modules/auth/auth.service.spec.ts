@@ -35,6 +35,14 @@ describe('AuthService', () => {
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
+  it('does not create an offline session when the database is unavailable', async () => {
+    prisma.user.findUnique = jest.fn().mockRejectedValue(new Error('database unavailable'));
+
+    await expect(
+      service.login({ phone: '0500000002', password: '12345678' }),
+    ).rejects.toThrow('database unavailable');
+  });
+
   it('returns tokens when credentials are valid', async () => {
     prisma.user.findUnique = jest.fn().mockResolvedValue({
       id: '1',

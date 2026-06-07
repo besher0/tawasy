@@ -2,6 +2,7 @@ import React from 'react';
 import { Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ScreenContainer } from '../components/screen-container';
 import { useAuth } from '../context/auth-context';
+import { API_BASE_URL } from '../lib/api';
 import theme from '../theme';
 
 export function SettingsScreen() {
@@ -30,7 +31,7 @@ export function SettingsScreen() {
       <Text style={styles.heading}>الإعدادات</Text>
       <View style={styles.card}>
         <Text style={styles.label}>رابط الخادم</Text>
-        <Text style={styles.value}>{process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:3000'}</Text>
+        <Text style={styles.value}>{API_BASE_URL}</Text>
 
         <TouchableOpacity
           style={styles.button}

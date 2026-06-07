@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -9,7 +9,9 @@ import {
   View,
 } from 'react-native';
 import { UserRole } from '@sugarprecision/shared-types';
+import type { ShopSummary } from '@sugarprecision/shared-types';
 import api from '../lib/api';
+import { getApiErrorMessage } from '../lib/api-error';
 import theme from '../theme';
 import { useAuth } from '../context/auth-context';
 import { essentialsCategoryLabel, essentialsStatusLabel } from '../lib/labels';
@@ -28,35 +30,73 @@ interface EssentialRow {
 
 const shopScopedRoles = new Set<string>([UserRole.SHOP_MANAGER, UserRole.SHOP_EMPLOYEE]);
 
+function getTomorrowDate() {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const year = tomorrow.getFullYear();
+  const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+  const day = String(tomorrow.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export function NextDayEssentialsScreen() {
   const { user } = useAuth();
   const [list, setList] = useState<EssentialRow[]>([]);
+  const [shops, setShops] = useState<ShopSummary[]>([]);
+  const [selectedShopId, setSelectedShopId] = useState('');
   const [itemName, setItemName] = useState('');
   const [quantity, setQuantity] = useState('10');
 
   const isShopScoped = shopScopedRoles.has(user?.role ?? '');
-  const canCreate = !isShopScoped || Boolean(user?.shopId);
+  const writableShopId = selectedShopId;
+  const canCreate = Boolean(writableShopId);
+  const selectedShop = shops.find((shop) => shop.id === writableShopId);
 
   const branchLabel = useMemo(() => {
-    if (!isShopScoped) {
-      return 'يتم عرض مستلزمات كل الفروع حسب الصلاحيات.';
+    if (selectedShop) {
+      return `سيتم ربط المستلزم بفرع: ${selectedShop.name}`;
     }
 
-    return user?.shopId ? `سيتم ربط الطلب بفرع حسابك تلقائياً: ${user.shopId}` : 'حسابك غير مرتبط بفرع.';
-  }, [isShopScoped, user?.shopId]);
+    return isShopScoped
+      ? 'حسابك غير مرتبط بفرع صالح.'
+      : 'اختر الفرع الذي يحتاج هذه المستلزمات.';
+  }, [isShopScoped, selectedShop]);
 
-  const load = async () => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
+  const load = useCallback(async () => {
     const response = await api.get('/daily-essentials', {
-      params: { targetDate: tomorrow.toISOString() },
+      params: { targetDate: getTomorrowDate() },
     });
     setList(response.data);
-  };
+  }, []);
 
   useEffect(() => {
-    void load();
-  }, []);
+    async function initialize() {
+      try {
+        const response = await api.get<ShopSummary[]>('/shops', {
+          params: { type: 'Branch' },
+        });
+        const branches = response.data ?? [];
+        const accountShop = user?.shopId
+          ? branches.find((shop) => shop.id === user.shopId)
+          : undefined;
+        const defaultShopId = isShopScoped
+          ? accountShop?.id ?? ''
+          : branches[0]?.id ?? '';
+
+        setShops(branches);
+        setSelectedShopId(defaultShopId);
+        await load();
+      } catch (error) {
+        Alert.alert(
+          'خطأ',
+          getApiErrorMessage(error, 'تعذر تحميل الفروع أو مستلزمات الغد.'),
+        );
+      }
+    }
+
+    void initialize();
+  }, [isShopScoped, load, user?.shopId]);
 
   const addItem = async () => {
     if (!itemName.trim()) {
@@ -76,21 +116,22 @@ export function NextDayEssentialsScreen() {
     }
 
     try {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-
       await api.post('/daily-essentials', {
+        ...(!isShopScoped ? { shopId: writableShopId } : {}),
         category: 'Supplies',
         itemName: itemName.trim(),
         quantity: normalizedQuantity,
-        targetDate: tomorrow.toISOString(),
+        targetDate: getTomorrowDate(),
         status: 'Pending',
       });
 
       setItemName('');
       await load();
-    } catch {
-      Alert.alert('خطأ', 'تعذر إضافة المادة');
+    } catch (error) {
+      Alert.alert(
+        'خطأ',
+        getApiErrorMessage(error, 'تعذر إضافة المادة.'),
+      );
     }
   };
 
@@ -99,6 +140,24 @@ export function NextDayEssentialsScreen() {
       <View style={styles.formCard}>
         <Text style={styles.heading}>طلبيات اليوم التالي</Text>
         <Text style={styles.helper}>{branchLabel}</Text>
+        {!isShopScoped ? (
+          <View style={styles.shopOptions}>
+            {shops.map((shop) => {
+              const active = selectedShopId === shop.id;
+              return (
+                <TouchableOpacity
+                  key={shop.id}
+                  style={[styles.shopChip, active ? styles.shopChipActive : null]}
+                  onPress={() => setSelectedShopId(shop.id)}
+                >
+                  <Text style={[styles.shopChipText, active ? styles.shopChipTextActive : null]}>
+                    {shop.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ) : null}
         <TextInput style={styles.input} value={itemName} onChangeText={setItemName} placeholder="اسم المادة" />
         <TextInput
           style={styles.input}
@@ -146,6 +205,30 @@ const styles = StyleSheet.create({
   },
   heading: { ...theme.typography.heading, color: theme.colors.onSurface, textAlign: 'right' },
   helper: { ...theme.typography.label, color: theme.colors.onSurfaceVariant, textAlign: 'right' },
+  shopOptions: {
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  shopChip: {
+    borderRadius: theme.radius.full,
+    borderWidth: 1,
+    borderColor: theme.colors.outlineVariant,
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+  },
+  shopChipActive: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.secondaryContainer,
+  },
+  shopChipText: {
+    ...theme.typography.label,
+    color: theme.colors.onSurfaceVariant,
+  },
+  shopChipTextActive: {
+    color: theme.colors.primary,
+  },
   input: {
     height: 44,
     borderRadius: theme.radius.md,
