@@ -1,12 +1,29 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { ScreenContainer } from '../components/screen-container';
 import { useAuth } from '../context/auth-context';
 import theme from '../theme';
 import { roleLabel } from '../lib/labels';
 
 export function ProfileScreen() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    if (Platform.OS === 'web') {
+      void logout();
+      return;
+    }
+
+    Alert.alert('تسجيل الخروج', 'هل تريد تسجيل الخروج من الحساب؟', [
+      { text: 'إلغاء', style: 'cancel' },
+      {
+        text: 'تسجيل الخروج',
+        style: 'destructive',
+        onPress: () => void logout(),
+      },
+    ]);
+  };
 
   return (
     <ScreenContainer>
@@ -23,6 +40,11 @@ export function ProfileScreen() {
 
         <Text style={styles.label}>معرّف الفرع</Text>
         <Text style={styles.value}>{user?.shopId ?? '-'}</Text>
+
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <MaterialIcons name="logout" size={20} color={theme.colors.onPrimary} />
+          <Text style={styles.logoutText}>تسجيل الخروج</Text>
+        </TouchableOpacity>
       </View>
     </ScreenContainer>
   );
@@ -40,4 +62,18 @@ const styles = StyleSheet.create({
   },
   label: { ...theme.typography.label, color: theme.colors.onSurfaceVariant, textAlign: 'right' },
   value: { ...theme.typography.body, color: theme.colors.onSurface, textAlign: 'right' },
+  logoutButton: {
+    height: 48,
+    marginTop: theme.spacing.md,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.error,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+  },
+  logoutText: {
+    ...theme.typography.title,
+    color: theme.colors.onPrimary,
+  },
 });

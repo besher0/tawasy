@@ -1,16 +1,19 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import api from '../lib/api';
 import theme from '../theme';
-import { moldConfigurationLabel, orderStatusLabel } from '../lib/labels';
+import { moldConfigurationLabel } from '../lib/labels';
+import { RootStackParamList } from '../navigation/types';
 
-const columns = ['New', 'Reviewing', 'In_Production', 'Ready'];
+const activeColumns = ['New', 'Reviewing', 'In_Production', 'Ready'];
 
 type KanbanOrder = {
   id: string;
   orderNumber: string;
   customerName: string;
+  deliveryDatetime: string;
   isUrgent: boolean;
   shop?: {
     id: string;
@@ -28,30 +31,39 @@ type KanbanOrder = {
 };
 
 export function ProductionKanbanScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [kanban, setKanban] = useState<Record<string, KanbanOrder[]>>({});
   const branchGroups = useMemo(() => {
     const groups = new Map<
       string,
-      { id: string; name: string; columns: Record<string, KanbanOrder[]> }
+      { id: string; name: string; orders: KanbanOrder[] }
     >();
 
-    columns.forEach((column) => {
+    activeColumns.forEach((column) => {
       (kanban[column] ?? []).forEach((order) => {
         const branchId = order.shop?.id ?? 'unassigned';
         const group = groups.get(branchId) ?? {
           id: branchId,
           name: order.shop?.name ?? 'فرع غير محدد',
-          columns: Object.fromEntries(columns.map((status) => [status, []])),
+          orders: [],
         };
 
-        group.columns[column].push(order);
+        group.orders.push(order);
         groups.set(branchId, group);
       });
     });
 
-    return [...groups.values()].sort((first, second) =>
-      first.name.localeCompare(second.name, 'ar'),
-    );
+    return [...groups.values()]
+      .map((group) => ({
+        ...group,
+        orders: group.orders.sort(
+          (first, second) =>
+            Number(second.isUrgent) - Number(first.isUrgent) ||
+            new Date(first.deliveryDatetime).getTime() -
+              new Date(second.deliveryDatetime).getTime(),
+        ),
+      }))
+      .sort((first, second) => first.name.localeCompare(second.name, 'ar'));
   }, [kanban]);
 
   useFocusEffect(
@@ -68,49 +80,50 @@ export function ProductionKanbanScreen() {
   return (
     <ScrollView
       style={styles.screen}
-      contentContainerStyle={[styles.content, Platform.OS === 'web' ? styles.webContent : null]}
+      contentContainerStyle={styles.content}
     >
-      <Text style={styles.heading}>لوحة الإنتاج</Text>
+      <Text style={styles.heading}>طلبات الإنتاج حسب الفرع</Text>
       {branchGroups.length ? (
         branchGroups.map((branch) => (
           <View key={branch.id} style={styles.branchSection}>
-            <Text style={styles.branchTitle}>{branch.name}</Text>
-            <View
-              style={[
-                styles.branchColumns,
-                Platform.OS === 'web' ? styles.webBranchColumns : null,
-              ]}
-            >
-              {columns.map((column) => (
-                <View key={column} style={styles.columnCard}>
-                  <Text style={styles.columnTitle}>{orderStatusLabel(column)}</Text>
-                  {branch.columns[column].length ? (
-                    branch.columns[column].map((order) => (
-                      <View key={order.id} style={styles.orderCard}>
-                        <Text style={styles.orderTitle}>{order.orderNumber}</Text>
-                        <Text style={styles.orderText}>{order.customerName}</Text>
-                        {order.items?.some((item) => item.itemKind === 'Mold') ? (
-                          <Text style={styles.moldSummary}>
-                            {order.items
-                              .filter((item) => item.itemKind === 'Mold')
-                              .map((item) =>
-                                moldConfigurationLabel(item.moldFlavor, item.moldColor),
-                              )
-                              .join('، ')}
-                          </Text>
-                        ) : null}
-                        <Text style={styles.orderText}>
-                          مكان التسليم: {order.moldDeliveryShop?.name ?? 'غير محدد'}
-                        </Text>
-                        <Text style={[styles.orderText, order.isUrgent ? styles.urgent : null]}>
-                          {order.isUrgent ? 'عاجل' : 'عادي'}
-                        </Text>
-                      </View>
-                    ))
-                  ) : (
-                    <Text style={styles.emptyColumn}>لا توجد طلبات</Text>
-                  )}
-                </View>
+            <View style={styles.branchHeader}>
+              <Text style={styles.branchTitle}>{branch.name}</Text>
+              <Text style={styles.branchCount}>{branch.orders.length} طلب</Text>
+            </View>
+            <View style={styles.ordersGrid}>
+              {branch.orders.map((order) => (
+                <TouchableOpacity
+                  key={order.id}
+                  style={styles.orderCard}
+                  onPress={() =>
+                    navigation.navigate('OrderDetails', { orderId: order.id })
+                  }
+                >
+                  <View style={styles.orderHeader}>
+                    <Text style={styles.orderTitle}>{order.orderNumber}</Text>
+                    <Text style={order.isUrgent ? styles.urgent : styles.normal}>
+                      {order.isUrgent ? 'عاجل' : 'عادي'}
+                    </Text>
+                  </View>
+                  <Text style={styles.customerName}>{order.customerName}</Text>
+                  {order.items?.some((item) => item.itemKind === 'Mold') ? (
+                    <Text style={styles.moldSummary}>
+                      {order.items
+                        .filter((item) => item.itemKind === 'Mold')
+                        .map((item) =>
+                          moldConfigurationLabel(item.moldFlavor, item.moldColor),
+                        )
+                        .join('، ')}
+                    </Text>
+                  ) : null}
+                  <Text style={styles.orderText}>
+                    مكان التسليم: {order.moldDeliveryShop?.name ?? 'غير محدد'}
+                  </Text>
+                  <Text style={styles.orderText}>
+                    الموعد: {new Date(order.deliveryDatetime).toLocaleString('ar-SY')}
+                  </Text>
+                  <Text style={styles.detailsHint}>اضغط لعرض التفاصيل والصور</Text>
+                </TouchableOpacity>
               ))}
             </View>
           </View>
@@ -124,14 +137,12 @@ export function ProductionKanbanScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.surface },
-  content: { padding: theme.spacing.lg, gap: theme.spacing.lg },
-  webContent: {
+  content: {
+    padding: theme.spacing.lg,
+    gap: theme.spacing.lg,
     maxWidth: 1280,
     width: '100%',
     alignSelf: 'center',
-    flexDirection: 'row-reverse',
-    flexWrap: 'wrap',
-    alignItems: 'flex-start',
   },
   heading: {
     ...theme.typography.heading,
@@ -143,48 +154,54 @@ const styles = StyleSheet.create({
     width: '100%',
     gap: theme.spacing.sm,
   },
-  branchTitle: {
-    ...theme.typography.heading,
-    color: theme.colors.primary,
-    textAlign: 'right',
+  branchHeader: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     borderRightWidth: 4,
     borderRightColor: theme.colors.primary,
     backgroundColor: theme.colors.secondaryContainer,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
   },
-  branchColumns: {
-    gap: theme.spacing.md,
+  branchTitle: {
+    ...theme.typography.heading,
+    color: theme.colors.primary,
+    textAlign: 'right',
   },
-  webBranchColumns: {
+  branchCount: {
+    ...theme.typography.label,
+    color: theme.colors.primary,
+  },
+  ordersGrid: {
     flexDirection: 'row-reverse',
     flexWrap: 'wrap',
-    alignItems: 'flex-start',
+    gap: theme.spacing.md,
   },
-  columnCard: {
+  orderCard: {
     flexGrow: 1,
-    flexBasis: 260,
-    backgroundColor: theme.colors.surfaceContainerLowest,
-    borderRadius: theme.radius.xl,
+    flexBasis: 280,
+    maxWidth: 420,
+    borderRadius: theme.radius.lg,
     borderWidth: 1,
     borderColor: theme.colors.outlineVariant,
+    backgroundColor: theme.colors.surfaceContainerLowest,
     padding: theme.spacing.lg,
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
-  columnTitle: {
+  orderHeader: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  orderTitle: {
     ...theme.typography.title,
     color: theme.colors.primary,
     textAlign: 'right',
   },
-  orderCard: {
-    borderRadius: theme.radius.lg,
-    backgroundColor: theme.colors.surfaceContainerLow,
-    padding: theme.spacing.md,
-    gap: 2,
-  },
-  orderTitle: {
-    ...theme.typography.label,
-    color: theme.colors.primary,
+  customerName: {
+    ...theme.typography.title,
+    color: theme.colors.onSurface,
     textAlign: 'right',
   },
   orderText: {
@@ -193,17 +210,23 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   urgent: {
+    ...theme.typography.label,
     color: theme.colors.error,
+  },
+  normal: {
+    ...theme.typography.label,
+    color: theme.colors.onSurfaceVariant,
   },
   moldSummary: {
     ...theme.typography.body,
     color: theme.colors.primary,
     textAlign: 'right',
   },
-  emptyColumn: {
+  detailsHint: {
     ...theme.typography.label,
-    color: theme.colors.onSurfaceVariant,
+    color: theme.colors.primary,
     textAlign: 'right',
+    marginTop: theme.spacing.xs,
   },
   emptyState: {
     ...theme.typography.body,

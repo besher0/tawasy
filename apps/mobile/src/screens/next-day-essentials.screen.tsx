@@ -11,17 +11,17 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { UserRole } from '@sugarprecision/shared-types';
 import type { ShopSummary } from '@sugarprecision/shared-types';
 import api from '../lib/api';
 import { getApiErrorMessage } from '../lib/api-error';
+import { downloadApiFile } from '../lib/download';
 import theme from '../theme';
 import { useAuth } from '../context/auth-context';
 import {
   essentialsCategoryLabel,
-  essentialsStatusLabel,
   moldConfigurationLabel,
-  orderStatusLabel,
 } from '../lib/labels';
 import { RootStackParamList } from '../navigation/types';
 
@@ -30,7 +30,7 @@ interface EssentialRow {
   itemName: string;
   category: string;
   quantity: number;
-  status: string;
+  notes?: string | null;
   shop?: {
     id: string;
     name: string;
@@ -42,7 +42,6 @@ interface TomorrowOrder {
   orderNumber: string;
   customerName: string;
   deliveryDatetime: string;
-  status: string;
   isUrgent: boolean;
   items?: {
     id: string;
@@ -108,6 +107,8 @@ export function NextDayEssentialsScreen() {
   const [selectedShopId, setSelectedShopId] = useState('');
   const [itemName, setItemName] = useState('');
   const [quantity, setQuantity] = useState('10');
+  const [notes, setNotes] = useState('');
+  const [exporting, setExporting] = useState(false);
   const [selectedDate, setSelectedDate] = useState(getTomorrowDate);
   const dayOptions = useMemo(() => buildDayOptions(), []);
   const selectedDay = dayOptions.find((day) => day.dateKey === selectedDate);
@@ -232,9 +233,11 @@ export function NextDayEssentialsScreen() {
         quantity: normalizedQuantity,
         targetDate: selectedDate,
         status: 'Pending',
+        notes: notes.trim() || undefined,
       });
 
       setItemName('');
+      setNotes('');
       await load();
     } catch (error) {
       Alert.alert(
@@ -244,10 +247,36 @@ export function NextDayEssentialsScreen() {
     }
   };
 
+  const exportEssentials = async () => {
+    try {
+      setExporting(true);
+      await downloadApiFile(
+        `/print/daily-essentials-by-branch.pdf?targetDate=${encodeURIComponent(selectedDate)}`,
+        `daily-essentials-${selectedDate}.pdf`,
+      );
+    } catch {
+      Alert.alert('خطأ', 'تعذر تنزيل ملف التواصي.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <View style={styles.wrapper}>
       <View style={styles.formCard}>
-        <Text style={styles.heading}>الطلبيات حسب اليوم</Text>
+        <View style={styles.headingRow}>
+          <Text style={styles.heading}>الطلبيات حسب اليوم</Text>
+          <TouchableOpacity
+            style={[styles.exportButton, exporting ? styles.buttonDisabled : null]}
+            onPress={() => void exportEssentials()}
+            disabled={exporting}
+          >
+            <MaterialIcons name="picture-as-pdf" size={20} color={theme.colors.onPrimary} />
+            <Text style={styles.exportButtonText}>
+              {exporting ? 'جاري التحضير...' : 'تنزيل تواصي الفروع PDF'}
+            </Text>
+          </TouchableOpacity>
+        </View>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -298,6 +327,15 @@ export function NextDayEssentialsScreen() {
           onChangeText={setQuantity}
           keyboardType="numeric"
           placeholder="الكمية"
+        />
+        <TextInput
+          style={styles.notesInput}
+          value={notes}
+          onChangeText={setNotes}
+          placeholder="ملاحظة الطلبية"
+          multiline
+          textAlign="right"
+          textAlignVertical="top"
         />
         <TouchableOpacity style={[styles.button, !canCreate ? styles.buttonDisabled : null]} onPress={addItem}>
           <Text style={styles.buttonText}>إضافة</Text>
@@ -354,9 +392,6 @@ export function NextDayEssentialsScreen() {
                     الفرع: {order.shop?.name ?? 'غير محدد'}
                   </Text>
                   <Text style={styles.itemMeta}>
-                    الحالة: {orderStatusLabel(order.status)}
-                  </Text>
-                  <Text style={styles.itemMeta}>
                     الموعد: {new Date(order.deliveryDatetime).toLocaleString()}
                   </Text>
                 </TouchableOpacity>
@@ -374,9 +409,9 @@ export function NextDayEssentialsScreen() {
                     الفئة: {essentialsCategoryLabel(essential.category)}
                   </Text>
                   <Text style={styles.itemMeta}>الكمية: {essential.quantity}</Text>
-                  <Text style={styles.itemMeta}>
-                    الحالة: {essentialsStatusLabel(essential.status)}
-                  </Text>
+                  {essential.notes ? (
+                    <Text style={styles.notesText}>ملاحظة: {essential.notes}</Text>
+                  ) : null}
                 </View>
               ))
             ) : (
@@ -404,6 +439,28 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   heading: { ...theme.typography.heading, color: theme.colors.onSurface, textAlign: 'right' },
+  headingRow: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  exportButton: {
+    minHeight: 44,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.md,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+  },
+  exportButtonText: {
+    ...theme.typography.label,
+    color: theme.colors.onPrimary,
+    fontFamily: 'Cairo_700Bold',
+  },
   helper: { ...theme.typography.label, color: theme.colors.onSurfaceVariant, textAlign: 'right' },
   dayOptions: {
     gap: theme.spacing.sm,
@@ -470,6 +527,17 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     ...theme.typography.body,
   },
+  notesInput: {
+    minHeight: 76,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.outlineVariant,
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    textAlign: 'right',
+    ...theme.typography.body,
+  },
   button: {
     height: 44,
     borderRadius: theme.radius.lg,
@@ -479,6 +547,7 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     backgroundColor: theme.colors.surfaceVariant,
+    opacity: 0.65,
   },
   buttonText: { ...theme.typography.title, color: theme.colors.onPrimary },
   list: {
@@ -553,5 +622,14 @@ const styles = StyleSheet.create({
   },
   itemName: { ...theme.typography.title, color: theme.colors.onSurface, textAlign: 'right' },
   itemMeta: { ...theme.typography.body, color: theme.colors.onSurfaceVariant, textAlign: 'right' },
+  notesText: {
+    ...theme.typography.body,
+    color: theme.colors.onSurface,
+    backgroundColor: theme.colors.surfaceContainerLow,
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.sm,
+    marginTop: theme.spacing.xs,
+    textAlign: 'right',
+  },
   moldSummary: { ...theme.typography.body, color: theme.colors.primary, textAlign: 'right' },
 });

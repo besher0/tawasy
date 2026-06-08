@@ -5,6 +5,10 @@ describe('PrintingService', () => {
   const prisma = {
     order: {
       findUnique: jest.fn().mockResolvedValue(null),
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    dailyEssential: {
+      findMany: jest.fn().mockResolvedValue([]),
     },
     printer: {
       findMany: jest.fn().mockResolvedValue([]),
@@ -29,5 +33,20 @@ describe('PrintingService', () => {
     await expect(service.generateProductionSheet('missing')).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+
+  it('generates branch orders and daily essentials pdf files', async () => {
+    const actor = {
+      sub: 'user-id',
+      role: 'FactoryManager',
+      name: 'Factory',
+      phone: '0999999999',
+    };
+
+    const ordersPdf = await service.generateOrdersByBranch({ actor });
+    const essentialsPdf = await service.generateDailyEssentialsByBranch({ actor });
+
+    expect(ordersPdf.subarray(0, 4).toString()).toBe('%PDF');
+    expect(essentialsPdf.subarray(0, 4).toString()).toBe('%PDF');
   });
 });

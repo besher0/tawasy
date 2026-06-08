@@ -1,12 +1,44 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { UserRole } from '@sugarprecision/shared-types';
 import PDFDocument from 'pdfkit';
 import ipp from 'ipp';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { AuthenticatedRequestUser } from '../../common/decorators/current-user.decorator';
+
+const cairoRegular = require.resolve(
+  '@expo-google-fonts/cairo/400Regular/Cairo_400Regular.ttf',
+);
+const cairoBold = require.resolve(
+  '@expo-google-fonts/cairo/700Bold/Cairo_700Bold.ttf',
+);
+
+const categoryLabels: Record<string, string> = {
+  Ready_Cake: 'كيك جاهز',
+  Raw_Materials: 'مواد أولية',
+  Pieces: 'قطع',
+  Supplies: 'مستلزمات',
+};
+
+const itemKindLabels: Record<string, string> = {
+  Mold: 'قالب',
+  Pieces: 'قطع',
+};
+
+const flavorLabels: Record<string, string> = {
+  White: 'أبيض',
+  Black: 'أسود',
+  Mixed: 'مشكل',
+  Cream: 'كريمة',
+  Chocolate: 'شوكولا',
+  Harissa: 'هريسة',
+};
 
 @Injectable()
 export class PrintingService {
@@ -85,6 +117,166 @@ export class PrintingService {
 
     return await new Promise<Buffer>((resolve) => {
       doc.on('end', () => resolve(Buffer.concat(chunks)));
+    });
+  }
+
+  async generateOrdersByBranch(params: {
+    date?: string;
+    search?: string;
+    actor: AuthenticatedRequestUser;
+  }): Promise<Buffer> {
+    const where: Prisma.OrderWhereInput = {};
+    this.applyShopScope(where, params.actor);
+
+    const range = this.getDateRange(params.date);
+    if (range) {
+      where.deliveryDatetime = range;
+    }
+
+    if (params.search?.trim()) {
+      where.OR = [
+        { orderNumber: { contains: params.search.trim(), mode: 'insensitive' } },
+        { customerName: { contains: params.search.trim(), mode: 'insensitive' } },
+        { customerPhone: { contains: params.search.trim(), mode: 'insensitive' } },
+      ];
+    }
+
+    const orders = await this.prisma.order.findMany({
+      where,
+      include: {
+        shop: true,
+        moldDeliveryShop: true,
+        items: true,
+      },
+      orderBy: [
+        { shop: { name: 'asc' } },
+        { deliveryDatetime: 'asc' },
+        { createdAt: 'asc' },
+      ],
+    });
+
+    return this.buildArabicPdf((doc) => {
+      this.writeHeading(doc, 'الطلبيات حسب الفروع');
+      this.writeSubheading(
+        doc,
+        params.date ? `التاريخ: ${this.formatDate(params.date)}` : 'جميع التواريخ',
+      );
+
+      if (!orders.length) {
+        this.writeBody(doc, 'لا توجد طلبيات للطباعة.');
+        return;
+      }
+
+      const groups = this.groupBy(
+        orders,
+        (order) => order.shop?.name ?? 'فرع غير محدد',
+      );
+
+      groups.forEach((branchOrders, branchName) => {
+        this.ensureSpace(doc, 110);
+        this.writeSectionTitle(doc, branchName);
+
+        branchOrders.forEach((order, index) => {
+          this.ensureSpace(doc, 150);
+          this.writeBody(
+            doc,
+            `${index + 1}. الطلب ${order.orderNumber} - ${order.customerName}`,
+            true,
+          );
+          this.writeBody(doc, `الهاتف: ${order.customerPhone}`);
+          this.writeBody(
+            doc,
+            `موعد التسليم: ${this.formatDateTime(order.deliveryDatetime)}`,
+          );
+          this.writeBody(
+            doc,
+            `مكان التسليم: ${order.moldDeliveryShop?.name ?? order.shop?.name ?? '-'}`,
+          );
+          this.writeBody(doc, `الأولوية: ${order.isUrgent ? 'عاجل' : 'عادي'}`);
+          if (order.notes) {
+            this.writeBody(doc, `ملاحظات الطلب: ${order.notes}`);
+          }
+
+          order.items.forEach((item, itemIndex) => {
+            const itemDetails = [
+              `${itemIndex + 1}) ${itemKindLabels[item.itemKind] ?? item.itemKind}`,
+              item.moldFlavor
+                ? `النوع: ${flavorLabels[item.moldFlavor] ?? item.moldFlavor}`
+                : null,
+              item.moldColor ? `اللون: ${item.moldColor}` : null,
+              `الكمية/الأشخاص: ${item.peopleCount}`,
+              item.specialDetails ? `ملاحظات: ${item.specialDetails}` : null,
+            ].filter(Boolean);
+            this.writeBody(doc, itemDetails.join(' - '));
+          });
+          doc.moveDown(0.5);
+        });
+      });
+    });
+  }
+
+  async generateDailyEssentialsByBranch(params: {
+    targetDate?: string;
+    actor: AuthenticatedRequestUser;
+  }): Promise<Buffer> {
+    const where: Prisma.DailyEssentialWhereInput = {};
+    this.applyShopScope(where, params.actor);
+
+    const range = this.getDateRange(params.targetDate);
+    if (range) {
+      where.targetDate = range;
+    }
+
+    const essentials = await this.prisma.dailyEssential.findMany({
+      where,
+      include: { shop: true },
+      orderBy: [
+        { shop: { name: 'asc' } },
+        { targetDate: 'asc' },
+        { createdAt: 'asc' },
+      ],
+    });
+
+    return this.buildArabicPdf((doc) => {
+      this.writeHeading(doc, 'التواصي اليومية حسب الفروع');
+      this.writeSubheading(
+        doc,
+        params.targetDate
+          ? `التاريخ: ${this.formatDate(params.targetDate)}`
+          : 'جميع التواريخ',
+      );
+
+      if (!essentials.length) {
+        this.writeBody(doc, 'لا توجد تواصي للطباعة.');
+        return;
+      }
+
+      const groups = this.groupBy(
+        essentials,
+        (item) => item.shop?.name ?? 'فرع غير محدد',
+      );
+
+      groups.forEach((branchEssentials, branchName) => {
+        this.ensureSpace(doc, 100);
+        this.writeSectionTitle(doc, branchName);
+
+        branchEssentials.forEach((item, index) => {
+          this.ensureSpace(doc, 70);
+          this.writeBody(
+            doc,
+            `${index + 1}. ${item.itemName} - الكمية: ${item.quantity}`,
+            true,
+          );
+          this.writeBody(
+            doc,
+            `الفئة: ${categoryLabels[item.category] ?? item.category}`,
+          );
+          if (item.notes) {
+            this.writeBody(doc, `ملاحظة: ${item.notes}`);
+          }
+          doc.moveDown(0.35);
+        });
+      });
     });
   }
 
@@ -185,6 +377,120 @@ export class PrintingService {
           resolve();
         },
       );
+    });
+  }
+
+  private buildArabicPdf(writeContent: (doc: PDFKit.PDFDocument) => void) {
+    const doc = new PDFDocument({ margin: 40, size: 'A4' });
+    const chunks: Buffer[] = [];
+
+    doc.on('data', (chunk) => chunks.push(chunk as Buffer));
+    doc.registerFont('Cairo', cairoRegular);
+    doc.registerFont('CairoBold', cairoBold);
+    doc.font('Cairo');
+    writeContent(doc);
+    doc.end();
+
+    return new Promise<Buffer>((resolve, reject) => {
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+    });
+  }
+
+  private writeHeading(doc: PDFKit.PDFDocument, text: string) {
+    doc.font('CairoBold').fontSize(19).text(text, {
+      align: 'right',
+      features: ['rtla'],
+    });
+    doc.moveDown(0.3);
+  }
+
+  private writeSubheading(doc: PDFKit.PDFDocument, text: string) {
+    doc.font('Cairo').fontSize(10).fillColor('#587083').text(text, {
+      align: 'right',
+      features: ['rtla'],
+    });
+    doc.fillColor('#102436').moveDown();
+  }
+
+  private writeSectionTitle(doc: PDFKit.PDFDocument, text: string) {
+    doc.font('CairoBold').fontSize(14).fillColor('#0a6fb8').text(text, {
+      align: 'right',
+      features: ['rtla'],
+    });
+    doc.fillColor('#102436').moveDown(0.35);
+  }
+
+  private writeBody(doc: PDFKit.PDFDocument, text: string, bold = false) {
+    doc.font(bold ? 'CairoBold' : 'Cairo').fontSize(10.5).text(text, {
+      align: 'right',
+      features: ['rtla'],
+      lineGap: 2,
+    });
+  }
+
+  private ensureSpace(doc: PDFKit.PDFDocument, minimumHeight: number) {
+    if (doc.y + minimumHeight > doc.page.height - doc.page.margins.bottom) {
+      doc.addPage();
+    }
+  }
+
+  private getDateRange(value?: string) {
+    if (!value) {
+      return undefined;
+    }
+
+    const start = new Date(value);
+    if (Number.isNaN(start.getTime())) {
+      throw new BadRequestException('Invalid date');
+    }
+
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    return { gte: start, lt: end };
+  }
+
+  private applyShopScope(
+    where: Prisma.OrderWhereInput | Prisma.DailyEssentialWhereInput,
+    actor: AuthenticatedRequestUser,
+  ) {
+    if (
+      actor.role === UserRole.SHOP_MANAGER ||
+      actor.role === UserRole.SHOP_EMPLOYEE
+    ) {
+      if (!actor.shopId) {
+        throw new ForbiddenException('Your account is not linked to a shop');
+      }
+      where.shopId = actor.shopId;
+    }
+  }
+
+  private groupBy<T>(items: T[], getKey: (item: T) => string) {
+    const groups = new Map<string, T[]>();
+    items.forEach((item) => {
+      const key = getKey(item);
+      groups.set(key, [...(groups.get(key) ?? []), item]);
+    });
+    return groups;
+  }
+
+  private formatDate(value: string | Date) {
+    return new Date(value).toLocaleDateString('ar-SY', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'Asia/Damascus',
+    });
+  }
+
+  private formatDateTime(value: Date) {
+    return value.toLocaleString('ar-SY', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Asia/Damascus',
     });
   }
 }

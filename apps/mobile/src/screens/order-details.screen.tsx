@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { RouteProp, useRoute } from '@react-navigation/native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/types';
 import api from '../lib/api';
+import { downloadRemoteFile } from '../lib/download';
 import theme from '../theme';
-import { StatusBadge } from '../components/status-badge';
 import {
   cakeFinishLabel,
   cakeShapeLabel,
   moldFlavorLabel,
   orderItemKindLabel,
-  orderStatusLabel,
 } from '../lib/labels';
 
 type ScreenRoute = RouteProp<RootStackParamList, 'OrderDetails'>;
@@ -28,12 +28,18 @@ export function OrderDetailsScreen() {
     void loadOrder();
   }, []);
 
-  const moveStatus = async (status: string) => {
+  const downloadImage = async (
+    imageUrl: string,
+    itemIndex: number,
+    imageIndex: number,
+  ) => {
     try {
-      await api.post(`/orders/${route.params.orderId}/status`, { status });
-      await loadOrder();
+      await downloadRemoteFile(
+        imageUrl,
+        `${order.orderNumber}-item-${itemIndex + 1}-image-${imageIndex + 1}.jpg`,
+      );
     } catch {
-      Alert.alert('خطأ', 'تعذر تحديث حالة الطلب');
+      Alert.alert('خطأ', 'تعذر تحميل الصورة.');
     }
   };
 
@@ -50,11 +56,16 @@ export function OrderDetailsScreen() {
       <View style={styles.card}>
         <Text style={styles.orderNumber}>{order.orderNumber}</Text>
         <Text style={styles.title}>{order.customerName}</Text>
-        <StatusBadge label={orderStatusLabel(order.status)} tone={order.isUrgent ? 'error' : 'neutral'} />
+        <Text style={[styles.meta, order.isUrgent ? styles.urgent : null]}>
+          {order.isUrgent ? 'طلب عاجل' : 'طلب عادي'}
+        </Text>
         <Text style={styles.meta}>فرع الطلب: {order.shop?.name ?? '-'}</Text>
         <Text style={styles.meta}>مكان التسليم: {order.moldDeliveryShop?.name ?? order.shop?.name ?? '-'}</Text>
         <Text style={styles.meta}>موعد التسليم: {new Date(order.deliveryDatetime).toLocaleString()}</Text>
+        <Text style={styles.meta}>رقم الهاتف: {order.customerPhone}</Text>
         <Text style={styles.meta}>الإجمالي: {order.totalPrice} ر.س</Text>
+        <Text style={styles.meta}>العربون: {order.depositAmount} ر.س</Text>
+        {order.notes ? <Text style={styles.orderNotes}>ملاحظات: {order.notes}</Text> : null}
       </View>
 
       <View style={styles.card}>
@@ -89,11 +100,18 @@ export function OrderDetailsScreen() {
             {item.referenceImages?.length ? (
               <View style={styles.imageRow}>
                 {item.referenceImages.map((imageUrl: string, imageIndex: number) => (
-                  <Image
-                    key={`${imageUrl}-${imageIndex}`}
-                    source={{ uri: imageUrl }}
-                    style={styles.referenceImage}
-                  />
+                  <View key={`${imageUrl}-${imageIndex}`} style={styles.imageCard}>
+                    <Image source={{ uri: imageUrl }} style={styles.referenceImage} />
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel="تحميل الصورة"
+                      style={styles.downloadImageButton}
+                      onPress={() => void downloadImage(imageUrl, index, imageIndex)}
+                    >
+                      <MaterialIcons name="download" size={18} color={theme.colors.onPrimary} />
+                      <Text style={styles.downloadImageText}>تحميل</Text>
+                    </TouchableOpacity>
+                  </View>
                 ))}
               </View>
             ) : null}
@@ -101,17 +119,6 @@ export function OrderDetailsScreen() {
         ))}
       </View>
 
-      <View style={styles.actions}>
-        <TouchableOpacity style={styles.secondaryButton} onPress={() => void moveStatus('In_Production')}>
-          <Text style={styles.secondaryButtonText}>إلى قيد الإنتاج</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.secondaryButton} onPress={() => void moveStatus('Ready')}>
-          <Text style={styles.secondaryButtonText}>تعيين جاهز</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.primaryButton} onPress={() => void moveStatus('Delivered')}>
-          <Text style={styles.primaryButtonText}>تأكيد التسليم</Text>
-        </TouchableOpacity>
-      </View>
     </ScrollView>
   );
 }
@@ -137,6 +144,15 @@ const styles = StyleSheet.create({
   orderNumber: { ...theme.typography.title, color: theme.colors.primary, textAlign: 'right' },
   title: { ...theme.typography.title, color: theme.colors.onSurface, textAlign: 'right' },
   meta: { ...theme.typography.body, color: theme.colors.onSurfaceVariant, textAlign: 'right' },
+  urgent: { color: theme.colors.error, fontFamily: 'Cairo_700Bold' },
+  orderNotes: {
+    ...theme.typography.body,
+    color: theme.colors.onSurface,
+    backgroundColor: theme.colors.surfaceContainerLow,
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.sm,
+    textAlign: 'right',
+  },
   itemCard: {
     borderTopWidth: 1,
     borderTopColor: theme.colors.outlineVariant,
@@ -154,32 +170,25 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: theme.spacing.sm,
   },
-  referenceImage: {
-    width: 96,
-    height: 96,
-    borderRadius: theme.radius.md,
-  },
-  actions: {
-    gap: theme.spacing.sm,
-    width: '100%',
-    maxWidth: 1280,
-    alignSelf: 'center',
-  },
-  secondaryButton: {
-    height: 44,
-    borderRadius: theme.radius.lg,
+  imageCard: {
+    width: 132,
     borderWidth: 1,
     borderColor: theme.colors.outlineVariant,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderRadius: theme.radius.md,
+    overflow: 'hidden',
+    backgroundColor: theme.colors.surfaceContainerLowest,
   },
-  secondaryButtonText: { ...theme.typography.title, color: theme.colors.onSurface },
-  primaryButton: {
-    height: 48,
-    borderRadius: theme.radius.lg,
+  referenceImage: {
+    width: '100%',
+    height: 118,
+  },
+  downloadImageButton: {
+    minHeight: 38,
     backgroundColor: theme.colors.primary,
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: theme.spacing.xs,
   },
-  primaryButtonText: { ...theme.typography.title, color: theme.colors.onPrimary },
+  downloadImageText: { ...theme.typography.label, color: theme.colors.onPrimary },
 });

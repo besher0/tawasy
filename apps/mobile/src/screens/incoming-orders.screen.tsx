@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import {
+  Alert,
   SectionList,
   StyleSheet,
   Text,
@@ -9,13 +10,15 @@ import {
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { MaterialIcons } from '@expo/vector-icons';
 import { UserRole } from '@sugarprecision/shared-types';
 import { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../context/auth-context';
 import theme from '../theme';
 import api from '../lib/api';
+import { downloadApiFile } from '../lib/download';
 import { StatusBadge } from '../components/status-badge';
-import { moldConfigurationLabel, orderStatusLabel } from '../lib/labels';
+import { moldConfigurationLabel } from '../lib/labels';
 
 interface OrderItemPreview {
   id: string;
@@ -28,7 +31,6 @@ interface OrderRow {
   id: string;
   orderNumber: string;
   customerName: string;
-  status: string;
   deliveryDatetime: string;
   isUrgent: boolean;
   items?: OrderItemPreview[];
@@ -85,6 +87,7 @@ export function IncomingOrdersScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [search, setSearch] = useState('');
+  const [exporting, setExporting] = useState(false);
   const isFactoryView =
     user?.role === UserRole.ADMIN || user?.role === UserRole.FACTORY_MANAGER;
 
@@ -147,10 +150,39 @@ export function IncomingOrdersScreen() {
     void loadOrders();
   }, [loadOrders]));
 
+  const exportOrders = async () => {
+    try {
+      setExporting(true);
+      const query = search.trim()
+        ? `?search=${encodeURIComponent(search.trim())}`
+        : '';
+      await downloadApiFile(
+        `/print/orders-by-branch.pdf${query}`,
+        'orders-by-branch.pdf',
+      );
+    } catch {
+      Alert.alert('خطأ', 'تعذر تنزيل ملف الطلبيات.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <View style={styles.wrapper}>
       <View style={styles.header}>
-        <Text style={styles.heading}>الطلبات الواردة</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.heading}>الطلبات الواردة</Text>
+          <TouchableOpacity
+            style={[styles.exportButton, exporting ? styles.buttonDisabled : null]}
+            onPress={() => void exportOrders()}
+            disabled={exporting}
+          >
+            <MaterialIcons name="picture-as-pdf" size={20} color={theme.colors.onPrimary} />
+            <Text style={styles.exportButtonText}>
+              {exporting ? 'جاري التحضير...' : 'تنزيل طلبيات الفروع PDF'}
+            </Text>
+          </TouchableOpacity>
+        </View>
         <TextInput
           style={styles.search}
           placeholder="بحث عن طلب أو عميل"
@@ -203,7 +235,6 @@ export function IncomingOrdersScreen() {
                   .join('، ')}
               </Text>
             ) : null}
-            <Text style={styles.meta}>الحالة: {orderStatusLabel(item.status)}</Text>
             <Text style={styles.meta}>
               وقت التسليم: {new Date(item.deliveryDatetime).toLocaleTimeString('ar-SY', {
                 hour: '2-digit',
@@ -231,6 +262,31 @@ const styles = StyleSheet.create({
     ...theme.typography.heading,
     color: theme.colors.onSurface,
     textAlign: 'right',
+  },
+  headerRow: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  exportButton: {
+    minHeight: 44,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.md,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+  },
+  exportButtonText: {
+    ...theme.typography.label,
+    color: theme.colors.onPrimary,
+    fontFamily: 'Cairo_700Bold',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   search: {
     height: 48,

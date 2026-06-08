@@ -30,6 +30,7 @@ const TAB_LABELS: Record<string, string> = {
   'New Order': 'طلب جديد',
   Essentials: 'الطلبيات اليومية',
   Analytics: 'التحليلات',
+  Account: 'الحساب',
 };
 
 const TAB_ICONS: Record<string, keyof typeof MaterialIcons.glyphMap> = {
@@ -38,6 +39,7 @@ const TAB_ICONS: Record<string, keyof typeof MaterialIcons.glyphMap> = {
   'New Order': 'add-shopping-cart',
   Essentials: 'inventory',
   Analytics: 'analytics',
+  Account: 'person',
 };
 
 const navigationTheme = {
@@ -54,6 +56,7 @@ const navigationTheme = {
 
 function WebTabBar(props: BottomTabBarProps) {
   const { state, navigation } = props;
+  const { logout } = useAuth();
 
   if (Platform.OS !== 'web') {
     return <BottomTabBar {...props} />;
@@ -63,9 +66,14 @@ function WebTabBar(props: BottomTabBarProps) {
     <>
       <View style={styles.webHeader}>
         <View style={styles.webHeaderActions}>
-          <View style={styles.avatar}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="فتح الحساب"
+            style={styles.avatar}
+            onPress={() => navigation.navigate('Account')}
+          >
             <MaterialIcons name="person" size={22} color={theme.colors.onPrimary} />
-          </View>
+          </Pressable>
         </View>
         <Text style={styles.webSearch}>بحث عن الطلبات...</Text>
       </View>
@@ -116,6 +124,15 @@ function WebTabBar(props: BottomTabBarProps) {
             );
           })}
         </View>
+
+        <Pressable
+          accessibilityRole="button"
+          style={styles.webLogout}
+          onPress={() => void logout()}
+        >
+          <MaterialIcons name="logout" size={21} color={theme.colors.error} />
+          <Text style={styles.webLogoutText}>تسجيل الخروج</Text>
+        </Pressable>
       </View>
     </>
   );
@@ -152,6 +169,7 @@ function AppTabs() {
       {isFactory ? (
         <Tabs.Screen name="Analytics" component={AnalyticsScreen} options={{ title: 'التحليلات', tabBarLabel: 'التحليلات' }} />
       ) : null}
+      <Tabs.Screen name="Account" component={ProfileScreen} options={{ title: 'الحساب', tabBarLabel: 'الحساب' }} />
     </Tabs.Navigator>
   );
 }
@@ -174,7 +192,6 @@ export function AppNavigator() {
           <>
             <Stack.Screen name="App" component={AppTabs} options={{ headerShown: false }} />
             <Stack.Screen name="OrderDetails" component={OrderDetailsScreen} options={{ title: 'تفاصيل الطلب' }} />
-            <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'الملف الشخصي' }} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
@@ -281,6 +298,23 @@ const styles = StyleSheet.create({
   },
   webNav: {
     gap: 8,
+  },
+  webLogout: {
+    minHeight: 46,
+    marginTop: 'auto',
+    borderRadius: theme.radius.lg,
+    paddingHorizontal: 14,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.error,
+    backgroundColor: theme.colors.errorContainer,
+  },
+  webLogoutText: {
+    ...theme.typography.label,
+    color: theme.colors.error,
+    fontFamily: 'Cairo_700Bold',
   },
   webNavItem: {
     minHeight: 46,

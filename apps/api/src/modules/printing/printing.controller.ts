@@ -5,6 +5,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   Res,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -32,6 +33,44 @@ export class PrintingController {
     const pdf = await this.printingService.generateProductionSheet(orderId);
     response.setHeader('Content-Type', 'application/pdf');
     response.setHeader('Content-Disposition', 'inline; filename="production-sheet.pdf"');
+    response.send(pdf);
+  }
+
+  @Get('orders-by-branch.pdf')
+  async ordersByBranch(
+    @Query('date') date: string | undefined,
+    @Query('search') search: string | undefined,
+    @CurrentUser() user: AuthenticatedRequestUser,
+    @Res() response: Response,
+  ) {
+    const pdf = await this.printingService.generateOrdersByBranch({
+      date,
+      search,
+      actor: user,
+    });
+    response.setHeader('Content-Type', 'application/pdf');
+    response.setHeader(
+      'Content-Disposition',
+      'attachment; filename="orders-by-branch.pdf"',
+    );
+    response.send(pdf);
+  }
+
+  @Get('daily-essentials-by-branch.pdf')
+  async dailyEssentialsByBranch(
+    @Query('targetDate') targetDate: string | undefined,
+    @CurrentUser() user: AuthenticatedRequestUser,
+    @Res() response: Response,
+  ) {
+    const pdf = await this.printingService.generateDailyEssentialsByBranch({
+      targetDate,
+      actor: user,
+    });
+    response.setHeader('Content-Type', 'application/pdf');
+    response.setHeader(
+      'Content-Disposition',
+      'attachment; filename="daily-essentials-by-branch.pdf"',
+    );
     response.send(pdf);
   }
 

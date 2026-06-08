@@ -18,6 +18,7 @@
     "prisma:seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
+    "@expo-google-fonts/cairo": "^0.4.2",
     "@neondatabase/serverless": "^0.10.4",
     "@nestjs/bullmq": "^10.2.3",
     "@nestjs/common": "^10.4.15",

@@ -18,6 +18,10 @@ export function setAuthTokens(tokens: AuthTokens | null) {
   refreshToken = tokens?.refreshToken ?? null;
 }
 
+export function getAccessToken() {
+  return accessToken;
+}
+
 export function setAuthTokensListener(listener: ((tokens: AuthTokens | null) => void) | null) {
   authTokensListener = listener;
 }
