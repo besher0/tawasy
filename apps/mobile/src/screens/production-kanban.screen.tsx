@@ -23,6 +23,7 @@ type KanbanOrder = {
     id: string;
     itemKind: string;
     moldFlavor?: string | null;
+    moldInnerColor?: string | null;
     moldColor?: string | null;
   }[];
   moldDeliveryShop?: {
@@ -111,7 +112,11 @@ export function ProductionKanbanScreen() {
                       {order.items
                         .filter((item) => item.itemKind === 'Mold')
                         .map((item) =>
-                          moldConfigurationLabel(item.moldFlavor, item.moldColor),
+                          moldConfigurationLabel(
+                            item.moldFlavor,
+                            item.moldColor,
+                            item.moldInnerColor,
+                          ),
                         )
                         .join('، ')}
                     </Text>

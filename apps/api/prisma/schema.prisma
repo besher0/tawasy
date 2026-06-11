@@ -63,6 +63,12 @@ enum MoldFlavor {
   Harissa
 }
 
+enum MoldInnerColor {
+  White
+  Black
+  Mixed
+}
+
 enum CakeFinish {
   None
   Disk_Enlargement
@@ -170,6 +176,7 @@ model OrderItem {
   layers           Int
   shape            CakeShape?
   moldFlavor       MoldFlavor?
+  moldInnerColor   MoldInnerColor?
   moldColor        String?
   hasFillings      Boolean       @default(false)
   filling          String?

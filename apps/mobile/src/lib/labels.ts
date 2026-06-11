@@ -61,6 +61,12 @@ const moldFlavorLabels: Record<string, string> = {
   Harissa: 'هريسة',
 };
 
+const moldInnerColorLabels: Record<string, string> = {
+  White: 'أبيض',
+  Black: 'أسود',
+  Mixed: 'مشكل',
+};
+
 const cakeFinishLabels: Record<string, string> = {
   None: 'بدون',
   Disk_Enlargement: 'تكبير ديسك',
@@ -103,11 +109,20 @@ export function moldFlavorLabel(value?: string | null) {
   return value ? moldFlavorLabels[value] ?? value : '-';
 }
 
+export function moldInnerColorLabel(value?: string | null) {
+  return value ? moldInnerColorLabels[value] ?? value : '-';
+}
+
 export function moldConfigurationLabel(
   flavor?: string | null,
   color?: string | null,
+  innerColor?: string | null,
 ) {
-  return `${moldFlavorLabel(flavor)} - ${color?.trim() || 'لون غير محدد'}`;
+  return [
+    moldFlavorLabel(flavor),
+    `داخلي: ${innerColor ? moldInnerColorLabel(innerColor) : 'غير محدد'}`,
+    `خارجي: ${color?.trim() || 'غير محدد'}`,
+  ].join(' - ');
 }
 
 export function cakeFinishLabel(value?: string | null) {

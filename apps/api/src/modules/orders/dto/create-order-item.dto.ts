@@ -4,6 +4,7 @@ import {
   CakeShape,
   CakeType,
   MoldFlavor,
+  MoldInnerColor,
   OrderItemKind,
 } from '@sugarprecision/shared-types';
 import {
@@ -52,7 +53,12 @@ export class CreateOrderItemDto {
   @IsEnum(MoldFlavor)
   moldFlavor?: MoldFlavor;
 
-  @ApiPropertyOptional({ description: 'Requested mold color' })
+  @ApiPropertyOptional({ enum: MoldInnerColor, description: 'Mold color from the inside' })
+  @ValidateIf((item: CreateOrderItemDto) => item.itemKind === OrderItemKind.MOLD)
+  @IsEnum(MoldInnerColor)
+  moldInnerColor?: MoldInnerColor;
+
+  @ApiPropertyOptional({ description: 'Requested external mold color' })
   @ValidateIf((item: CreateOrderItemDto) => item.itemKind === OrderItemKind.MOLD)
   @IsString()
   @IsNotEmpty()

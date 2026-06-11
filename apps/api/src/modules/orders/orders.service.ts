@@ -67,6 +67,7 @@ export class OrdersService {
             layers: item.layers,
             shape: item.shape,
             moldFlavor: item.moldFlavor,
+            moldInnerColor: item.moldInnerColor,
             moldColor: item.moldColor,
             hasFillings: item.hasFillings,
             filling: item.filling,

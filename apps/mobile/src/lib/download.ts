@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import api, { API_BASE_URL, getAccessToken } from './api';
+import * as Print from 'expo-print';
 
 function triggerWebDownload(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);
@@ -26,27 +26,6 @@ async function shareDownloadedFile(uri: string, mimeType: string) {
   });
 }
 
-export async function downloadApiFile(
-  path: string,
-  fileName: string,
-  mimeType = 'application/pdf',
-) {
-  if (Platform.OS === 'web') {
-    const response = await api.get<Blob>(path, { responseType: 'blob' });
-    triggerWebDownload(response.data, fileName);
-    return;
-  }
-
-  const targetUri = `${FileSystem.cacheDirectory}${fileName}`;
-  const token = getAccessToken();
-  const result = await FileSystem.downloadAsync(
-    `${API_BASE_URL}${path}`,
-    targetUri,
-    token ? { headers: { Authorization: `Bearer ${token}` } } : undefined,
-  );
-  await shareDownloadedFile(result.uri, mimeType);
-}
-
 export async function downloadRemoteFile(
   url: string,
   fileName: string,
@@ -61,7 +40,41 @@ export async function downloadRemoteFile(
     return;
   }
 
-  const targetUri = `${FileSystem.cacheDirectory}${fileName}`;
-  const result = await FileSystem.downloadAsync(url, targetUri);
+  const targetFile = new FileSystem.File(FileSystem.Paths.cache, fileName);
+  const result = await FileSystem.File.downloadFileAsync(url, targetFile, {
+    idempotent: true,
+  });
   await shareDownloadedFile(result.uri, mimeType);
+}
+
+export async function printHtmlAsPdf(html: string, fileName: string) {
+  if (Platform.OS === 'web') {
+    const frame = document.createElement('iframe');
+    frame.style.position = 'fixed';
+    frame.style.right = '0';
+    frame.style.bottom = '0';
+    frame.style.width = '0';
+    frame.style.height = '0';
+    frame.style.border = '0';
+    document.body.appendChild(frame);
+
+    const frameDocument = frame.contentDocument;
+    if (!frameDocument || !frame.contentWindow) {
+      frame.remove();
+      throw new Error('Print window is unavailable');
+    }
+
+    frameDocument.open();
+    frameDocument.write(html.replace('<title></title>', `<title>${fileName}</title>`));
+    frameDocument.close();
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    frame.contentWindow.focus();
+    frame.contentWindow.print();
+    setTimeout(() => frame.remove(), 1000);
+    return;
+  }
+
+  const result = await Print.printToFileAsync({ html });
+  await shareDownloadedFile(result.uri, 'application/pdf');
 }

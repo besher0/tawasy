@@ -2,6 +2,7 @@ import {
   CakeFinish,
   CakeShape,
   MoldFlavor,
+  MoldInnerColor,
   OrderItemKind,
   PaymentStatus,
   ShopType,
@@ -37,6 +38,7 @@ type DraftOrderItem = {
   layers: number;
   shape: CakeShape;
   moldFlavor: MoldFlavor;
+  moldInnerColor: MoldInnerColor;
   moldColor: string;
   hasFillings: boolean;
   filling: string;
@@ -80,6 +82,12 @@ const moldFlavorOptions: Choice<MoldFlavor>[] = [
   { value: MoldFlavor.HARISSA, label: 'هريسة' },
 ];
 
+const moldInnerColorOptions: Choice<MoldInnerColor>[] = [
+  { value: MoldInnerColor.WHITE, label: 'أبيض' },
+  { value: MoldInnerColor.BLACK, label: 'أسود' },
+  { value: MoldInnerColor.MIXED, label: 'مشكل' },
+];
+
 const cakeShapeOptions: Choice<CakeShape>[] = [
   { value: CakeShape.ROUND, label: 'مدور' },
   { value: CakeShape.SQUARE, label: 'مربع' },
@@ -119,6 +127,7 @@ function createEmptyItem(): DraftOrderItem {
     layers: 1,
     shape: CakeShape.ROUND,
     moldFlavor: MoldFlavor.CREAM,
+    moldInnerColor: MoldInnerColor.WHITE,
     moldColor: '',
     hasFillings: false,
     filling: '',
@@ -356,7 +365,7 @@ export function NewOrderScreen() {
     );
 
     if (invalidMoldColorIndex >= 0) {
-      setSubmitError(`اكتب لون القالب رقم ${invalidMoldColorIndex + 1}`);
+      setSubmitError(`اكتب اللون الخارجي للقالب رقم ${invalidMoldColorIndex + 1}`);
       return false;
     }
 
@@ -468,6 +477,7 @@ export function NewOrderScreen() {
           layers: item.layers,
           shape: isMold ? item.shape : undefined,
           moldFlavor: isMold ? item.moldFlavor : undefined,
+          moldInnerColor: isMold ? item.moldInnerColor : undefined,
           moldColor: isMold ? item.moldColor.trim() : undefined,
           hasFillings: isMold && item.hasFillings,
           filling: isMold && item.hasFillings ? item.filling.trim() : undefined,
@@ -665,6 +675,15 @@ export function NewOrderScreen() {
               </>
             ) : (
               <>
+                <Text style={styles.label}>لون القالب من الداخل</Text>
+                <ChoiceRow
+                  options={moldInnerColorOptions}
+                  selected={item.moldInnerColor}
+                  onSelect={(moldInnerColor) =>
+                    updateItem(item.id, (current) => ({ ...current, moldInnerColor }))
+                  }
+                />
+
                 <Text style={styles.label}>نوع القالب</Text>
                 <ChoiceRow
                   options={moldFlavorOptions}
@@ -674,7 +693,7 @@ export function NewOrderScreen() {
                   }
                 />
 
-                <Text style={styles.label}>لون القالب</Text>
+                <Text style={styles.label}>اللون الخارجي للقالب</Text>
                 <TextInput
                   style={styles.input}
                   value={item.moldColor}

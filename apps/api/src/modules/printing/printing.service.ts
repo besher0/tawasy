@@ -40,6 +40,12 @@ const flavorLabels: Record<string, string> = {
   Harissa: 'هريسة',
 };
 
+const innerColorLabels: Record<string, string> = {
+  White: 'أبيض',
+  Black: 'أسود',
+  Mixed: 'مشكل',
+};
+
 @Injectable()
 export class PrintingService {
   constructor(
@@ -97,8 +103,11 @@ export class PrintingService {
       if (item.moldFlavor) {
         doc.text(`- Mold flavor: ${item.moldFlavor}`);
       }
+      if (item.moldInnerColor) {
+        doc.text(`- Mold inner color: ${item.moldInnerColor}`);
+      }
       if (item.moldColor) {
-        doc.text(`- Mold color: ${item.moldColor}`);
+        doc.text(`- Mold external color: ${item.moldColor}`);
       }
       if (item.shape) {
         doc.text(`- Shape: ${item.shape}`);
@@ -203,7 +212,10 @@ export class PrintingService {
               item.moldFlavor
                 ? `النوع: ${flavorLabels[item.moldFlavor] ?? item.moldFlavor}`
                 : null,
-              item.moldColor ? `اللون: ${item.moldColor}` : null,
+              item.moldInnerColor
+                ? `اللون الداخلي: ${innerColorLabels[item.moldInnerColor] ?? item.moldInnerColor}`
+                : null,
+              item.moldColor ? `اللون الخارجي: ${item.moldColor}` : null,
               `الكمية/الأشخاص: ${item.peopleCount}`,
               item.specialDetails ? `ملاحظات: ${item.specialDetails}` : null,
             ].filter(Boolean);

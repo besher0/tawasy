@@ -16,7 +16,7 @@ import { UserRole } from '@sugarprecision/shared-types';
 import type { ShopSummary } from '@sugarprecision/shared-types';
 import api from '../lib/api';
 import { getApiErrorMessage } from '../lib/api-error';
-import { downloadApiFile } from '../lib/download';
+import { printReport } from '../lib/print-report';
 import theme from '../theme';
 import { useAuth } from '../context/auth-context';
 import {
@@ -47,6 +47,7 @@ interface TomorrowOrder {
     id: string;
     itemKind: string;
     moldFlavor?: string | null;
+    moldInnerColor?: string | null;
     moldColor?: string | null;
   }[];
   shop?: {
@@ -250,12 +251,33 @@ export function NextDayEssentialsScreen() {
   const exportEssentials = async () => {
     try {
       setExporting(true);
-      await downloadApiFile(
-        `/print/daily-essentials-by-branch.pdf?targetDate=${encodeURIComponent(selectedDate)}`,
-        `daily-essentials-${selectedDate}.pdf`,
-      );
+      const branchGroups = new Map<string, EssentialRow[]>();
+      list.forEach((item) => {
+        const branchName = item.shop?.name ?? 'فرع غير محدد';
+        branchGroups.set(branchName, [
+          ...(branchGroups.get(branchName) ?? []),
+          item,
+        ]);
+      });
+
+      await printReport({
+        title: 'التواصي اليومية حسب الفروع',
+        subtitle: `التاريخ: ${new Date(`${selectedDate}T12:00:00`).toLocaleDateString('ar-SY')}`,
+        fileName: `daily-essentials-${selectedDate}.pdf`,
+        sections: [...branchGroups.entries()].map(([branchName, essentials]) => ({
+          title: branchName,
+          items: essentials.map((item) => ({
+            title: item.itemName,
+            lines: [
+              `الكمية: ${item.quantity}`,
+              `الفئة: ${essentialsCategoryLabel(item.category)}`,
+              item.notes ? `ملاحظة: ${item.notes}` : '',
+            ],
+          })),
+        })),
+      });
     } catch {
-      Alert.alert('خطأ', 'تعذر تنزيل ملف التواصي.');
+      Alert.alert('خطأ', 'تعذر فتح ملف طباعة التواصي.');
     } finally {
       setExporting(false);
     }
@@ -273,7 +295,7 @@ export function NextDayEssentialsScreen() {
           >
             <MaterialIcons name="picture-as-pdf" size={20} color={theme.colors.onPrimary} />
             <Text style={styles.exportButtonText}>
-              {exporting ? 'جاري التحضير...' : 'تنزيل تواصي الفروع PDF'}
+              {exporting ? 'جاري التحضير...' : 'طباعة / حفظ التواصي PDF'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -383,7 +405,11 @@ export function NextDayEssentialsScreen() {
                       {order.items
                         .filter((item) => item.itemKind === 'Mold')
                         .map((item) =>
-                          moldConfigurationLabel(item.moldFlavor, item.moldColor),
+                          moldConfigurationLabel(
+                            item.moldFlavor,
+                            item.moldColor,
+                            item.moldInnerColor,
+                          ),
                         )
                         .join('، ')}
                     </Text>

@@ -155,6 +155,7 @@ describe('OrdersService', () => {
             layers: 1,
             shape: 'Round' as never,
             moldFlavor: 'Cream' as never,
+            moldInnerColor: 'White' as never,
             moldColor: 'White',
             hasFillings: false,
             withFoam: false,
@@ -178,6 +179,7 @@ describe('OrdersService', () => {
             create: [
               expect.objectContaining({
                 moldFlavor: 'Cream',
+                moldInnerColor: 'White',
                 moldColor: 'White',
               }),
             ],

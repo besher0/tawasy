@@ -53,6 +53,12 @@ export enum MoldFlavor {
   HARISSA = 'Harissa',
 }
 
+export enum MoldInnerColor {
+  WHITE = 'White',
+  BLACK = 'Black',
+  MIXED = 'Mixed',
+}
+
 export enum CakeFinish {
   NONE = 'None',
   DISK_ENLARGEMENT = 'Disk_Enlargement',

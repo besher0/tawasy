@@ -10,9 +10,13 @@
 
 ```bash
 npm run start
+npm run start:device
 npm run typecheck
 npm run test
 ```
+
+`start:device` disables Node's automatic IPv4/IPv6 family selection, which can
+time out while a VPN is active.
 
 ## Environment
 

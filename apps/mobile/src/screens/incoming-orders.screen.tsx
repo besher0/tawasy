@@ -16,23 +16,46 @@ import { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../context/auth-context';
 import theme from '../theme';
 import api from '../lib/api';
-import { downloadApiFile } from '../lib/download';
+import { printReport } from '../lib/print-report';
 import { StatusBadge } from '../components/status-badge';
-import { moldConfigurationLabel } from '../lib/labels';
+import {
+  cakeFinishLabel,
+  cakeShapeLabel,
+  cakeTypeLabel,
+  moldConfigurationLabel,
+  moldFlavorLabel,
+  moldInnerColorLabel,
+  orderItemKindLabel,
+} from '../lib/labels';
 
 interface OrderItemPreview {
   id: string;
   itemKind: string;
+  pieceType?: string | null;
+  hasTopDecoration?: boolean;
+  cakeType?: string | null;
+  layers?: number;
+  shape?: string | null;
   moldFlavor?: string | null;
+  moldInnerColor?: string | null;
   moldColor?: string | null;
+  hasFillings?: boolean;
+  filling?: string | null;
+  withFoam?: boolean;
+  finishType?: string | null;
+  specialDetails?: string | null;
+  peopleCount?: number;
+  referenceImages?: string[];
 }
 
 interface OrderRow {
   id: string;
   orderNumber: string;
   customerName: string;
+  customerPhone?: string;
   deliveryDatetime: string;
   isUrgent: boolean;
+  notes?: string | null;
   items?: OrderItemPreview[];
   shop?: {
     id: string;
@@ -153,15 +176,79 @@ export function IncomingOrdersScreen() {
   const exportOrders = async () => {
     try {
       setExporting(true);
-      const query = search.trim()
-        ? `?search=${encodeURIComponent(search.trim())}`
-        : '';
-      await downloadApiFile(
-        `/print/orders-by-branch.pdf${query}`,
-        'orders-by-branch.pdf',
-      );
+      const branchGroups = new Map<string, OrderRow[]>();
+      orders.forEach((order) => {
+        const branchName = order.shop?.name ?? 'فرع غير محدد';
+        branchGroups.set(branchName, [
+          ...(branchGroups.get(branchName) ?? []),
+          order,
+        ]);
+      });
+
+      await printReport({
+        title: 'تفاصيل طلبيات الإنتاج حسب الفروع',
+        subtitle: 'تفاصيل التجهيز المطلوبة للمعمل',
+        fileName: 'orders-by-branch.pdf',
+        sections: [...branchGroups.entries()].map(([branchName, branchOrders]) => ({
+          title: branchName,
+          items: branchOrders.map((order) => ({
+            title: 'طلب إنتاج',
+            lines: [
+              `موعد التسليم: ${new Date(order.deliveryDatetime).toLocaleString('ar-SY')}`,
+              `مكان التسليم: ${order.moldDeliveryShop?.name ?? order.shop?.name ?? 'غير محدد'}`,
+              `الأولوية: ${order.isUrgent ? 'عاجل' : 'عادي'}`,
+              order.notes ? `ملاحظات الطلب: ${order.notes}` : '',
+              ...(order.items ?? []).flatMap((item, itemIndex) => {
+                const itemHeading =
+                  `المنتج ${itemIndex + 1}: ${orderItemKindLabel(item.itemKind)}`;
+
+                if (item.itemKind === 'Pieces') {
+                  return [
+                    itemHeading,
+                    `نوع القطع: ${item.pieceType?.trim() || '-'}`,
+                    `نوع الكيك: ${cakeTypeLabel(item.cakeType)}`,
+                    `عدد الطبقات: ${item.layers ?? '-'}`,
+                    `زينة علوية: ${item.hasTopDecoration ? 'نعم' : 'لا'}`,
+                    `عدد القطع: ${item.peopleCount ?? '-'}`,
+                    item.specialDetails
+                      ? `تفاصيل خاصة: ${item.specialDetails}`
+                      : '',
+                    item.referenceImages?.length
+                      ? `الصور المرجعية: ${item.referenceImages.length}`
+                      : '',
+                  ];
+                }
+
+                return [
+                  itemHeading,
+                  `لون القالب من الداخل: ${moldInnerColorLabel(item.moldInnerColor)}`,
+                  `نوع القالب: ${moldFlavorLabel(item.moldFlavor)}`,
+                  `اللون الخارجي للقالب: ${item.moldColor?.trim() || '-'}`,
+                  `نوع الكيك: ${cakeTypeLabel(item.cakeType)}`,
+                  `الشكل: ${cakeShapeLabel(item.shape)}`,
+                  `الحشوات: ${
+                    item.hasFillings
+                      ? item.filling?.trim() || 'نعم'
+                      : 'بدون حشوات'
+                  }`,
+                  `الفلين: ${item.withFoam ? 'مع فلين' : 'بدون فلين'}`,
+                  `عدد الطوابق: ${item.layers ?? '-'}`,
+                  `التجهيز: ${cakeFinishLabel(item.finishType)}`,
+                  `عدد الأشخاص: ${item.peopleCount ?? '-'}`,
+                  item.specialDetails
+                    ? `تفاصيل خاصة: ${item.specialDetails}`
+                    : '',
+                  item.referenceImages?.length
+                    ? `الصور المرجعية: ${item.referenceImages.length}`
+                    : '',
+                ];
+              }),
+            ],
+          })),
+        })),
+      });
     } catch {
-      Alert.alert('خطأ', 'تعذر تنزيل ملف الطلبيات.');
+      Alert.alert('خطأ', 'تعذر فتح ملف طباعة الطلبيات.');
     } finally {
       setExporting(false);
     }
@@ -179,7 +266,7 @@ export function IncomingOrdersScreen() {
           >
             <MaterialIcons name="picture-as-pdf" size={20} color={theme.colors.onPrimary} />
             <Text style={styles.exportButtonText}>
-              {exporting ? 'جاري التحضير...' : 'تنزيل طلبيات الفروع PDF'}
+              {exporting ? 'جاري التحضير...' : 'طباعة / حفظ الطلبيات PDF'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -230,7 +317,11 @@ export function IncomingOrdersScreen() {
                 {item.items
                   .filter((orderItem) => orderItem.itemKind === 'Mold')
                   .map((orderItem) =>
-                    moldConfigurationLabel(orderItem.moldFlavor, orderItem.moldColor),
+                    moldConfigurationLabel(
+                      orderItem.moldFlavor,
+                      orderItem.moldColor,
+                      orderItem.moldInnerColor,
+                    ),
                   )
                   .join('، ')}
               </Text>

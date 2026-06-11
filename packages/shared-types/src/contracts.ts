@@ -5,6 +5,7 @@ import {
   EssentialsCategory,
   EssentialsStatus,
   MoldFlavor,
+  MoldInnerColor,
   OrderItemKind,
   OrderStatus,
   PaymentStatus,
@@ -33,6 +34,7 @@ export interface OrderItemInput {
   layers: number;
   shape?: CakeShape;
   moldFlavor?: MoldFlavor;
+  moldInnerColor?: MoldInnerColor;
   moldColor?: string;
   hasFillings: boolean;
   filling?: string;
