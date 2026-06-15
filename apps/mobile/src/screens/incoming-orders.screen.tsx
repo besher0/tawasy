@@ -213,8 +213,7 @@ export function IncomingOrdersScreen() {
               ...(order.items ?? []).flatMap((item, itemIndex) => {
                 const display = buildOrderItemDisplay(item);
                 return [
-                  `المنتج ${itemIndex + 1}: ${display.title}`,
-                  ...display.lines,
+                  `المنتج ${itemIndex + 1}: ${display.text}`,
                   item.referenceImages?.length
                     ? `الصور المرجعية: ${item.referenceImages.length}`
                     : '',
@@ -298,16 +297,9 @@ export function IncomingOrdersScreen() {
               const display = buildOrderItemDisplay(orderItem);
 
               return (
-                <View key={orderItem.id} style={styles.itemSummary}>
-                  <Text style={styles.itemSummaryTitle}>
-                    {`${itemIndex + 1}. ${display.title}`}
-                  </Text>
-                  {display.lines.map((line) => (
-                    <Text key={line} style={styles.itemSummaryLine}>
-                      {line}
-                    </Text>
-                  ))}
-                </View>
+                <Text key={orderItem.id} style={styles.itemSummaryText}>
+                  {`${itemIndex + 1}. ${display.text}`}
+                </Text>
               );
             })}
             <Text style={styles.meta}>
@@ -441,23 +433,11 @@ const styles = StyleSheet.create({
     color: theme.colors.onSurfaceVariant,
     textAlign: 'right',
   },
-  itemSummary: {
-    borderRightWidth: 3,
-    borderRightColor: theme.colors.primary,
-    borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.surfaceContainerLow,
-    padding: theme.spacing.sm,
-    gap: 2,
-  },
-  itemSummaryTitle: {
-    ...theme.typography.title,
-    color: theme.colors.primary,
-    textAlign: 'right',
-  },
-  itemSummaryLine: {
+  itemSummaryText: {
     ...theme.typography.body,
     color: theme.colors.onSurface,
     textAlign: 'right',
+    lineHeight: 26,
   },
   emptyText: {
     ...theme.typography.body,

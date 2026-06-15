@@ -146,14 +146,9 @@ export function OrderDetailsScreen() {
 
           return (
             <View key={item.id} style={styles.itemCard}>
-              <Text style={styles.itemTitle}>
-                {`${index + 1}. ${display.title}`}
+              <Text style={styles.itemDescription}>
+                {`${index + 1}. ${display.text}`}
               </Text>
-              {display.lines.map((line) => (
-                <Text key={line} style={styles.meta}>
-                  {line}
-                </Text>
-              ))}
               {item.referenceImages?.length ? (
                 <View style={styles.imageRow}>
                   {item.referenceImages.map((imageUrl: string, imageIndex: number) => (
@@ -374,10 +369,11 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.sm,
     gap: theme.spacing.xs,
   },
-  itemTitle: {
-    ...theme.typography.title,
-    color: theme.colors.primary,
+  itemDescription: {
+    ...theme.typography.body,
+    color: theme.colors.onSurface,
     textAlign: 'right',
+    lineHeight: 26,
   },
   imageRow: {
     flexDirection: 'row-reverse',

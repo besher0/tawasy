@@ -1,7 +1,21 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { neon } from '@neondatabase/serverless';
+import { neon, types } from '@neondatabase/serverless';
 import { PrismaNeonHTTP } from '@prisma/adapter-neon';
 import { PrismaClient } from '@prisma/client';
+
+const preserveDatabaseValue = (value: string) => value;
+
+function createNeonAdapter(databaseUrl: string) {
+  // Prisma's Neon HTTP adapter expects date-like values as PostgreSQL strings.
+  // Neon's default parsers return Date objects, which Prisma receives as {}.
+  types.setTypeParser(types.builtins.DATE, preserveDatabaseValue);
+  types.setTypeParser(types.builtins.TIME, preserveDatabaseValue);
+  types.setTypeParser(types.builtins.TIMETZ, preserveDatabaseValue);
+  types.setTypeParser(types.builtins.TIMESTAMP, preserveDatabaseValue);
+  types.setTypeParser(types.builtins.TIMESTAMPTZ, preserveDatabaseValue);
+
+  return new PrismaNeonHTTP(neon(databaseUrl, { types }));
+}
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit {
@@ -10,7 +24,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
   constructor() {
     const databaseUrl = process.env.DATABASE_URL;
     const adapter = databaseUrl?.includes('.neon.tech')
-      ? new PrismaNeonHTTP(neon(databaseUrl))
+      ? createNeonAdapter(databaseUrl)
       : undefined;
 
     super(adapter ? { adapter } : undefined);
