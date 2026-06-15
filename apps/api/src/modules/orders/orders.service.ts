@@ -23,7 +23,7 @@ const statusTransitions: Record<OrderStatus, OrderStatus[]> = {
   New: [OrderStatus.In_Production, OrderStatus.Cancelled],
   Reviewing: [OrderStatus.In_Production, OrderStatus.Cancelled],
   In_Production: [OrderStatus.Ready, OrderStatus.Cancelled],
-  Ready: [OrderStatus.Delivered],
+  Ready: [OrderStatus.Delivered, OrderStatus.Cancelled],
   Delivered: [],
   Cancelled: [],
 };
@@ -264,9 +264,14 @@ export class OrdersService {
       );
     }
 
+    const statusData =
+      status === OrderStatus.Delivered
+        ? { status, deliveredAt: new Date() }
+        : { status };
+
     const updated = await this.prisma.order.update({
       where: { id },
-      data: { status },
+      data: statusData,
       include: { shop: true, moldDeliveryShop: true, items: true },
     });
 
@@ -297,6 +302,57 @@ export class OrdersService {
 
   async confirmDelivery(id: string, actor: RequestActor) {
     return this.changeStatus(id, OrderStatus.Delivered, actor, 'Delivery confirmed');
+  }
+
+  async cancel(id: string, actor: RequestActor) {
+    return this.changeStatus(id, OrderStatus.Cancelled, actor, 'Order cancelled');
+  }
+
+  async purgeExpiredDeliveredOrders(referenceDate = new Date()) {
+    const cutoff = new Date(
+      referenceDate.getTime() - 5 * 24 * 60 * 60 * 1000,
+    );
+
+    const expiredOrders = await this.prisma.order.findMany({
+      where: {
+        status: OrderStatus.Delivered,
+        deliveredAt: { lte: cutoff },
+      },
+      select: {
+        id: true,
+        orderNumber: true,
+        deliveredAt: true,
+      },
+    });
+
+    if (!expiredOrders.length) {
+      return 0;
+    }
+
+    const deleteResult = await this.prisma.order.deleteMany({
+      where: {
+        id: { in: expiredOrders.map((order) => order.id) },
+        status: OrderStatus.Delivered,
+        deliveredAt: { lte: cutoff },
+      },
+    });
+
+    await Promise.all(
+      expiredOrders.map((order) =>
+        this.auditService.log({
+          action: 'ORDER_AUTO_DELETED',
+          entity: 'Order',
+          entityId: order.id,
+          details: {
+            orderNumber: order.orderNumber,
+            deliveredAt: order.deliveredAt?.toISOString(),
+            retentionDays: 5,
+          },
+        }),
+      ),
+    );
+
+    return deleteResult.count;
   }
 
   private generateOrderNumber() {

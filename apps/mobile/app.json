@@ -23,7 +23,10 @@
       "package": "com.sugarprecision.app"
     },
     "extra": {
-      "apiBaseUrl": "${EXPO_PUBLIC_API_BASE_URL}"
+      "apiBaseUrl": "${EXPO_PUBLIC_API_BASE_URL}",
+      "eas": {
+        "projectId": "c8b57e3e-52e2-4ae9-8fdb-73bb7d232efd"
+      }
     },
     "plugins": [
       "expo-font"

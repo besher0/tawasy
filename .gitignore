@@ -42,5 +42,6 @@ apps/api/prisma/dev.db-journal
 
 # Generated
 apps/mobile/.metro-health-check*
+apps/mobile/dist-web/
 .local/
 .local/

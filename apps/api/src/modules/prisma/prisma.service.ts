@@ -1,4 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { neon } from '@neondatabase/serverless';
+import { PrismaNeonHTTP } from '@prisma/adapter-neon';
 import { PrismaClient } from '@prisma/client';
 
 @Injectable()
@@ -6,7 +8,12 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
   private readonly logger = new Logger(PrismaService.name);
 
   constructor() {
-    super();
+    const databaseUrl = process.env.DATABASE_URL;
+    const adapter = databaseUrl?.includes('.neon.tech')
+      ? new PrismaNeonHTTP(neon(databaseUrl))
+      : undefined;
+
+    super(adapter ? { adapter } : undefined);
   }
 
   async onModuleInit() {

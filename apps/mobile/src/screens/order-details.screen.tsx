@@ -1,24 +1,33 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Alert,
+  Image,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { RootStackParamList } from '../navigation/types';
 import api from '../lib/api';
+import { getApiErrorMessage } from '../lib/api-error';
 import { downloadRemoteFile } from '../lib/download';
 import theme from '../theme';
-import {
-  cakeFinishLabel,
-  cakeShapeLabel,
-  moldFlavorLabel,
-  moldInnerColorLabel,
-  orderItemKindLabel,
-} from '../lib/labels';
+import { orderStatusLabel } from '../lib/labels';
+import { buildOrderItemDisplay } from '../lib/order-item-details';
+import { StatusBadge } from '../components/status-badge';
 
 type ScreenRoute = RouteProp<RootStackParamList, 'OrderDetails'>;
 
 export function OrderDetailsScreen() {
   const route = useRoute<ScreenRoute>();
   const [order, setOrder] = useState<any>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
 
   const loadOrder = async () => {
     const response = await api.get(`/orders/${route.params.orderId}`);
@@ -44,6 +53,25 @@ export function OrderDetailsScreen() {
     }
   };
 
+  const cancelOrder = async () => {
+    try {
+      setIsCancelling(true);
+      setActionError(null);
+      const response = await api.post(
+        `/orders/${route.params.orderId}/cancel`,
+      );
+      setOrder(response.data);
+      setShowCancelConfirmation(false);
+    } catch (error) {
+      setActionError(
+        getApiErrorMessage(error, 'تعذر إلغاء الطلب. حاول مرة أخرى.'),
+      );
+      setShowCancelConfirmation(false);
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   if (!order) {
     return (
       <View style={styles.centered}>
@@ -52,11 +80,30 @@ export function OrderDetailsScreen() {
     );
   }
 
+  const canCancel = !['Delivered', 'Cancelled'].includes(order.status);
+  const deletionDate = order.deliveredAt
+    ? new Date(new Date(order.deliveredAt).getTime() + 5 * 24 * 60 * 60 * 1000)
+    : null;
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.card}>
         <Text style={styles.orderNumber}>{order.orderNumber}</Text>
         <Text style={styles.title}>{order.customerName}</Text>
+        <View style={styles.statusRow}>
+          <StatusBadge
+            label={orderStatusLabel(order.status)}
+            tone={
+              order.status === 'Cancelled'
+                ? 'error'
+                : order.status === 'Delivered'
+                  ? 'success'
+                  : order.status === 'Ready'
+                    ? 'warning'
+                    : 'primary'
+            }
+          />
+        </View>
         <Text style={[styles.meta, order.isUrgent ? styles.urgent : null]}>
           {order.isUrgent ? 'طلب عاجل' : 'طلب عادي'}
         </Text>
@@ -67,60 +114,118 @@ export function OrderDetailsScreen() {
         <Text style={styles.meta}>الإجمالي: {order.totalPrice} ر.س</Text>
         <Text style={styles.meta}>العربون: {order.depositAmount} ر.س</Text>
         {order.notes ? <Text style={styles.orderNotes}>ملاحظات: {order.notes}</Text> : null}
+        {deletionDate ? (
+          <Text style={styles.retentionNote}>
+            سيُحذف الطلب تلقائياً بعد خمسة أيام من التسليم، بتاريخ{' '}
+            {deletionDate.toLocaleString('ar-SY')}.
+          </Text>
+        ) : null}
+        {canCancel ? (
+          <TouchableOpacity
+            accessibilityRole="button"
+            style={[
+              styles.cancelOrderButton,
+              isCancelling ? styles.buttonDisabled : null,
+            ]}
+            disabled={isCancelling}
+            onPress={() => setShowCancelConfirmation(true)}
+          >
+            <MaterialIcons name="cancel" size={20} color={theme.colors.error} />
+            <Text style={styles.cancelOrderButtonText}>
+              {isCancelling ? 'جاري إلغاء الطلب...' : 'إلغاء الطلب'}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+        {actionError ? <Text style={styles.actionError}>{actionError}</Text> : null}
       </View>
 
       <View style={styles.card}>
         <Text style={styles.title}>تفاصيل المنتجات</Text>
-        {order.items.map((item: any, index: number) => (
-          <View key={item.id} style={styles.itemCard}>
-            <Text style={styles.itemTitle}>
-              {`${index + 1}. ${orderItemKindLabel(item.itemKind)}`}
-            </Text>
-            {item.itemKind === 'Pieces' ? (
-              <>
-                <Text style={styles.meta}>نوع القطع: {item.pieceType ?? '-'}</Text>
-                <Text style={styles.meta}>عدد الطبقات: {item.layers}</Text>
-                <Text style={styles.meta}>شيء فوقها: {item.hasTopDecoration ? 'نعم' : 'لا'}</Text>
-                <Text style={styles.meta}>عدد القطع: {item.peopleCount}</Text>
-              </>
-            ) : (
-              <>
-                <Text style={styles.meta}>لون القالب من الداخل: {moldInnerColorLabel(item.moldInnerColor)}</Text>
-                <Text style={styles.meta}>نوع القالب: {moldFlavorLabel(item.moldFlavor)}</Text>
-                <Text style={styles.meta}>اللون الخارجي للقالب: {item.moldColor ?? '-'}</Text>
-                <Text style={styles.meta}>الحشوات: {item.hasFillings ? item.filling ?? 'نعم' : 'لا'}</Text>
-                <Text style={styles.meta}>الشكل: {cakeShapeLabel(item.shape)}</Text>
-                <Text style={styles.meta}>الفلين: {item.withFoam ? 'مع فلين' : 'بدون فلين'}</Text>
-                <Text style={styles.meta}>الطوابق: {item.layers}</Text>
-                <Text style={styles.meta}>التجهيز: {cakeFinishLabel(item.finishType)}</Text>
-                <Text style={styles.meta}>عدد الأشخاص: {item.peopleCount}</Text>
-              </>
-            )}
-            {item.specialDetails ? (
-              <Text style={styles.meta}>ملاحظات: {item.specialDetails}</Text>
-            ) : null}
-            {item.referenceImages?.length ? (
-              <View style={styles.imageRow}>
-                {item.referenceImages.map((imageUrl: string, imageIndex: number) => (
-                  <View key={`${imageUrl}-${imageIndex}`} style={styles.imageCard}>
-                    <Image source={{ uri: imageUrl }} style={styles.referenceImage} />
-                    <TouchableOpacity
-                      accessibilityRole="button"
-                      accessibilityLabel="تحميل الصورة"
-                      style={styles.downloadImageButton}
-                      onPress={() => void downloadImage(imageUrl, index, imageIndex)}
-                    >
-                      <MaterialIcons name="download" size={18} color={theme.colors.onPrimary} />
-                      <Text style={styles.downloadImageText}>تحميل</Text>
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
-            ) : null}
-          </View>
-        ))}
+        {order.items.map((item: any, index: number) => {
+          const display = buildOrderItemDisplay(item);
+
+          return (
+            <View key={item.id} style={styles.itemCard}>
+              <Text style={styles.itemTitle}>
+                {`${index + 1}. ${display.title}`}
+              </Text>
+              {display.lines.map((line) => (
+                <Text key={line} style={styles.meta}>
+                  {line}
+                </Text>
+              ))}
+              {item.referenceImages?.length ? (
+                <View style={styles.imageRow}>
+                  {item.referenceImages.map((imageUrl: string, imageIndex: number) => (
+                    <View key={`${imageUrl}-${imageIndex}`} style={styles.imageCard}>
+                      <Image source={{ uri: imageUrl }} style={styles.referenceImage} />
+                      <TouchableOpacity
+                        accessibilityRole="button"
+                        accessibilityLabel="تحميل الصورة"
+                        style={styles.downloadImageButton}
+                        onPress={() => void downloadImage(imageUrl, index, imageIndex)}
+                      >
+                        <MaterialIcons name="download" size={18} color={theme.colors.onPrimary} />
+                        <Text style={styles.downloadImageText}>تحميل</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          );
+        })}
       </View>
 
+      <Modal
+        animationType="fade"
+        transparent
+        visible={showCancelConfirmation}
+        onRequestClose={() => setShowCancelConfirmation(false)}
+      >
+        <View style={styles.modalRoot}>
+          <TouchableOpacity
+            accessibilityLabel="إغلاق نافذة الإلغاء"
+            activeOpacity={1}
+            style={styles.modalBackdrop}
+            onPress={() => setShowCancelConfirmation(false)}
+          />
+          <View style={styles.confirmationCard}>
+            <View style={styles.confirmationIcon}>
+              <MaterialIcons
+                name="warning"
+                size={30}
+                color={theme.colors.error}
+              />
+            </View>
+            <Text style={styles.confirmationTitle}>إلغاء الطلب</Text>
+            <Text style={styles.confirmationText}>
+              هل أنت متأكد من إلغاء هذا الطلب؟ لا يمكن التراجع عن هذه العملية.
+            </Text>
+            <View style={styles.confirmationActions}>
+              <TouchableOpacity
+                style={[
+                  styles.confirmCancelButton,
+                  isCancelling ? styles.buttonDisabled : null,
+                ]}
+                disabled={isCancelling}
+                onPress={() => void cancelOrder()}
+              >
+                <Text style={styles.confirmCancelButtonText}>
+                  {isCancelling ? 'جاري الإلغاء...' : 'نعم، إلغاء الطلب'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.keepOrderButton}
+                disabled={isCancelling}
+                onPress={() => setShowCancelConfirmation(false)}
+              >
+                <Text style={styles.keepOrderButtonText}>الاحتفاظ بالطلب</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -147,6 +252,9 @@ const styles = StyleSheet.create({
   title: { ...theme.typography.title, color: theme.colors.onSurface, textAlign: 'right' },
   meta: { ...theme.typography.body, color: theme.colors.onSurfaceVariant, textAlign: 'right' },
   urgent: { color: theme.colors.error, fontFamily: 'Cairo_700Bold' },
+  statusRow: {
+    flexDirection: 'row-reverse',
+  },
   orderNotes: {
     ...theme.typography.body,
     color: theme.colors.onSurface,
@@ -154,6 +262,110 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.md,
     padding: theme.spacing.sm,
     textAlign: 'right',
+  },
+  retentionNote: {
+    ...theme.typography.label,
+    color: theme.colors.primary,
+    backgroundColor: theme.colors.secondaryContainer,
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.sm,
+    textAlign: 'right',
+  },
+  cancelOrderButton: {
+    minHeight: 46,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.error,
+    backgroundColor: theme.colors.errorContainer,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+  },
+  cancelOrderButtonText: {
+    ...theme.typography.title,
+    color: theme.colors.error,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  actionError: {
+    ...theme.typography.body,
+    color: theme.colors.error,
+    textAlign: 'right',
+  },
+  modalRoot: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: theme.spacing.lg,
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(8, 27, 41, 0.58)',
+  },
+  confirmationCard: {
+    width: '100%',
+    maxWidth: 420,
+    borderRadius: theme.radius.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.outlineVariant,
+    backgroundColor: theme.colors.surfaceContainerLowest,
+    padding: theme.spacing.xl,
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.22,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  confirmationIcon: {
+    width: 58,
+    height: 58,
+    borderRadius: theme.radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.errorContainer,
+  },
+  confirmationTitle: {
+    ...theme.typography.heading,
+    color: theme.colors.error,
+    textAlign: 'center',
+  },
+  confirmationText: {
+    ...theme.typography.body,
+    color: theme.colors.onSurfaceVariant,
+    textAlign: 'center',
+  },
+  confirmationActions: {
+    width: '100%',
+    gap: theme.spacing.sm,
+  },
+  confirmCancelButton: {
+    minHeight: 48,
+    borderRadius: theme.radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.error,
+  },
+  confirmCancelButtonText: {
+    ...theme.typography.title,
+    color: theme.colors.onPrimary,
+  },
+  keepOrderButton: {
+    minHeight: 46,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.outlineVariant,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.surface,
+  },
+  keepOrderButtonText: {
+    ...theme.typography.body,
+    color: theme.colors.onSurface,
   },
   itemCard: {
     borderTopWidth: 1,

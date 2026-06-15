@@ -104,4 +104,21 @@ export class OrdersController {
       user as unknown as { sub: string; role: UserRole; shopId?: string | null },
     );
   }
+
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.FACTORY_MANAGER,
+    UserRole.SHOP_MANAGER,
+    UserRole.SHOP_EMPLOYEE,
+  )
+  @Post(':id/cancel')
+  async cancel(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @CurrentUser() user: AuthenticatedRequestUser,
+  ) {
+    return this.ordersService.cancel(
+      id,
+      user as unknown as { sub: string; role: UserRole; shopId?: string | null },
+    );
+  }
 }

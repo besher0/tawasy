@@ -1,0 +1,47 @@
+{
+  "name": "@sugarprecision/windows",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SugarPrecision desktop application for Windows",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "build:web": "npm run export:web --workspace @sugarprecision/mobile",
+    "dev": "npm run build:web && electron .",
+    "build": "npm run build:web && electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "37.10.3",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.sugarprecision.desktop",
+    "productName": "SugarPrecision",
+    "asar": true,
+    "directories": {
+      "output": "../../dist/windows"
+    },
+    "files": [
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../mobile/dist-web",
+        "to": "web"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "SugarPrecision-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "SugarPrecision"
+    }
+  }
+}

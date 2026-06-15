@@ -144,6 +144,7 @@ model Order {
   customerName       String
   customerPhone      String
   deliveryDatetime   DateTime
+  deliveredAt        DateTime?
   totalPrice         Float
   depositAmount      Float
   paymentStatus      PaymentStatus
@@ -161,6 +162,7 @@ model Order {
   @@index([shopId])
   @@index([moldDeliveryShopId])
   @@index([status])
+  @@index([status, deliveredAt])
   @@index([deliveryDatetime])
   @@index([isUrgent])
 }

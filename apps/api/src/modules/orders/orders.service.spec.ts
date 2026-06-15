@@ -8,6 +8,7 @@ describe('OrdersService', () => {
       findUnique: jest.fn(),
       update: jest.fn(),
       findMany: jest.fn(),
+      deleteMany: jest.fn(),
     },
     orderStatusHistory: {
       create: jest.fn(),
@@ -273,5 +274,107 @@ describe('OrdersService', () => {
 
     expect(result.status).toBe('New');
     expect(prisma.order.update).not.toHaveBeenCalled();
+  });
+
+  it('allows cancelling a ready order', async () => {
+    prisma.order.findUnique.mockResolvedValue({
+      id: 'order-ready',
+      shopId: 'shop-1',
+      status: 'Ready',
+    });
+    prisma.order.update.mockResolvedValue({
+      id: 'order-ready',
+      shopId: 'shop-1',
+      status: 'Cancelled',
+      items: [],
+    });
+
+    const result = await service.cancel('order-ready', {
+      sub: 'shop-user',
+      role: 'ShopEmployee' as never,
+      shopId: 'shop-1',
+    });
+
+    expect(result.status).toBe('Cancelled');
+    expect(prisma.order.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'order-ready' },
+        data: { status: 'Cancelled' },
+      }),
+    );
+  });
+
+  it('records the actual delivery time when delivery is confirmed', async () => {
+    prisma.order.findUnique.mockResolvedValue({
+      id: 'order-ready',
+      shopId: 'shop-1',
+      status: 'Ready',
+    });
+    prisma.order.update.mockResolvedValue({
+      id: 'order-ready',
+      shopId: 'shop-1',
+      status: 'Delivered',
+      deliveredAt: new Date(),
+      items: [],
+    });
+
+    await service.confirmDelivery('order-ready', {
+      sub: 'factory-user',
+      role: 'FactoryManager' as never,
+      shopId: 'factory-1',
+    });
+
+    expect(prisma.order.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'order-ready' },
+        data: {
+          status: 'Delivered',
+          deliveredAt: expect.any(Date),
+        },
+      }),
+    );
+  });
+
+  it('deletes delivered orders after the five-day retention period', async () => {
+    const deliveredAt = new Date('2026-06-01T10:00:00.000Z');
+    prisma.order.findMany.mockResolvedValue([
+      {
+        id: 'expired-order',
+        orderNumber: 'SP-EXPIRED',
+        deliveredAt,
+      },
+    ]);
+    prisma.order.deleteMany.mockResolvedValue({ count: 1 });
+
+    const deletedCount = await service.purgeExpiredDeliveredOrders(
+      new Date('2026-06-06T10:00:01.000Z'),
+    );
+
+    expect(deletedCount).toBe(1);
+    expect(prisma.order.findMany).toHaveBeenCalledWith({
+      where: {
+        status: 'Delivered',
+        deliveredAt: { lte: new Date('2026-06-01T10:00:01.000Z') },
+      },
+      select: {
+        id: true,
+        orderNumber: true,
+        deliveredAt: true,
+      },
+    });
+    expect(prisma.order.deleteMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: { in: ['expired-order'] },
+          status: 'Delivered',
+        }),
+      }),
+    );
+    expect(auditService.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'ORDER_AUTO_DELETED',
+        entityId: 'expired-order',
+      }),
+    );
   });
 });

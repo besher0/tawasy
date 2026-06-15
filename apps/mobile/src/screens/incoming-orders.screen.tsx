@@ -18,15 +18,8 @@ import theme from '../theme';
 import api from '../lib/api';
 import { printReport } from '../lib/print-report';
 import { StatusBadge } from '../components/status-badge';
-import {
-  cakeFinishLabel,
-  cakeShapeLabel,
-  cakeTypeLabel,
-  moldConfigurationLabel,
-  moldFlavorLabel,
-  moldInnerColorLabel,
-  orderItemKindLabel,
-} from '../lib/labels';
+import { orderStatusLabel } from '../lib/labels';
+import { buildOrderItemDisplay } from '../lib/order-item-details';
 
 interface OrderItemPreview {
   id: string;
@@ -54,6 +47,7 @@ interface OrderRow {
   customerName: string;
   customerPhone?: string;
   deliveryDatetime: string;
+  status: string;
   isUrgent: boolean;
   notes?: string | null;
   items?: OrderItemPreview[];
@@ -103,6 +97,24 @@ function formatDayTitle(dateKey: string) {
     month: 'long',
     year: 'numeric',
   })}`;
+}
+
+function getStatusTone(
+  status: string,
+): 'neutral' | 'primary' | 'success' | 'warning' | 'error' {
+  if (status === 'Cancelled') {
+    return 'error';
+  }
+
+  if (status === 'Delivered') {
+    return 'success';
+  }
+
+  if (status === 'Ready') {
+    return 'warning';
+  }
+
+  return status === 'New' ? 'primary' : 'neutral';
 }
 
 export function IncomingOrdersScreen() {
@@ -199,45 +211,10 @@ export function IncomingOrdersScreen() {
               `الأولوية: ${order.isUrgent ? 'عاجل' : 'عادي'}`,
               order.notes ? `ملاحظات الطلب: ${order.notes}` : '',
               ...(order.items ?? []).flatMap((item, itemIndex) => {
-                const itemHeading =
-                  `المنتج ${itemIndex + 1}: ${orderItemKindLabel(item.itemKind)}`;
-
-                if (item.itemKind === 'Pieces') {
-                  return [
-                    itemHeading,
-                    `نوع القطع: ${item.pieceType?.trim() || '-'}`,
-                    `نوع الكيك: ${cakeTypeLabel(item.cakeType)}`,
-                    `عدد الطبقات: ${item.layers ?? '-'}`,
-                    `زينة علوية: ${item.hasTopDecoration ? 'نعم' : 'لا'}`,
-                    `عدد القطع: ${item.peopleCount ?? '-'}`,
-                    item.specialDetails
-                      ? `تفاصيل خاصة: ${item.specialDetails}`
-                      : '',
-                    item.referenceImages?.length
-                      ? `الصور المرجعية: ${item.referenceImages.length}`
-                      : '',
-                  ];
-                }
-
+                const display = buildOrderItemDisplay(item);
                 return [
-                  itemHeading,
-                  `لون القالب من الداخل: ${moldInnerColorLabel(item.moldInnerColor)}`,
-                  `نوع القالب: ${moldFlavorLabel(item.moldFlavor)}`,
-                  `اللون الخارجي للقالب: ${item.moldColor?.trim() || '-'}`,
-                  `نوع الكيك: ${cakeTypeLabel(item.cakeType)}`,
-                  `الشكل: ${cakeShapeLabel(item.shape)}`,
-                  `الحشوات: ${
-                    item.hasFillings
-                      ? item.filling?.trim() || 'نعم'
-                      : 'بدون حشوات'
-                  }`,
-                  `الفلين: ${item.withFoam ? 'مع فلين' : 'بدون فلين'}`,
-                  `عدد الطوابق: ${item.layers ?? '-'}`,
-                  `التجهيز: ${cakeFinishLabel(item.finishType)}`,
-                  `عدد الأشخاص: ${item.peopleCount ?? '-'}`,
-                  item.specialDetails
-                    ? `تفاصيل خاصة: ${item.specialDetails}`
-                    : '',
+                  `المنتج ${itemIndex + 1}: ${display.title}`,
+                  ...display.lines,
                   item.referenceImages?.length
                     ? `الصور المرجعية: ${item.referenceImages.length}`
                     : '',
@@ -305,27 +282,34 @@ export function IncomingOrdersScreen() {
           >
             <View style={styles.rowBetween}>
               <Text style={styles.orderNumber}>{item.orderNumber}</Text>
-              <StatusBadge
-                label={item.isUrgent ? 'عاجل' : 'عادي'}
-                tone={item.isUrgent ? 'error' : 'neutral'}
-              />
+              <View style={styles.badgeRow}>
+                <StatusBadge
+                  label={orderStatusLabel(item.status)}
+                  tone={getStatusTone(item.status)}
+                />
+                <StatusBadge
+                  label={item.isUrgent ? 'عاجل' : 'عادي'}
+                  tone={item.isUrgent ? 'error' : 'neutral'}
+                />
+              </View>
             </View>
             <Text style={styles.customer}>{item.customerName}</Text>
-            {item.items?.some((orderItem) => orderItem.itemKind === 'Mold') ? (
-              <Text style={styles.moldSummary}>
-                القوالب:{' '}
-                {item.items
-                  .filter((orderItem) => orderItem.itemKind === 'Mold')
-                  .map((orderItem) =>
-                    moldConfigurationLabel(
-                      orderItem.moldFlavor,
-                      orderItem.moldColor,
-                      orderItem.moldInnerColor,
-                    ),
-                  )
-                  .join('، ')}
-              </Text>
-            ) : null}
+            {item.items?.map((orderItem, itemIndex) => {
+              const display = buildOrderItemDisplay(orderItem);
+
+              return (
+                <View key={orderItem.id} style={styles.itemSummary}>
+                  <Text style={styles.itemSummaryTitle}>
+                    {`${itemIndex + 1}. ${display.title}`}
+                  </Text>
+                  {display.lines.map((line) => (
+                    <Text key={line} style={styles.itemSummaryLine}>
+                      {line}
+                    </Text>
+                  ))}
+                </View>
+              );
+            })}
             <Text style={styles.meta}>
               وقت التسليم: {new Date(item.deliveryDatetime).toLocaleTimeString('ar-SY', {
                 hour: '2-digit',
@@ -438,6 +422,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  badgeRow: {
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    gap: theme.spacing.xs,
+  },
   orderNumber: {
     ...theme.typography.title,
     color: theme.colors.primary,
@@ -452,9 +441,22 @@ const styles = StyleSheet.create({
     color: theme.colors.onSurfaceVariant,
     textAlign: 'right',
   },
-  moldSummary: {
-    ...theme.typography.body,
+  itemSummary: {
+    borderRightWidth: 3,
+    borderRightColor: theme.colors.primary,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surfaceContainerLow,
+    padding: theme.spacing.sm,
+    gap: 2,
+  },
+  itemSummaryTitle: {
+    ...theme.typography.title,
     color: theme.colors.primary,
+    textAlign: 'right',
+  },
+  itemSummaryLine: {
+    ...theme.typography.body,
+    color: theme.colors.onSurface,
     textAlign: 'right',
   },
   emptyText: {

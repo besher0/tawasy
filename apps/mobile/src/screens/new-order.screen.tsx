@@ -24,6 +24,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import {
+  DeliveryDatePicker,
+  DeliveryTimePicker,
+  formatDeliveryDate,
+  formatDeliveryTime,
+} from '../components/delivery-date-time-picker';
 import { useAuth } from '../context/auth-context';
 import api from '../lib/api';
 import { getApiErrorMessage } from '../lib/api-error';
@@ -188,6 +194,9 @@ export function NewOrderScreen() {
   const [customerPhone, setCustomerPhone] = useState('');
   const [deliveryDate, setDeliveryDate] = useState(defaults.deliveryDate);
   const [deliveryTime, setDeliveryTime] = useState(defaults.deliveryTime);
+  const [activeDeliveryPicker, setActiveDeliveryPicker] = useState<
+    'date' | 'time' | null
+  >(null);
   const [totalPrice, setTotalPrice] = useState('1250');
   const [depositAmount, setDepositAmount] = useState('500');
   const [notes, setNotes] = useState('');
@@ -640,6 +649,11 @@ export function NewOrderScreen() {
 
             {!isMold ? (
               <>
+                <Text style={styles.label}>عدد القطع</Text>
+                {renderStepper(item.peopleCount, (peopleCount) =>
+                  updateItem(item.id, (current) => ({ ...current, peopleCount })),
+                )}
+
                 <Text style={styles.label}>نوع القطع</Text>
                 <TextInput
                   style={styles.input}
@@ -667,14 +681,14 @@ export function NewOrderScreen() {
                     }))
                   }
                 />
-
-                <Text style={styles.label}>عدد القطع</Text>
-                {renderStepper(item.peopleCount, (peopleCount) =>
-                  updateItem(item.id, (current) => ({ ...current, peopleCount })),
-                )}
               </>
             ) : (
               <>
+                <Text style={styles.label}>عدد الأشخاص</Text>
+                {renderStepper(item.peopleCount, (peopleCount) =>
+                  updateItem(item.id, (current) => ({ ...current, peopleCount })),
+                )}
+
                 <Text style={styles.label}>لون القالب من الداخل</Text>
                 <ChoiceRow
                   options={moldInnerColorOptions}
@@ -773,11 +787,6 @@ export function NewOrderScreen() {
                     updateItem(item.id, (current) => ({ ...current, finishType }))
                   }
                 />
-
-                <Text style={styles.label}>عدد الأشخاص</Text>
-                {renderStepper(item.peopleCount, (peopleCount) =>
-                  updateItem(item.id, (current) => ({ ...current, peopleCount })),
-                )}
               </>
             )}
 
@@ -884,23 +893,29 @@ export function NewOrderScreen() {
         <View style={styles.row}>
           <View style={styles.halfField}>
             <Text style={styles.label}>وقت التسليم</Text>
-            <TextInput
-              style={styles.input}
-              value={deliveryTime}
-              onChangeText={setDeliveryTime}
-              placeholder="16:00"
-              textAlign="center"
-            />
+            <TouchableOpacity
+              accessibilityRole="button"
+              style={styles.dateTimeField}
+              onPress={() => setActiveDeliveryPicker('time')}
+            >
+              <Text style={styles.dateTimeValue}>
+                {formatDeliveryTime(deliveryTime)}
+              </Text>
+              <Text style={styles.dateTimeHint}>اضغط لاختيار الوقت</Text>
+            </TouchableOpacity>
           </View>
           <View style={styles.halfField}>
             <Text style={styles.label}>تاريخ التسليم</Text>
-            <TextInput
-              style={styles.input}
-              value={deliveryDate}
-              onChangeText={setDeliveryDate}
-              placeholder="YYYY-MM-DD"
-              textAlign="center"
-            />
+            <TouchableOpacity
+              accessibilityRole="button"
+              style={styles.dateTimeField}
+              onPress={() => setActiveDeliveryPicker('date')}
+            >
+              <Text style={styles.dateTimeValue}>
+                {formatDeliveryDate(deliveryDate)}
+              </Text>
+              <Text style={styles.dateTimeHint}>اضغط لفتح التقويم</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -995,6 +1010,26 @@ export function NewOrderScreen() {
           </View>
         ) : null}
       </View>
+
+      <DeliveryDatePicker
+        visible={activeDeliveryPicker === 'date'}
+        value={deliveryDate}
+        onClose={() => setActiveDeliveryPicker(null)}
+        onConfirm={(value) => {
+          setDeliveryDate(value);
+          setActiveDeliveryPicker(null);
+        }}
+      />
+
+      <DeliveryTimePicker
+        visible={activeDeliveryPicker === 'time'}
+        value={deliveryTime}
+        onClose={() => setActiveDeliveryPicker(null)}
+        onConfirm={(value) => {
+          setDeliveryTime(value);
+          setActiveDeliveryPicker(null);
+        }}
+      />
     </ScrollView>
   );
 }
@@ -1103,6 +1138,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     color: theme.colors.onSurface,
     ...theme.typography.body,
+  },
+  dateTimeField: {
+    minHeight: 64,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.outlineVariant,
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    gap: 1,
+  },
+  dateTimeValue: {
+    ...theme.typography.body,
+    color: theme.colors.onSurface,
+    fontFamily: 'Cairo_600SemiBold',
+    textAlign: 'right',
+  },
+  dateTimeHint: {
+    ...theme.typography.label,
+    color: theme.colors.primary,
+    textAlign: 'right',
   },
   textArea: {
     minHeight: 96,

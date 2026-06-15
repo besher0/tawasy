@@ -68,7 +68,7 @@ const moldInnerColorLabels: Record<string, string> = {
 };
 
 const cakeFinishLabels: Record<string, string> = {
-  None: 'بدون',
+  None: 'ما في',
   Disk_Enlargement: 'تكبير ديسك',
   Covering: 'تلبيس',
 };

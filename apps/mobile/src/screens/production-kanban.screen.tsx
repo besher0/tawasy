@@ -4,7 +4,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import api from '../lib/api';
 import theme from '../theme';
-import { moldConfigurationLabel } from '../lib/labels';
+import { buildOrderItemDisplay } from '../lib/order-item-details';
 import { RootStackParamList } from '../navigation/types';
 
 const activeColumns = ['New', 'Reviewing', 'In_Production', 'Ready'];
@@ -22,9 +22,19 @@ type KanbanOrder = {
   items?: {
     id: string;
     itemKind: string;
+    pieceType?: string | null;
+    hasTopDecoration?: boolean;
+    layers?: number;
+    shape?: string | null;
     moldFlavor?: string | null;
     moldInnerColor?: string | null;
     moldColor?: string | null;
+    hasFillings?: boolean;
+    filling?: string | null;
+    withFoam?: boolean;
+    finishType?: string | null;
+    specialDetails?: string | null;
+    peopleCount?: number;
   }[];
   moldDeliveryShop?: {
     name: string;
@@ -107,20 +117,22 @@ export function ProductionKanbanScreen() {
                     </Text>
                   </View>
                   <Text style={styles.customerName}>{order.customerName}</Text>
-                  {order.items?.some((item) => item.itemKind === 'Mold') ? (
-                    <Text style={styles.moldSummary}>
-                      {order.items
-                        .filter((item) => item.itemKind === 'Mold')
-                        .map((item) =>
-                          moldConfigurationLabel(
-                            item.moldFlavor,
-                            item.moldColor,
-                            item.moldInnerColor,
-                          ),
-                        )
-                        .join('، ')}
-                    </Text>
-                  ) : null}
+                  {order.items?.map((item, itemIndex) => {
+                    const display = buildOrderItemDisplay(item);
+
+                    return (
+                      <View key={item.id} style={styles.itemSummary}>
+                        <Text style={styles.itemSummaryTitle}>
+                          {`${itemIndex + 1}. ${display.title}`}
+                        </Text>
+                        {display.lines.map((line) => (
+                          <Text key={line} style={styles.itemSummaryLine}>
+                            {line}
+                          </Text>
+                        ))}
+                      </View>
+                    );
+                  })}
                   <Text style={styles.orderText}>
                     مكان التسليم: {order.moldDeliveryShop?.name ?? 'غير محدد'}
                   </Text>
@@ -222,9 +234,22 @@ const styles = StyleSheet.create({
     ...theme.typography.label,
     color: theme.colors.onSurfaceVariant,
   },
-  moldSummary: {
-    ...theme.typography.body,
+  itemSummary: {
+    borderRightWidth: 3,
+    borderRightColor: theme.colors.primary,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surfaceContainerLow,
+    padding: theme.spacing.sm,
+    gap: 2,
+  },
+  itemSummaryTitle: {
+    ...theme.typography.title,
     color: theme.colors.primary,
+    textAlign: 'right',
+  },
+  itemSummaryLine: {
+    ...theme.typography.body,
+    color: theme.colors.onSurface,
     textAlign: 'right',
   },
   detailsHint: {
