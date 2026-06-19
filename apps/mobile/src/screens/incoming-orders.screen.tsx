@@ -18,8 +18,15 @@ import theme from '../theme';
 import api from '../lib/api';
 import { printReport } from '../lib/print-report';
 import { StatusBadge } from '../components/status-badge';
+import {
+  DeliveryDatePicker,
+  formatDeliveryDate,
+} from '../components/delivery-date-time-picker';
 import { orderStatusLabel } from '../lib/labels';
 import { buildOrderItemDisplay } from '../lib/order-item-details';
+
+type MaterialIconName = React.ComponentProps<typeof MaterialIcons>['name'];
+type CancellationFilter = 'all' | 'active' | 'cancelled';
 
 interface OrderItemPreview {
   id: string;
@@ -31,12 +38,15 @@ interface OrderItemPreview {
   shape?: string | null;
   moldFlavor?: string | null;
   moldInnerColor?: string | null;
+  moldLayerColors?: string | null;
   moldColor?: string | null;
   hasFillings?: boolean;
   filling?: string | null;
   withFoam?: boolean;
+  foamCount?: number | null;
   finishType?: string | null;
   specialDetails?: string | null;
+  writingText?: string | null;
   peopleCount?: number;
   referenceImages?: string[];
 }
@@ -69,6 +79,16 @@ interface OrderSection {
   showBranchHeader: boolean;
   data: OrderRow[];
 }
+
+const cancellationFilterOptions: Array<{
+  value: CancellationFilter;
+  label: string;
+  icon: MaterialIconName;
+}> = [
+  { value: 'all', label: 'كل الطلبات', icon: 'list' },
+  { value: 'active', label: 'غير ملغي', icon: 'check-circle' },
+  { value: 'cancelled', label: 'ملغي', icon: 'cancel' },
+];
 
 function getLocalDateKey(value: string) {
   const date = new Date(value);
@@ -122,18 +142,30 @@ export function IncomingOrdersScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [search, setSearch] = useState('');
+  const [cancellationFilter, setCancellationFilter] =
+    useState<CancellationFilter>('all');
+  const [deliveryDateFilter, setDeliveryDateFilter] = useState('');
+  const [showDateFilterPicker, setShowDateFilterPicker] = useState(false);
   const [exporting, setExporting] = useState(false);
   const isFactoryView =
     user?.role === UserRole.ADMIN || user?.role === UserRole.FACTORY_MANAGER;
 
   const loadOrders = useCallback(async () => {
-    const response = await api.get('/orders', {
+    const response = await api.get<OrderRow[]>('/orders', {
       params: {
-        search: search || undefined,
+        search: search.trim() || undefined,
+        date: deliveryDateFilter || undefined,
+        status: cancellationFilter === 'cancelled' ? 'Cancelled' : undefined,
       },
     });
-    setOrders(response.data);
-  }, [search]);
+
+    const loadedOrders =
+      cancellationFilter === 'active'
+        ? response.data.filter((order) => order.status !== 'Cancelled')
+        : response.data;
+
+    setOrders(loadedOrders);
+  }, [cancellationFilter, deliveryDateFilter, search]);
 
   const sections = [...orders]
     .sort(
@@ -253,6 +285,71 @@ export function IncomingOrdersScreen() {
           onChangeText={setSearch}
           onSubmitEditing={() => void loadOrders()}
         />
+        <View style={styles.filterPanel}>
+          <View style={styles.filterTitleRow}>
+            <MaterialIcons
+              name="filter-list"
+              size={20}
+              color={theme.colors.primary}
+            />
+            <Text style={styles.filterTitle}>فلترة الطلبات</Text>
+          </View>
+          <View style={styles.filterChips}>
+            {cancellationFilterOptions.map((option) => {
+              const active = cancellationFilter === option.value;
+
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[styles.filterChip, active ? styles.filterChipActive : null]}
+                  onPress={() => setCancellationFilter(option.value)}
+                >
+                  <MaterialIcons
+                    name={option.icon}
+                    size={18}
+                    color={
+                      active ? theme.colors.onPrimary : theme.colors.onSurfaceVariant
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      active ? styles.filterChipTextActive : null,
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <View style={styles.dateFilterRow}>
+            <TouchableOpacity
+              style={styles.dateFilterButton}
+              onPress={() => setShowDateFilterPicker(true)}
+            >
+              <MaterialIcons name="event" size={20} color={theme.colors.primary} />
+              <Text style={styles.dateFilterText}>
+                {deliveryDateFilter
+                  ? formatDeliveryDate(deliveryDateFilter)
+                  : 'كل تواريخ التواصي'}
+              </Text>
+            </TouchableOpacity>
+            {deliveryDateFilter ? (
+              <TouchableOpacity
+                accessibilityLabel="مسح فلتر التاريخ"
+                style={styles.clearDateButton}
+                onPress={() => setDeliveryDateFilter('')}
+              >
+                <MaterialIcons
+                  name="close"
+                  size={20}
+                  color={theme.colors.onSurfaceVariant}
+                />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </View>
       </View>
 
       <SectionList
@@ -312,6 +409,15 @@ export function IncomingOrdersScreen() {
           </TouchableOpacity>
         )}
       />
+      <DeliveryDatePicker
+        visible={showDateFilterPicker}
+        value={deliveryDateFilter || getLocalDateKey(new Date().toISOString())}
+        onClose={() => setShowDateFilterPicker(false)}
+        onConfirm={(value) => {
+          setDeliveryDateFilter(value);
+          setShowDateFilterPicker(false);
+        }}
+      />
     </View>
   );
 }
@@ -364,6 +470,83 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     textAlign: 'right',
     ...theme.typography.body,
+  },
+  filterPanel: {
+    gap: theme.spacing.sm,
+  },
+  filterTitleRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  filterTitle: {
+    ...theme.typography.title,
+    color: theme.colors.onSurface,
+    textAlign: 'right',
+  },
+  filterChips: {
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  filterChip: {
+    minHeight: 42,
+    minWidth: 104,
+    flexGrow: 1,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.outlineVariant,
+    backgroundColor: theme.colors.surfaceContainerLowest,
+    paddingHorizontal: theme.spacing.md,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.xs,
+  },
+  filterChipActive: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary,
+  },
+  filterChipText: {
+    ...theme.typography.label,
+    color: theme.colors.onSurfaceVariant,
+  },
+  filterChipTextActive: {
+    color: theme.colors.onPrimary,
+    fontFamily: 'Cairo_700Bold',
+  },
+  dateFilterRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  dateFilterButton: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.outlineVariant,
+    backgroundColor: theme.colors.surfaceContainerLowest,
+    paddingHorizontal: theme.spacing.md,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  dateFilterText: {
+    flex: 1,
+    ...theme.typography.body,
+    color: theme.colors.onSurface,
+    textAlign: 'right',
+  },
+  clearDateButton: {
+    width: 46,
+    height: 46,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.outlineVariant,
+    backgroundColor: theme.colors.surfaceContainerLowest,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   listContent: {
     paddingHorizontal: theme.spacing.lg,

@@ -1,0 +1,3 @@
+ALTER TABLE "OrderItem"
+  ADD COLUMN IF NOT EXISTS "foamCount" INTEGER,
+  ADD COLUMN IF NOT EXISTS "writingText" TEXT;

@@ -58,6 +58,16 @@ export class CreateOrderItemDto {
   @IsEnum(MoldInnerColor)
   moldInnerColor?: MoldInnerColor;
 
+  @ApiPropertyOptional({ description: 'Layer colors when the inner mold color is mixed' })
+  @ValidateIf(
+    (item: CreateOrderItemDto) =>
+      item.itemKind === OrderItemKind.MOLD &&
+      item.moldInnerColor === MoldInnerColor.MIXED,
+  )
+  @IsString()
+  @IsNotEmpty()
+  moldLayerColors?: string;
+
   @ApiPropertyOptional({ description: 'Requested external mold color' })
   @ValidateIf((item: CreateOrderItemDto) => item.itemKind === OrderItemKind.MOLD)
   @IsString()
@@ -77,6 +87,12 @@ export class CreateOrderItemDto {
   @IsBoolean()
   withFoam!: boolean;
 
+  @ApiPropertyOptional({ minimum: 1, description: 'Number of foam pieces when foam is selected' })
+  @ValidateIf((item: CreateOrderItemDto) => item.withFoam)
+  @IsInt()
+  @Min(1)
+  foamCount?: number;
+
   @ApiProperty({ enum: CakeFinish })
   @IsEnum(CakeFinish)
   finishType!: CakeFinish;
@@ -85,6 +101,11 @@ export class CreateOrderItemDto {
   @IsOptional()
   @IsString()
   specialDetails?: string;
+
+  @ApiPropertyOptional({ description: 'Text written on the mold' })
+  @IsOptional()
+  @IsString()
+  writingText?: string;
 
   @ApiProperty({ minimum: 1 })
   @IsInt()

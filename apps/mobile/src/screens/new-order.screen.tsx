@@ -45,13 +45,16 @@ type DraftOrderItem = {
   shape: CakeShape;
   moldFlavor: MoldFlavor;
   moldInnerColor: MoldInnerColor;
+  moldLayerColors: string;
   moldColor: string;
   hasFillings: boolean;
   filling: string;
   withFoam: boolean;
+  foamCount: number;
   finishType: CakeFinish;
   peopleCount: number;
   specialDetails: string;
+  writingText: string;
   referenceImages: string[];
 };
 
@@ -100,9 +103,11 @@ const cakeShapeOptions: Choice<CakeShape>[] = [
   { value: CakeShape.HEART, label: 'قلب' },
 ];
 
-const layerOptions: Choice<'1' | '2'>[] = [
+const layerOptions: Choice<'1' | '2' | '3' | '4'>[] = [
   { value: '1', label: 'طابق واحد' },
   { value: '2', label: 'طابقين' },
+  { value: '3', label: '3 طوابق' },
+  { value: '4', label: '4 طوابق' },
 ];
 
 const finishOptions: Choice<CakeFinish>[] = [
@@ -134,13 +139,16 @@ function createEmptyItem(): DraftOrderItem {
     shape: CakeShape.ROUND,
     moldFlavor: MoldFlavor.CREAM,
     moldInnerColor: MoldInnerColor.WHITE,
+    moldLayerColors: '',
     moldColor: '',
     hasFillings: false,
     filling: '',
     withFoam: false,
+    foamCount: 1,
     finishType: CakeFinish.NONE,
     peopleCount: 1,
     specialDetails: '',
+    writingText: '',
     referenceImages: [],
   };
 }
@@ -283,7 +291,7 @@ export function NewOrderScreen() {
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         quality: 0.8,
         allowsMultipleSelection: true,
         selectionLimit: 0,
@@ -459,6 +467,18 @@ export function NewOrderScreen() {
       return;
     }
 
+    const missingMixedLayerColors = items.find(
+      (item) =>
+        item.itemKind === OrderItemKind.MOLD &&
+        item.moldInnerColor === MoldInnerColor.MIXED &&
+        !item.moldLayerColors.trim(),
+    );
+
+    if (missingMixedLayerColors) {
+      setSubmitError('حدد ألوان الطبقات عندما يكون لون القالب من الداخل مشكل.');
+      return;
+    }
+
     const paymentStatus =
       normalizedDeposit <= 0
         ? PaymentStatus.UNPAID
@@ -487,13 +507,19 @@ export function NewOrderScreen() {
           shape: isMold ? item.shape : undefined,
           moldFlavor: isMold ? item.moldFlavor : undefined,
           moldInnerColor: isMold ? item.moldInnerColor : undefined,
+          moldLayerColors:
+            isMold && item.moldInnerColor === MoldInnerColor.MIXED
+              ? item.moldLayerColors.trim()
+              : undefined,
           moldColor: isMold ? item.moldColor.trim() : undefined,
           hasFillings: isMold && item.hasFillings,
           filling: isMold && item.hasFillings ? item.filling.trim() : undefined,
           withFoam: isMold && item.withFoam,
+          foamCount: isMold && item.withFoam ? item.foamCount : undefined,
           finishType: isMold ? item.finishType : CakeFinish.NONE,
           peopleCount: item.peopleCount,
           specialDetails: item.specialDetails.trim() || undefined,
+          writingText: isMold ? item.writingText.trim() || undefined : undefined,
           referenceImages: item.referenceImages,
         };
       }),
@@ -694,9 +720,34 @@ export function NewOrderScreen() {
                   options={moldInnerColorOptions}
                   selected={item.moldInnerColor}
                   onSelect={(moldInnerColor) =>
-                    updateItem(item.id, (current) => ({ ...current, moldInnerColor }))
+                    updateItem(item.id, (current) => ({
+                      ...current,
+                      moldInnerColor,
+                      moldLayerColors:
+                        moldInnerColor === MoldInnerColor.MIXED
+                          ? current.moldLayerColors
+                          : '',
+                    }))
                   }
                 />
+
+                {item.moldInnerColor === MoldInnerColor.MIXED ? (
+                  <>
+                    <Text style={styles.label}>ألوان الطبقات الموجودة</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={item.moldLayerColors}
+                      onChangeText={(moldLayerColors) =>
+                        updateItem(item.id, (current) => ({
+                          ...current,
+                          moldLayerColors,
+                        }))
+                      }
+                      placeholder="مثال: الأول أبيض، الثاني شوكولا"
+                      textAlign="right"
+                    />
+                  </>
+                ) : null}
 
                 <Text style={styles.label}>نوع القالب</Text>
                 <ChoiceRow
@@ -763,14 +814,28 @@ export function NewOrderScreen() {
                     updateItem(item.id, (current) => ({
                       ...current,
                       withFoam: value === 'yes',
+                      foamCount: value === 'yes' ? current.foamCount : 1,
                     }))
                   }
                 />
 
+                {item.withFoam ? (
+                  <>
+                    <Text style={styles.label}>عدد الفلين</Text>
+                    {renderStepper(item.foamCount, (foamCount) =>
+                      updateItem(item.id, (current) => ({ ...current, foamCount })),
+                    )}
+                  </>
+                ) : null}
+
                 <Text style={styles.label}>عدد الطوابق</Text>
                 <ChoiceRow
                   options={layerOptions}
-                  selected={String(item.layers) === '2' ? '2' : '1'}
+                  selected={
+                    ['1', '2', '3', '4'].includes(String(item.layers))
+                      ? (String(item.layers) as '1' | '2' | '3' | '4')
+                      : '1'
+                  }
                   onSelect={(value) =>
                     updateItem(item.id, (current) => ({
                       ...current,
@@ -786,6 +851,17 @@ export function NewOrderScreen() {
                   onSelect={(finishType) =>
                     updateItem(item.id, (current) => ({ ...current, finishType }))
                   }
+                />
+
+                <Text style={styles.label}>الكتابة الخاصة بالقالب</Text>
+                <TextInput
+                  style={styles.input}
+                  value={item.writingText}
+                  onChangeText={(writingText) =>
+                    updateItem(item.id, (current) => ({ ...current, writingText }))
+                  }
+                  placeholder="اكتب النص المطلوب على القالب، أو اتركه فارغاً"
+                  textAlign="right"
                 />
               </>
             )}

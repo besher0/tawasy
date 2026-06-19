@@ -48,6 +48,7 @@ interface TomorrowOrder {
     itemKind: string;
     moldFlavor?: string | null;
     moldInnerColor?: string | null;
+    moldLayerColors?: string | null;
     moldColor?: string | null;
   }[];
   shop?: {
@@ -409,6 +410,7 @@ export function NextDayEssentialsScreen() {
                             item.moldFlavor,
                             item.moldColor,
                             item.moldInnerColor,
+                            item.moldLayerColors,
                           ),
                         )
                         .join('، ')}

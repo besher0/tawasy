@@ -117,10 +117,18 @@ export function moldConfigurationLabel(
   flavor?: string | null,
   color?: string | null,
   innerColor?: string | null,
+  layerColors?: string | null,
 ) {
+  const layerColorText =
+    innerColor === 'Mixed'
+      ? ` - ألوان الطبقات: ${layerColors?.trim() || 'غير محدد'}`
+      : '';
+
   return [
     moldFlavorLabel(flavor),
-    `داخلي: ${innerColor ? moldInnerColorLabel(innerColor) : 'غير محدد'}`,
+    `داخلي: ${
+      innerColor ? `${moldInnerColorLabel(innerColor)}${layerColorText}` : 'غير محدد'
+    }`,
     `خارجي: ${color?.trim() || 'غير محدد'}`,
   ].join(' - ');
 }

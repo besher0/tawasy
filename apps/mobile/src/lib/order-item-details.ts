@@ -13,17 +13,31 @@ export interface DisplayOrderItem {
   shape?: string | null;
   moldFlavor?: string | null;
   moldInnerColor?: string | null;
+  moldLayerColors?: string | null;
   moldColor?: string | null;
   hasFillings?: boolean;
   filling?: string | null;
   withFoam?: boolean;
+  foamCount?: number | null;
   finishType?: string | null;
   specialDetails?: string | null;
+  writingText?: string | null;
   peopleCount?: number;
 }
 
 export function buildOrderItemDisplay(item: DisplayOrderItem) {
   const notes = item.specialDetails?.trim() || '-';
+  const foamDetails = item.withFoam
+    ? `مع فلين${item.foamCount ? ` - العدد: ${item.foamCount}` : ''}`
+    : 'بدون فلين';
+  const writing = item.writingText?.trim() || 'مافي كتابة';
+  const layerColors = item.moldLayerColors?.trim();
+  const innerColorDetails =
+    item.moldInnerColor === 'Mixed'
+      ? `${moldInnerColorLabel(item.moldInnerColor)} - ألوان الطبقات: ${
+          layerColors || 'غير محدد'
+        }`
+      : moldInnerColorLabel(item.moldInnerColor);
 
   if (item.itemKind === 'Pieces') {
     const details = [
@@ -42,7 +56,8 @@ export function buildOrderItemDisplay(item: DisplayOrderItem) {
 
   const details = [
     `عدد الأشخاص: ${item.peopleCount ?? '-'}`,
-    `لون القالب من الداخل: ${moldInnerColorLabel(item.moldInnerColor)}`,
+    `عدد الطوابق: ${item.layers ?? '-'}`,
+    `لون القالب من الداخل: ${innerColorDetails}`,
     `نوع القالب: ${moldFlavorLabel(item.moldFlavor)}`,
     `اللون الخارجي للقالب: ${item.moldColor?.trim() || '-'}`,
     `نوع الحشوة: ${
@@ -51,9 +66,10 @@ export function buildOrderItemDisplay(item: DisplayOrderItem) {
         : 'بدون حشوة'
     }`,
     `شكل القالب: ${cakeShapeLabel(item.shape)}`,
-    `الفلين: ${item.withFoam ? 'مع فلين' : 'بدون فلين'}`,
+    `الفلين: ${foamDetails}`,
     `التجهيز الخارجي: ${cakeFinishLabel(item.finishType)}`,
     `الملاحظات والإضافات الأخرى: ${notes}`,
+    `الكتابة الخاصة بالقالب: ${writing}`,
   ];
 
   return {

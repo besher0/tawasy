@@ -28,12 +28,15 @@ type KanbanOrder = {
     shape?: string | null;
     moldFlavor?: string | null;
     moldInnerColor?: string | null;
+    moldLayerColors?: string | null;
     moldColor?: string | null;
     hasFillings?: boolean;
     filling?: string | null;
     withFoam?: boolean;
+    foamCount?: number | null;
     finishType?: string | null;
     specialDetails?: string | null;
+    writingText?: string | null;
     peopleCount?: number;
   }[];
   moldDeliveryShop?: {

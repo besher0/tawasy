@@ -104,7 +104,13 @@ export class PrintingService {
         doc.text(`- Mold flavor: ${item.moldFlavor}`);
       }
       if (item.moldInnerColor) {
-        doc.text(`- Mold inner color: ${item.moldInnerColor}`);
+        doc.text(
+          `- Mold inner color: ${item.moldInnerColor}${
+            item.moldLayerColors?.trim()
+              ? ` (${item.moldLayerColors.trim()})`
+              : ''
+          }`,
+        );
       }
       if (item.moldColor) {
         doc.text(`- Mold external color: ${item.moldColor}`);
@@ -113,12 +119,15 @@ export class PrintingService {
         doc.text(`- Shape: ${item.shape}`);
       }
       doc.text(`- Fillings: ${item.hasFillings ? item.filling ?? 'Yes' : 'No'}`);
-      doc.text(`- Foam: ${item.withFoam ? 'Yes' : 'No'}`);
+      doc.text(
+        `- Foam: ${item.withFoam ? `Yes${item.foamCount ? ` (${item.foamCount})` : ''}` : 'No'}`,
+      );
       doc.text(`- Finish: ${item.finishType}`);
       doc.text(`- Quantity/people: ${item.peopleCount}`);
       if (item.specialDetails) {
         doc.text(`- Notes: ${item.specialDetails}`);
       }
+      doc.text(`- Writing: ${item.writingText?.trim() || 'None'}`);
       doc.moveDown(0.5);
     });
 
@@ -213,11 +222,30 @@ export class PrintingService {
                 ? `النوع: ${flavorLabels[item.moldFlavor] ?? item.moldFlavor}`
                 : null,
               item.moldInnerColor
-                ? `اللون الداخلي: ${innerColorLabels[item.moldInnerColor] ?? item.moldInnerColor}`
+                ? `اللون الداخلي: ${
+                    innerColorLabels[item.moldInnerColor] ?? item.moldInnerColor
+                  }${
+                    item.moldInnerColor === 'Mixed'
+                      ? ` - ألوان الطبقات: ${
+                          item.moldLayerColors?.trim() || 'غير محدد'
+                        }`
+                      : ''
+                  }`
                 : null,
               item.moldColor ? `اللون الخارجي: ${item.moldColor}` : null,
+              `عدد الطوابق: ${item.layers}`,
+              item.itemKind === 'Mold'
+                ? `الفلين: ${
+                    item.withFoam
+                      ? `مع فلين${item.foamCount ? ` - العدد: ${item.foamCount}` : ''}`
+                      : 'بدون فلين'
+                  }`
+                : null,
               `الكمية/الأشخاص: ${item.peopleCount}`,
               item.specialDetails ? `ملاحظات: ${item.specialDetails}` : null,
+              item.itemKind === 'Mold'
+                ? `الكتابة الخاصة بالقالب: ${item.writingText?.trim() || 'مافي كتابة'}`
+                : null,
             ].filter(Boolean);
             this.writeBody(doc, itemDetails.join(' - '));
           });

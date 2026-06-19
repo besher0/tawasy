@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CakeType, Prisma, OrderStatus } from '@prisma/client';
-import { UserRole } from '@sugarprecision/shared-types';
+import { MoldInnerColor, UserRole } from '@sugarprecision/shared-types';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -77,12 +77,18 @@ export class OrdersService {
             shape: item.shape,
             moldFlavor: item.moldFlavor,
             moldInnerColor: item.moldInnerColor,
+            moldLayerColors:
+              item.moldInnerColor === MoldInnerColor.MIXED
+                ? item.moldLayerColors
+                : undefined,
             moldColor: item.moldColor,
             hasFillings: item.hasFillings,
             filling: item.filling,
             withFoam: item.withFoam,
+            foamCount: item.withFoam ? item.foamCount : undefined,
             finishType: item.finishType,
             specialDetails: item.specialDetails,
+            writingText: item.writingText,
             peopleCount: item.peopleCount,
             referenceImages: item.referenceImages ?? [],
           })),

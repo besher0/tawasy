@@ -35,12 +35,15 @@ export interface OrderItemInput {
   shape?: CakeShape;
   moldFlavor?: MoldFlavor;
   moldInnerColor?: MoldInnerColor;
+  moldLayerColors?: string;
   moldColor?: string;
   hasFillings: boolean;
   filling?: string;
   withFoam: boolean;
+  foamCount?: number;
   finishType: CakeFinish;
   specialDetails?: string;
+  writingText?: string;
   peopleCount: number;
   referenceImages: string[];
 }

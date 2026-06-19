@@ -179,12 +179,15 @@ model OrderItem {
   shape            CakeShape?
   moldFlavor       MoldFlavor?
   moldInnerColor   MoldInnerColor?
+  moldLayerColors  String?
   moldColor        String?
   hasFillings      Boolean       @default(false)
   filling          String?
   withFoam         Boolean       @default(false)
+  foamCount        Int?
   finishType       CakeFinish    @default(None)
   specialDetails   String?
+  writingText      String?
   peopleCount      Int           @default(1)
   referenceImages  String[]
   createdAt        DateTime      @default(now())
