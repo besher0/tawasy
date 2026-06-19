@@ -75,6 +75,9 @@ const shopScopedRoles = new Set<UserRole>([
   UserRole.SHOP_EMPLOYEE,
 ]);
 
+const maxReferenceImageBytes = 15 * 1024 * 1024;
+const maxReferenceImageMb = Math.round(maxReferenceImageBytes / 1024 / 1024);
+
 const itemKindOptions: Choice<OrderItemKind>[] = [
   { value: OrderItemKind.PIECES, label: 'قطع' },
   { value: OrderItemKind.MOLD, label: 'قالب' },
@@ -301,6 +304,19 @@ export function NewOrderScreen() {
         return;
       }
 
+      const oversizedAsset = result.assets.find((asset) => {
+        const size = asset.fileSize ?? asset.file?.size;
+        return typeof size === 'number' && size > maxReferenceImageBytes;
+      });
+
+      if (oversizedAsset) {
+        Alert.alert(
+          'تنبيه',
+          `حجم إحدى الصور أكبر من ${maxReferenceImageMb} ميغابايت. اختر صورة أصغر أو خفّض حجمها ثم حاول مجدداً.`,
+        );
+        return;
+      }
+
       setUploadingItemId(itemId);
       const uploadedUrls: string[] = [];
 
@@ -323,7 +339,17 @@ export function NewOrderScreen() {
           } as never);
         }
 
-        const response = await api.post('/uploads/order-reference', form);
+        const response = await api.post<{ url: string }>(
+          '/uploads/order-reference',
+          form,
+          {
+            headers:
+              Platform.OS === 'web'
+                ? undefined
+                : { 'Content-Type': 'multipart/form-data' },
+            transformRequest: (data) => data,
+          },
+        );
         uploadedUrls.push(response.data.url as string);
       }
 
@@ -334,7 +360,10 @@ export function NewOrderScreen() {
     } catch (error) {
       Alert.alert(
         'خطأ',
-        getApiErrorMessage(error, 'تعذر رفع الصور المرجعية. حاول بصورة أصغر من 5 ميغابايت.'),
+        getApiErrorMessage(
+          error,
+          `تعذر رفع الصور المرجعية. حاول بصورة أصغر من ${maxReferenceImageMb} ميغابايت.`,
+        ),
       );
     } finally {
       setUploadingItemId(null);
