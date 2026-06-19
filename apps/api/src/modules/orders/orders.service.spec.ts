@@ -304,6 +304,62 @@ describe('OrdersService', () => {
     );
   });
 
+  it('keeps cancellation successful when status history cannot be recorded', async () => {
+    prisma.order.findUnique.mockResolvedValue({
+      id: 'order-ready',
+      shopId: 'shop-1',
+      status: 'Ready',
+    });
+    prisma.order.update.mockResolvedValue({
+      id: 'order-ready',
+      shopId: 'shop-1',
+      status: 'Cancelled',
+      items: [],
+    });
+    prisma.orderStatusHistory.create.mockRejectedValueOnce(
+      new Error('history unavailable'),
+    );
+
+    const result = await service.cancel('order-ready', {
+      sub: 'shop-user',
+      role: 'ShopEmployee' as never,
+      shopId: 'shop-1',
+    });
+
+    expect(result.status).toBe('Cancelled');
+    expect(auditService.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'ORDER_STATUS_CHANGED',
+        entityId: 'order-ready',
+      }),
+    );
+  });
+
+  it('treats cancelling an already cancelled order as a no-op', async () => {
+    prisma.order.findUnique
+      .mockResolvedValueOnce({
+        id: 'order-cancelled',
+        shopId: 'shop-1',
+        status: 'Cancelled',
+      })
+      .mockResolvedValueOnce({
+        id: 'order-cancelled',
+        shopId: 'shop-1',
+        status: 'Cancelled',
+        items: [],
+      });
+
+    const result = await service.cancel('order-cancelled', {
+      sub: 'shop-user',
+      role: 'ShopEmployee' as never,
+      shopId: 'shop-1',
+    });
+
+    expect(result.status).toBe('Cancelled');
+    expect(prisma.order.update).not.toHaveBeenCalled();
+    expect(prisma.orderStatusHistory.create).not.toHaveBeenCalled();
+  });
+
   it('records the actual delivery time when delivery is confirmed', async () => {
     prisma.order.findUnique.mockResolvedValue({
       id: 'order-ready',

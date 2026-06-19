@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { CakeType, Prisma, OrderStatus } from '@prisma/client';
@@ -19,6 +20,12 @@ interface RequestActor {
 }
 
 const editableStatuses: OrderStatus[] = [OrderStatus.New, OrderStatus.Reviewing];
+const orderResponseInclude = {
+  shop: true,
+  moldDeliveryShop: true,
+  items: true,
+} satisfies Prisma.OrderInclude;
+
 const statusTransitions: Record<OrderStatus, OrderStatus[]> = {
   New: [OrderStatus.In_Production, OrderStatus.Cancelled],
   Reviewing: [OrderStatus.In_Production, OrderStatus.Cancelled],
@@ -30,6 +37,8 @@ const statusTransitions: Record<OrderStatus, OrderStatus[]> = {
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
@@ -145,11 +154,7 @@ export class OrdersService {
 
     return this.prisma.order.findMany({
       where,
-      include: {
-        shop: true,
-        moldDeliveryShop: true,
-        items: true,
-      },
+      include: orderResponseInclude,
       orderBy: [{ isUrgent: 'desc' }, { deliveryDatetime: 'asc' }],
     });
   }
@@ -220,7 +225,7 @@ export class OrdersService {
         isUrgent: dto.isUrgent,
         notes: dto.notes,
       },
-      include: { items: true, shop: true, moldDeliveryShop: true },
+      include: orderResponseInclude,
     });
 
     await this.auditService.log({
@@ -257,6 +262,10 @@ export class OrdersService {
 
     this.assertCanAccessOrder(existing.shopId, actor);
 
+    if (existing.status === status) {
+      return this.findOrderResponse(id);
+    }
+
     const allowedTransitions = statusTransitions[existing.status] ?? [];
     if (!allowedTransitions.includes(status)) {
       throw new BadRequestException(
@@ -272,17 +281,15 @@ export class OrdersService {
     const updated = await this.prisma.order.update({
       where: { id },
       data: statusData,
-      include: { shop: true, moldDeliveryShop: true, items: true },
+      include: orderResponseInclude,
     });
 
-    await this.prisma.orderStatusHistory.create({
-      data: {
-        orderId: id,
-        previousStatus: existing.status,
-        newStatus: status,
-        changedById: actor.sub,
-        note,
-      },
+    await this.recordStatusHistory({
+      orderId: id,
+      previousStatus: existing.status,
+      newStatus: status,
+      changedById: actor.sub,
+      note,
     });
 
     await this.auditService.log({
@@ -413,5 +420,36 @@ export class OrdersService {
 
   private isShopScopedRole(role: UserRole) {
     return role === UserRole.SHOP_MANAGER || role === UserRole.SHOP_EMPLOYEE;
+  }
+
+  private async findOrderResponse(id: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      include: orderResponseInclude,
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    return order;
+  }
+
+  private async recordStatusHistory(data: {
+    orderId: string;
+    previousStatus?: OrderStatus;
+    newStatus: OrderStatus;
+    changedById?: string;
+    note?: string;
+  }) {
+    try {
+      await this.prisma.orderStatusHistory.create({ data });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unknown status history error';
+      this.logger.warn(
+        `Order status history skipped for ${data.orderId}: ${message}`,
+      );
+    }
   }
 }
