@@ -46,6 +46,19 @@ const innerColorLabels: Record<string, string> = {
   Mixed: 'مشكل',
 };
 
+const shapeLabels: Record<string, string> = {
+  Round: 'دائري',
+  Square: 'مربع',
+  Heart: 'قلب',
+  Custom: 'مخصص',
+};
+
+const finishLabels: Record<string, string> = {
+  None: 'ما في',
+  Disk_Enlargement: 'تكبير ديسك',
+  Covering: 'تلبيس',
+};
+
 @Injectable()
 export class PrintingService {
   constructor(
@@ -216,37 +229,47 @@ export class PrintingService {
           }
 
           order.items.forEach((item, itemIndex) => {
-            const itemDetails = [
-              `${itemIndex + 1}) ${itemKindLabels[item.itemKind] ?? item.itemKind}`,
-              item.moldFlavor
-                ? `النوع: ${flavorLabels[item.moldFlavor] ?? item.moldFlavor}`
-                : null,
-              item.moldInnerColor
-                ? `اللون الداخلي: ${
-                    innerColorLabels[item.moldInnerColor] ?? item.moldInnerColor
-                  }${
-                    item.moldInnerColor === 'Mixed'
-                      ? ` - ألوان الطبقات: ${
-                          item.moldLayerColors?.trim() || 'غير محدد'
-                        }`
-                      : ''
-                  }`
-                : null,
-              item.moldColor ? `اللون الخارجي: ${item.moldColor}` : null,
-              `عدد الطوابق: ${item.layers}`,
+            const itemDetails =
               item.itemKind === 'Mold'
-                ? `الفلين: ${
+                ? [
+                    `${itemIndex + 1}) قالب ${item.peopleCount}`,
+                    `${
+                      item.moldInnerColor
+                        ? (innerColorLabels[item.moldInnerColor] ?? item.moldInnerColor)
+                        : '-'
+                    }${
+                      item.moldInnerColor === 'Mixed'
+                        ? ` - ${item.moldLayerColors?.trim() || 'غير محدد'}`
+                        : ''
+                    }`,
+                    item.shape ? (shapeLabels[item.shape] ?? item.shape) : '-',
+                    item.hasFillings
+                      ? item.filling?.trim() || 'يوجد حشوة'
+                      : null,
                     item.withFoam
-                      ? `مع فلين${item.foamCount ? ` - العدد: ${item.foamCount}` : ''}`
-                      : 'بدون فلين'
-                  }`
-                : null,
-              `الكمية/الأشخاص: ${item.peopleCount}`,
-              item.specialDetails ? `ملاحظات: ${item.specialDetails}` : null,
-              item.itemKind === 'Mold'
-                ? `الكتابة الخاصة بالقالب: ${item.writingText?.trim() || 'مافي كتابة'}`
-                : null,
-            ].filter(Boolean);
+                      ? `مع فلين${item.foamCount ? ` (${item.foamCount})` : ''}`
+                      : 'بدون فلين',
+                    `${item.layers ?? '-'}`,
+                    item.moldFlavor
+                      ? (flavorLabels[item.moldFlavor] ?? item.moldFlavor)
+                      : '-',
+                    item.moldColor?.trim() || '-',
+                    finishLabels[item.finishType] ?? item.finishType,
+                    item.writingText?.trim() || 'مافي كتابة',
+                    `الملاحظات والإضافات الأخرى: ${
+                      item.specialDetails?.trim() || '-'
+                    }`,
+                  ].filter(Boolean)
+                : [
+                    `${itemIndex + 1}) ${
+                      itemKindLabels[item.itemKind] ?? item.itemKind
+                    }`,
+                    `عدد الطبقات: ${item.layers}`,
+                    `الكمية/الأشخاص: ${item.peopleCount}`,
+                    item.specialDetails
+                      ? `ملاحظات: ${item.specialDetails}`
+                      : null,
+                  ].filter(Boolean);
             this.writeBody(doc, itemDetails.join(' - '));
           });
           doc.moveDown(0.5);

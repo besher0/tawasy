@@ -28,15 +28,13 @@ export interface DisplayOrderItem {
 export function buildOrderItemDisplay(item: DisplayOrderItem) {
   const notes = item.specialDetails?.trim() || '-';
   const foamDetails = item.withFoam
-    ? `مع فلين${item.foamCount ? ` - العدد: ${item.foamCount}` : ''}`
+    ? `مع فلين${item.foamCount ? ` (${item.foamCount})` : ''}`
     : 'بدون فلين';
   const writing = item.writingText?.trim() || 'مافي كتابة';
   const layerColors = item.moldLayerColors?.trim();
   const innerColorDetails =
     item.moldInnerColor === 'Mixed'
-      ? `${moldInnerColorLabel(item.moldInnerColor)} - ألوان الطبقات: ${
-          layerColors || 'غير محدد'
-        }`
+      ? `${moldInnerColorLabel(item.moldInnerColor)} - ${layerColors || 'غير محدد'}`
       : moldInnerColorLabel(item.moldInnerColor);
 
   if (item.itemKind === 'Pieces') {
@@ -55,25 +53,20 @@ export function buildOrderItemDisplay(item: DisplayOrderItem) {
   }
 
   const details = [
-    `عدد الأشخاص: ${item.peopleCount ?? '-'}`,
-    `عدد الطوابق: ${item.layers ?? '-'}`,
-    `لون القالب من الداخل: ${innerColorDetails}`,
-    `نوع القالب: ${moldFlavorLabel(item.moldFlavor)}`,
-    `اللون الخارجي للقالب: ${item.moldColor?.trim() || '-'}`,
-    `نوع الحشوة: ${
-      item.hasFillings
-        ? item.filling?.trim() || 'يوجد حشوة'
-        : 'بدون حشوة'
-    }`,
-    `شكل القالب: ${cakeShapeLabel(item.shape)}`,
-    `الفلين: ${foamDetails}`,
-    `التجهيز الخارجي: ${cakeFinishLabel(item.finishType)}`,
+    innerColorDetails,
+    cakeShapeLabel(item.shape),
+    item.hasFillings ? item.filling?.trim() || 'يوجد حشوة' : null,
+    foamDetails,
+    `${item.layers ?? '-'}`,
+    moldFlavorLabel(item.moldFlavor),
+    item.moldColor?.trim() || '-',
+    cakeFinishLabel(item.finishType),
+    writing,
     `الملاحظات والإضافات الأخرى: ${notes}`,
-    `الكتابة الخاصة بالقالب: ${writing}`,
-  ];
+  ].filter((detail): detail is string => Boolean(detail));
 
   return {
     title: 'قالب',
-    text: `قالب، ${details.join('، ')}`,
+    text: `قالب ${item.peopleCount ?? '-'}، ${details.join('، ')}`,
   };
 }

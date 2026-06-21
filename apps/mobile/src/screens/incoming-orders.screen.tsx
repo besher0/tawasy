@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   SectionList,
@@ -11,11 +11,13 @@ import {
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialIcons } from '@expo/vector-icons';
-import { UserRole } from '@sugarprecision/shared-types';
+import { ShopType, UserRole } from '@sugarprecision/shared-types';
+import type { ShopSummary } from '@sugarprecision/shared-types';
 import { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../context/auth-context';
 import theme from '../theme';
 import api from '../lib/api';
+import { getApiErrorMessage } from '../lib/api-error';
 import { printReport } from '../lib/print-report';
 import { StatusBadge } from '../components/status-badge';
 import {
@@ -146,6 +148,8 @@ export function IncomingOrdersScreen() {
     useState<CancellationFilter>('all');
   const [deliveryDateFilter, setDeliveryDateFilter] = useState('');
   const [showDateFilterPicker, setShowDateFilterPicker] = useState(false);
+  const [shops, setShops] = useState<ShopSummary[]>([]);
+  const [shopIdFilter, setShopIdFilter] = useState('');
   const [exporting, setExporting] = useState(false);
   const isFactoryView =
     user?.role === UserRole.ADMIN || user?.role === UserRole.FACTORY_MANAGER;
@@ -156,6 +160,7 @@ export function IncomingOrdersScreen() {
         search: search.trim() || undefined,
         date: deliveryDateFilter || undefined,
         status: cancellationFilter === 'cancelled' ? 'Cancelled' : undefined,
+        shopId: isFactoryView && shopIdFilter ? shopIdFilter : undefined,
       },
     });
 
@@ -165,7 +170,29 @@ export function IncomingOrdersScreen() {
         : response.data;
 
     setOrders(loadedOrders);
-  }, [cancellationFilter, deliveryDateFilter, search]);
+  }, [cancellationFilter, deliveryDateFilter, isFactoryView, search, shopIdFilter]);
+
+  useEffect(() => {
+    if (!isFactoryView) {
+      setShops([]);
+      setShopIdFilter('');
+      return;
+    }
+
+    async function loadShops() {
+      try {
+        const response = await api.get<ShopSummary[]>('/shops', {
+          params: { type: ShopType.BRANCH },
+        });
+
+        setShops(response.data ?? []);
+      } catch (error) {
+        Alert.alert('خطأ', getApiErrorMessage(error, 'تعذر تحميل المحلات.'));
+      }
+    }
+
+    void loadShops();
+  }, [isFactoryView]);
 
   const sections = [...orders]
     .sort(
@@ -349,6 +376,67 @@ export function IncomingOrdersScreen() {
               </TouchableOpacity>
             ) : null}
           </View>
+          {isFactoryView ? (
+            <View style={styles.shopFilterGroup}>
+              <Text style={styles.filterSubtitle}>فلترة حسب المحل</Text>
+              <View style={styles.filterChips}>
+                <TouchableOpacity
+                  style={[
+                    styles.filterChip,
+                    !shopIdFilter ? styles.filterChipActive : null,
+                  ]}
+                  onPress={() => setShopIdFilter('')}
+                >
+                  <MaterialIcons
+                    name="storefront"
+                    size={18}
+                    color={
+                      !shopIdFilter
+                        ? theme.colors.onPrimary
+                        : theme.colors.onSurfaceVariant
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      !shopIdFilter ? styles.filterChipTextActive : null,
+                    ]}
+                  >
+                    كل المحلات
+                  </Text>
+                </TouchableOpacity>
+                {shops.map((shop) => {
+                  const active = shopIdFilter === shop.id;
+
+                  return (
+                    <TouchableOpacity
+                      key={shop.id}
+                      style={[styles.filterChip, active ? styles.filterChipActive : null]}
+                      onPress={() => setShopIdFilter(shop.id)}
+                    >
+                      <MaterialIcons
+                        name="store"
+                        size={18}
+                        color={
+                          active
+                            ? theme.colors.onPrimary
+                            : theme.colors.onSurfaceVariant
+                        }
+                      />
+                      <Text
+                        style={[
+                          styles.filterChipText,
+                          active ? styles.filterChipTextActive : null,
+                        ]}
+                      >
+                        {shop.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          ) : null}
         </View>
       </View>
 
@@ -484,6 +572,11 @@ const styles = StyleSheet.create({
     color: theme.colors.onSurface,
     textAlign: 'right',
   },
+  filterSubtitle: {
+    ...theme.typography.label,
+    color: theme.colors.onSurfaceVariant,
+    textAlign: 'right',
+  },
   filterChips: {
     flexDirection: 'row-reverse',
     flexWrap: 'wrap',
@@ -547,6 +640,9 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surfaceContainerLowest,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  shopFilterGroup: {
+    gap: theme.spacing.xs,
   },
   listContent: {
     paddingHorizontal: theme.spacing.lg,
