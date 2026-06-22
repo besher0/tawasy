@@ -7,12 +7,15 @@ import {
   PaymentStatus,
   ShopType,
   UserRole,
-} from '@sugarprecision/shared-types';
-import type { CreateOrderInput, ShopSummary } from '@sugarprecision/shared-types';
-import * as ImagePicker from 'expo-image-picker';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+} from "@sugarprecision/shared-types";
+import type {
+  CreateOrderInput,
+  ShopSummary,
+} from "@sugarprecision/shared-types";
+import * as ImagePicker from "expo-image-picker";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Image,
@@ -23,18 +26,18 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
+} from "react-native";
 import {
   DeliveryDatePicker,
   DeliveryTimePicker,
   formatDeliveryDate,
   formatDeliveryTime,
-} from '../components/delivery-date-time-picker';
-import { useAuth } from '../context/auth-context';
-import api from '../lib/api';
-import { getApiErrorMessage } from '../lib/api-error';
-import { RootStackParamList } from '../navigation/types';
-import theme from '../theme';
+} from "../components/delivery-date-time-picker";
+import { useAuth } from "../context/auth-context";
+import api from "../lib/api";
+import { getApiErrorMessage } from "../lib/api-error";
+import { RootStackParamList } from "../navigation/types";
+import theme from "../theme";
 
 type DraftOrderItem = {
   id: string;
@@ -68,6 +71,10 @@ type CreatedOrder = {
   orderNumber: string;
 };
 
+type NewOrderScreenProps = {
+  orderId?: string;
+};
+
 let orderItemCounter = 0;
 
 const shopScopedRoles = new Set<UserRole>([
@@ -79,44 +86,44 @@ const maxReferenceImageBytes = 15 * 1024 * 1024;
 const maxReferenceImageMb = Math.round(maxReferenceImageBytes / 1024 / 1024);
 
 const itemKindOptions: Choice<OrderItemKind>[] = [
-  { value: OrderItemKind.PIECES, label: 'قطع' },
-  { value: OrderItemKind.MOLD, label: 'قالب' },
+  { value: OrderItemKind.PIECES, label: "قطع" },
+  { value: OrderItemKind.MOLD, label: "قالب" },
 ];
 
-const yesNoOptions: Choice<'yes' | 'no'>[] = [
-  { value: 'yes', label: 'نعم' },
-  { value: 'no', label: 'لا' },
+const yesNoOptions: Choice<"yes" | "no">[] = [
+  { value: "yes", label: "نعم" },
+  { value: "no", label: "لا" },
 ];
 
 const moldFlavorOptions: Choice<MoldFlavor>[] = [
-  { value: MoldFlavor.CREAM, label: 'كريمة' },
-  { value: MoldFlavor.CHOCOLATE, label: 'شوكولا' },
-  { value: MoldFlavor.HARISSA, label: 'هريسة' },
+  { value: MoldFlavor.CREAM, label: "كريمة" },
+  { value: MoldFlavor.CHOCOLATE, label: "شوكولا" },
+  { value: MoldFlavor.HARISSA, label: "هريسة" },
 ];
 
 const moldInnerColorOptions: Choice<MoldInnerColor>[] = [
-  { value: MoldInnerColor.WHITE, label: 'أبيض' },
-  { value: MoldInnerColor.BLACK, label: 'أسود' },
-  { value: MoldInnerColor.MIXED, label: 'مشكل' },
+  { value: MoldInnerColor.WHITE, label: "أبيض" },
+  { value: MoldInnerColor.BLACK, label: "أسود" },
+  { value: MoldInnerColor.MIXED, label: "مشكل" },
 ];
 
 const cakeShapeOptions: Choice<CakeShape>[] = [
-  { value: CakeShape.ROUND, label: 'مدور' },
-  { value: CakeShape.SQUARE, label: 'مربع' },
-  { value: CakeShape.HEART, label: 'قلب' },
+  { value: CakeShape.ROUND, label: "مدور" },
+  { value: CakeShape.SQUARE, label: "مربع" },
+  { value: CakeShape.HEART, label: "قلب" },
 ];
 
-const layerOptions: Choice<'1' | '2' | '3' | '4'>[] = [
-  { value: '1', label: 'طابق واحد' },
-  { value: '2', label: 'طابقين' },
-  { value: '3', label: '3 طوابق' },
-  { value: '4', label: '4 طوابق' },
+const layerOptions: Choice<"1" | "2" | "3" | "4">[] = [
+  { value: "1", label: "طابق واحد" },
+  { value: "2", label: "طابقين" },
+  { value: "3", label: "3 طوابق" },
+  { value: "4", label: "4 طوابق" },
 ];
 
 const finishOptions: Choice<CakeFinish>[] = [
-  { value: CakeFinish.NONE, label: 'ما في' },
-  { value: CakeFinish.DISK_ENLARGEMENT, label: 'تكبير ديسك' },
-  { value: CakeFinish.COVERING, label: 'تلبيس' },
+  { value: CakeFinish.NONE, label: "ما في" },
+  { value: CakeFinish.DISK_ENLARGEMENT, label: "تكبير ديسك" },
+  { value: CakeFinish.COVERING, label: "تلبيس" },
 ];
 
 function buildDefaultDelivery() {
@@ -136,23 +143,76 @@ function createEmptyItem(): DraftOrderItem {
   return {
     id: `item-${Date.now()}-${orderItemCounter}`,
     itemKind: OrderItemKind.MOLD,
-    pieceType: '',
+    pieceType: "",
     hasTopDecoration: false,
     layers: 1,
     shape: CakeShape.ROUND,
     moldFlavor: MoldFlavor.CREAM,
     moldInnerColor: MoldInnerColor.WHITE,
-    moldLayerColors: '',
-    moldColor: '',
+    moldLayerColors: "",
+    moldColor: "",
     hasFillings: false,
-    filling: '',
+    filling: "",
     withFoam: false,
     foamCount: 1,
     finishType: CakeFinish.NONE,
     peopleCount: 1,
-    specialDetails: '',
-    writingText: '',
+    specialDetails: "",
+    writingText: "",
     referenceImages: [],
+  };
+}
+
+function getLocalDeliveryParts(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return buildDefaultDelivery();
+  }
+
+  const deliveryDate = [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+  const deliveryTime = [
+    String(date.getHours()).padStart(2, "0"),
+    String(date.getMinutes()).padStart(2, "0"),
+  ].join(":");
+
+  return { deliveryDate, deliveryTime };
+}
+
+function toDraftOrderItem(item: any): DraftOrderItem {
+  const empty = createEmptyItem();
+
+  return {
+    ...empty,
+    id: item.id ?? empty.id,
+    itemKind: item.itemKind ?? empty.itemKind,
+    pieceType: item.pieceType ?? "",
+    hasTopDecoration: Boolean(item.hasTopDecoration),
+    layers: Number.isFinite(item.layers) ? item.layers : empty.layers,
+    shape: item.shape ?? empty.shape,
+    moldFlavor: item.moldFlavor ?? empty.moldFlavor,
+    moldInnerColor: item.moldInnerColor ?? empty.moldInnerColor,
+    moldLayerColors: item.moldLayerColors ?? "",
+    moldColor: item.moldColor ?? "",
+    hasFillings: Boolean(item.hasFillings),
+    filling: item.filling ?? "",
+    withFoam: Boolean(item.withFoam),
+    foamCount: Number.isFinite(item.foamCount)
+      ? item.foamCount
+      : empty.foamCount,
+    finishType: item.finishType ?? empty.finishType,
+    peopleCount: Number.isFinite(item.peopleCount)
+      ? item.peopleCount
+      : empty.peopleCount,
+    specialDetails: item.specialDetails ?? "",
+    writingText: item.writingText ?? "",
+    referenceImages: Array.isArray(item.referenceImages)
+      ? item.referenceImages
+      : [],
   };
 }
 
@@ -182,7 +242,12 @@ function ChoiceRow<T extends string>({
             ]}
             onPress={() => onSelect(option.value)}
           >
-            <Text style={[styles.optionChipText, active ? styles.optionChipTextActive : null]}>
+            <Text
+              style={[
+                styles.optionChipText,
+                active ? styles.optionChipTextActive : null,
+              ]}
+            >
               {option.label}
             </Text>
           </TouchableOpacity>
@@ -192,56 +257,61 @@ function ChoiceRow<T extends string>({
   );
 }
 
-export function NewOrderScreen() {
+export function NewOrderScreen({ orderId }: NewOrderScreenProps) {
   const { user } = useAuth();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const defaults = useMemo(() => buildDefaultDelivery(), []);
+  const isEditing = Boolean(orderId);
   const isShopScoped = user?.role ? shopScopedRoles.has(user.role) : false;
 
   const [shops, setShops] = useState<ShopSummary[]>([]);
-  const [shopId, setShopId] = useState('');
-  const [deliveryShopId, setDeliveryShopId] = useState('');
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
+  const [shopId, setShopId] = useState("");
+  const [deliveryShopId, setDeliveryShopId] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
   const [deliveryDate, setDeliveryDate] = useState(defaults.deliveryDate);
   const [deliveryTime, setDeliveryTime] = useState(defaults.deliveryTime);
   const [activeDeliveryPicker, setActiveDeliveryPicker] = useState<
-    'date' | 'time' | null
+    "date" | "time" | null
   >(null);
-  const [totalPrice, setTotalPrice] = useState('1250');
-  const [depositAmount, setDepositAmount] = useState('500');
-  const [notes, setNotes] = useState('');
+  const [totalPrice, setTotalPrice] = useState("1250");
+  const [depositAmount, setDepositAmount] = useState("500");
+  const [notes, setNotes] = useState("");
   const [isUrgent, setIsUrgent] = useState(false);
-  const [items, setItems] = useState<DraftOrderItem[]>(() => [createEmptyItem()]);
+  const [items, setItems] = useState<DraftOrderItem[]>(() => [
+    createEmptyItem(),
+  ]);
   const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [shopsLoading, setShopsLoading] = useState(true);
   const [shopsError, setShopsError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [createdOrder, setCreatedOrder] = useState<CreatedOrder | null>(null);
+  const [orderLoading, setOrderLoading] = useState(isEditing);
+  const [orderLoadError, setOrderLoadError] = useState<string | null>(null);
 
   const loadShops = useCallback(async () => {
     try {
       setShopsLoading(true);
       setShopsError(null);
-      const response = await api.get<ShopSummary[]>('/shops');
+      const response = await api.get<ShopSummary[]>("/shops");
       const locations = response.data ?? [];
-      const branches = locations.filter((shop) => shop.type === ShopType.BRANCH);
+      const branches = locations.filter(
+        (shop) => shop.type === ShopType.BRANCH,
+      );
       const userShop = user?.shopId
         ? locations.find((shop) => shop.id === user.shopId)
         : undefined;
-      const defaultOrderShopId = userShop?.id ?? branches[0]?.id ?? '';
-      const defaultDeliveryShopId = userShop?.id ?? locations[0]?.id ?? '';
+      const defaultOrderShopId = userShop?.id ?? branches[0]?.id ?? "";
+      const defaultDeliveryShopId = userShop?.id ?? locations[0]?.id ?? "";
 
       setShops(locations);
       setShopId((current) => current || defaultOrderShopId);
       setDeliveryShopId((current) => current || defaultDeliveryShopId);
     } catch (error) {
       setShopsError(
-        getApiErrorMessage(
-          error,
-          'تعذر تحميل الفروع والمعمل. حاول مرة أخرى.',
-        ),
+        getApiErrorMessage(error, "تعذر تحميل الفروع والمعمل. حاول مرة أخرى."),
       );
     } finally {
       setShopsLoading(false);
@@ -251,6 +321,46 @@ export function NewOrderScreen() {
   useEffect(() => {
     void loadShops();
   }, [loadShops]);
+
+  const loadOrderForEditing = useCallback(async () => {
+    if (!orderId) {
+      return;
+    }
+
+    try {
+      setOrderLoading(true);
+      setOrderLoadError(null);
+      const response = await api.get(`/orders/${orderId}`);
+      const order = response.data;
+      const delivery = getLocalDeliveryParts(order.deliveryDatetime);
+
+      setShopId(order.shopId ?? "");
+      setDeliveryShopId(order.moldDeliveryShopId ?? "");
+      setCustomerName(order.customerName ?? "");
+      setCustomerPhone(order.customerPhone ?? "");
+      setDeliveryDate(delivery.deliveryDate);
+      setDeliveryTime(delivery.deliveryTime);
+      setTotalPrice(String(order.totalPrice ?? ""));
+      setDepositAmount(String(order.depositAmount ?? ""));
+      setNotes(order.notes ?? "");
+      setIsUrgent(Boolean(order.isUrgent));
+      setItems(
+        Array.isArray(order.items) && order.items.length
+          ? order.items.map(toDraftOrderItem)
+          : [createEmptyItem()],
+      );
+    } catch (error) {
+      setOrderLoadError(
+        getApiErrorMessage(error, "تعذر تحميل الطلب للتعديل. حاول مرة أخرى."),
+      );
+    } finally {
+      setOrderLoading(false);
+    }
+  }, [orderId]);
+
+  useEffect(() => {
+    void loadOrderForEditing();
+  }, [loadOrderForEditing]);
 
   const branches = useMemo(
     () => shops.filter((shop) => shop.type === ShopType.BRANCH),
@@ -265,7 +375,7 @@ export function NewOrderScreen() {
     return shops.find((shop) => shop.id === user.shopId);
   }, [shops, user?.shopId]);
 
-  const orderBranchId = isShopScoped ? accountShop?.id ?? '' : shopId;
+  const orderBranchId = isShopScoped ? (accountShop?.id ?? "") : shopId;
 
   const remainingAmount = useMemo(() => {
     const total = Number(totalPrice);
@@ -294,7 +404,7 @@ export function NewOrderScreen() {
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ["images"],
         quality: 0.8,
         allowsMultipleSelection: true,
         selectionLimit: 0,
@@ -306,12 +416,12 @@ export function NewOrderScreen() {
 
       const oversizedAsset = result.assets.find((asset) => {
         const size = asset.fileSize ?? asset.file?.size;
-        return typeof size === 'number' && size > maxReferenceImageBytes;
+        return typeof size === "number" && size > maxReferenceImageBytes;
       });
 
       if (oversizedAsset) {
         Alert.alert(
-          'تنبيه',
+          "تنبيه",
           `حجم إحدى الصور أكبر من ${maxReferenceImageMb} ميغابايت. اختر صورة أصغر أو خفّض حجمها ثم حاول مجدداً.`,
         );
         return;
@@ -324,29 +434,29 @@ export function NewOrderScreen() {
         const form = new FormData();
         const fileName = asset.fileName ?? `reference-${Date.now()}.jpg`;
 
-        if (Platform.OS === 'web') {
+        if (Platform.OS === "web") {
           const webFile =
             asset.file ??
             new File([await (await fetch(asset.uri)).blob()], fileName, {
-              type: asset.mimeType ?? 'image/jpeg',
+              type: asset.mimeType ?? "image/jpeg",
             });
-          form.append('file', webFile, fileName);
+          form.append("file", webFile, fileName);
         } else {
-          form.append('file', {
+          form.append("file", {
             uri: asset.uri,
             name: fileName,
-            type: asset.mimeType ?? 'image/jpeg',
+            type: asset.mimeType ?? "image/jpeg",
           } as never);
         }
 
         const response = await api.post<{ url: string }>(
-          '/uploads/order-reference',
+          "/uploads/order-reference",
           form,
           {
             headers:
-              Platform.OS === 'web'
+              Platform.OS === "web"
                 ? undefined
-                : { 'Content-Type': 'multipart/form-data' },
+                : { "Content-Type": "multipart/form-data" },
             transformRequest: (data) => data,
           },
         );
@@ -359,7 +469,7 @@ export function NewOrderScreen() {
       }));
     } catch (error) {
       Alert.alert(
-        'خطأ',
+        "خطأ",
         getApiErrorMessage(
           error,
           `تعذر رفع الصور المرجعية. حاول بصورة أصغر من ${maxReferenceImageMb} ميغابايت.`,
@@ -373,21 +483,23 @@ export function NewOrderScreen() {
   const removeImage = (itemId: string, imageIndex: number) => {
     updateItem(itemId, (item) => ({
       ...item,
-      referenceImages: item.referenceImages.filter((_, index) => index !== imageIndex),
+      referenceImages: item.referenceImages.filter(
+        (_, index) => index !== imageIndex,
+      ),
     }));
   };
 
   const resetForm = () => {
-    const fallbackOrderShopId = accountShop?.id ?? branches[0]?.id ?? '';
-    const fallbackDeliveryShopId = accountShop?.id ?? shops[0]?.id ?? '';
+    const fallbackOrderShopId = accountShop?.id ?? branches[0]?.id ?? "";
+    const fallbackDeliveryShopId = accountShop?.id ?? shops[0]?.id ?? "";
 
     setShopId(fallbackOrderShopId);
     setDeliveryShopId(fallbackDeliveryShopId);
-    setCustomerName('');
-    setCustomerPhone('');
-    setTotalPrice('1250');
-    setDepositAmount('500');
-    setNotes('');
+    setCustomerName("");
+    setCustomerPhone("");
+    setTotalPrice("1250");
+    setDepositAmount("500");
+    setNotes("");
     setIsUrgent(false);
     setItems([createEmptyItem()]);
     setDeliveryDate(defaults.deliveryDate);
@@ -396,7 +508,8 @@ export function NewOrderScreen() {
 
   const validateItems = () => {
     const invalidPieceIndex = items.findIndex(
-      (item) => item.itemKind === OrderItemKind.PIECES && !item.pieceType.trim(),
+      (item) =>
+        item.itemKind === OrderItemKind.PIECES && !item.pieceType.trim(),
     );
 
     if (invalidPieceIndex >= 0) {
@@ -405,13 +518,13 @@ export function NewOrderScreen() {
     }
 
     const invalidMoldColorIndex = items.findIndex(
-      (item) =>
-        item.itemKind === OrderItemKind.MOLD &&
-        !item.moldColor.trim(),
+      (item) => item.itemKind === OrderItemKind.MOLD && !item.moldColor.trim(),
     );
 
     if (invalidMoldColorIndex >= 0) {
-      setSubmitError(`اكتب اللون الخارجي للقالب رقم ${invalidMoldColorIndex + 1}`);
+      setSubmitError(
+        `اكتب اللون الخارجي للقالب رقم ${invalidMoldColorIndex + 1}`,
+      );
       return false;
     }
 
@@ -443,38 +556,38 @@ export function NewOrderScreen() {
     }
 
     if (shopsLoading) {
-      setSubmitError('انتظر قليلاً حتى يكتمل تحميل الفروع والمعمل.');
+      setSubmitError("انتظر قليلاً حتى يكتمل تحميل الفروع والمعمل.");
       return;
     }
 
     if (shopsError) {
-      setSubmitError('تعذر تحميل الفروع والمعمل. اضغط إعادة المحاولة.');
+      setSubmitError("تعذر تحميل الفروع والمعمل. اضغط إعادة المحاولة.");
       return;
     }
 
     if (!orderBranchId.trim()) {
-      setSubmitError('لا يوجد فرع مربوط بالحساب أو محدد للطلب.');
+      setSubmitError("لا يوجد فرع مربوط بالحساب أو محدد للطلب.");
       return;
     }
 
     if (!deliveryShopId.trim()) {
-      setSubmitError('اختر مكان التسليم.');
+      setSubmitError("اختر مكان التسليم.");
       return;
     }
 
     if (!customerName.trim()) {
-      setSubmitError('أدخل اسم الزبون.');
+      setSubmitError("أدخل اسم الزبون.");
       return;
     }
 
     if (!customerPhone.trim()) {
-      setSubmitError('أدخل رقم الهاتف.');
+      setSubmitError("أدخل رقم الهاتف.");
       return;
     }
 
     const delivery = new Date(`${deliveryDate}T${deliveryTime}:00`);
     if (Number.isNaN(delivery.getTime())) {
-      setSubmitError('تاريخ أو وقت التسليم غير صالح.');
+      setSubmitError("تاريخ أو وقت التسليم غير صالح.");
       return;
     }
 
@@ -482,17 +595,17 @@ export function NewOrderScreen() {
     const normalizedDeposit = Number(depositAmount);
 
     if (!Number.isFinite(normalizedTotal) || normalizedTotal < 0) {
-      setSubmitError('الإجمالي غير صحيح.');
+      setSubmitError("الإجمالي غير صحيح.");
       return;
     }
 
     if (!Number.isFinite(normalizedDeposit) || normalizedDeposit < 0) {
-      setSubmitError('العربون غير صحيح.');
+      setSubmitError("العربون غير صحيح.");
       return;
     }
 
     if (normalizedDeposit > normalizedTotal) {
-      setSubmitError('العربون لا يمكن أن يتجاوز الإجمالي.');
+      setSubmitError("العربون لا يمكن أن يتجاوز الإجمالي.");
       return;
     }
 
@@ -504,7 +617,7 @@ export function NewOrderScreen() {
     );
 
     if (missingMixedLayerColors) {
-      setSubmitError('حدد ألوان الطبقات عندما يكون لون القالب من الداخل مشكل.');
+      setSubmitError("حدد ألوان الطبقات عندما يكون لون القالب من الداخل مشكل.");
       return;
     }
 
@@ -548,7 +661,9 @@ export function NewOrderScreen() {
           finishType: isMold ? item.finishType : CakeFinish.NONE,
           peopleCount: item.peopleCount,
           specialDetails: item.specialDetails.trim() || undefined,
-          writingText: isMold ? item.writingText.trim() || undefined : undefined,
+          writingText: isMold
+            ? item.writingText.trim() || undefined
+            : undefined,
           referenceImages: item.referenceImages,
         };
       }),
@@ -560,14 +675,22 @@ export function NewOrderScreen() {
 
     try {
       setIsSubmitting(true);
-      const response = await api.post<{ id: string; orderNumber: string }>('/orders', payload);
-      resetForm();
-      setCreatedOrder(response.data);
+      if (isEditing && orderId) {
+        await api.patch(`/orders/${orderId}`, payload);
+        navigation.goBack();
+      } else {
+        const response = await api.post<{ id: string; orderNumber: string }>(
+          "/orders",
+          payload,
+        );
+        resetForm();
+        setCreatedOrder(response.data);
+      }
     } catch (error) {
       setSubmitError(
         getApiErrorMessage(
           error,
-          'فشل إرسال الطلب. تحقق من البيانات ومكان التسليم.',
+          "فشل إرسال الطلب. تحقق من البيانات ومكان التسليم.",
         ),
       );
     } finally {
@@ -591,14 +714,18 @@ export function NewOrderScreen() {
         ) : shopsError ? (
           <View style={styles.inlineMessage}>
             <Text style={styles.errorText}>{shopsError}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={() => void loadShops()}>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={() => void loadShops()}
+            >
               <Text style={styles.retryButtonText}>إعادة المحاولة</Text>
             </TouchableOpacity>
           </View>
         ) : options.length ? (
           options.map((shop) => {
             const active = selectedId === shop.id;
-            const locationType = shop.type === ShopType.FACTORY ? 'المعمل' : 'فرع';
+            const locationType =
+              shop.type === ShopType.FACTORY ? "المعمل" : "فرع";
 
             return (
               <TouchableOpacity
@@ -632,10 +759,7 @@ export function NewOrderScreen() {
     </View>
   );
 
-  const renderStepper = (
-    value: number,
-    onChange: (value: number) => void,
-  ) => (
+  const renderStepper = (value: number, onChange: (value: number) => void) => (
     <View style={styles.stepper}>
       <TouchableOpacity
         style={styles.stepperButton}
@@ -664,11 +788,39 @@ export function NewOrderScreen() {
     </View>
   );
 
+  if (isEditing && orderLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.note}>جاري تحميل الطلب للتعديل...</Text>
+      </View>
+    );
+  }
+
+  if (isEditing && orderLoadError) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.errorText}>{orderLoadError}</Text>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={() => void loadOrderForEditing()}
+        >
+          <Text style={styles.retryButtonText}>إعادة المحاولة</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.pageHeader}>
-        <Text style={styles.heading}>إنشاء طلب جديد</Text>
-        <Text style={styles.pageHint}>ابدأ بتحديد نوع كل منتج ثم أكمل بيانات الزبون والدفع.</Text>
+        <Text style={styles.heading}>
+          {isEditing ? "تعديل الطلب" : "إنشاء طلب جديد"}
+        </Text>
+        <Text style={styles.pageHint}>
+          {isEditing
+            ? "يمكنك تعديل المنتجات والتفاصيل. سيبقى الطلب في مرحلته الحالية."
+            : "ابدأ بتحديد نوع كل منتج ثم أكمل بيانات الزبون والدفع."}
+        </Text>
       </View>
 
       {items.map((item, index) => {
@@ -706,7 +858,10 @@ export function NewOrderScreen() {
               <>
                 <Text style={styles.label}>عدد القطع</Text>
                 {renderStepper(item.peopleCount, (peopleCount) =>
-                  updateItem(item.id, (current) => ({ ...current, peopleCount })),
+                  updateItem(item.id, (current) => ({
+                    ...current,
+                    peopleCount,
+                  })),
                 )}
 
                 <Text style={styles.label}>نوع القطع</Text>
@@ -714,7 +869,10 @@ export function NewOrderScreen() {
                   style={styles.input}
                   value={item.pieceType}
                   onChangeText={(pieceType) =>
-                    updateItem(item.id, (current) => ({ ...current, pieceType }))
+                    updateItem(item.id, (current) => ({
+                      ...current,
+                      pieceType,
+                    }))
                   }
                   placeholder="مثال: كب كيك، إكلير، قطع كيك..."
                   textAlign="right"
@@ -728,11 +886,11 @@ export function NewOrderScreen() {
                 <Text style={styles.label}>هل يوجد شيء فوق القطع؟</Text>
                 <ChoiceRow
                   options={yesNoOptions}
-                  selected={item.hasTopDecoration ? 'yes' : 'no'}
+                  selected={item.hasTopDecoration ? "yes" : "no"}
                   onSelect={(value) =>
                     updateItem(item.id, (current) => ({
                       ...current,
-                      hasTopDecoration: value === 'yes',
+                      hasTopDecoration: value === "yes",
                     }))
                   }
                 />
@@ -741,7 +899,10 @@ export function NewOrderScreen() {
               <>
                 <Text style={styles.label}>عدد الأشخاص</Text>
                 {renderStepper(item.peopleCount, (peopleCount) =>
-                  updateItem(item.id, (current) => ({ ...current, peopleCount })),
+                  updateItem(item.id, (current) => ({
+                    ...current,
+                    peopleCount,
+                  })),
                 )}
 
                 <Text style={styles.label}>لون القالب من الداخل</Text>
@@ -755,7 +916,7 @@ export function NewOrderScreen() {
                       moldLayerColors:
                         moldInnerColor === MoldInnerColor.MIXED
                           ? current.moldLayerColors
-                          : '',
+                          : "",
                     }))
                   }
                 />
@@ -783,7 +944,10 @@ export function NewOrderScreen() {
                   options={moldFlavorOptions}
                   selected={item.moldFlavor}
                   onSelect={(moldFlavor) =>
-                    updateItem(item.id, (current) => ({ ...current, moldFlavor }))
+                    updateItem(item.id, (current) => ({
+                      ...current,
+                      moldFlavor,
+                    }))
                   }
                 />
 
@@ -792,7 +956,10 @@ export function NewOrderScreen() {
                   style={styles.input}
                   value={item.moldColor}
                   onChangeText={(moldColor) =>
-                    updateItem(item.id, (current) => ({ ...current, moldColor }))
+                    updateItem(item.id, (current) => ({
+                      ...current,
+                      moldColor,
+                    }))
                   }
                   placeholder="مثال: أبيض، زهري، أزرق سماوي..."
                   textAlign="right"
@@ -801,12 +968,12 @@ export function NewOrderScreen() {
                 <Text style={styles.label}>هل يوجد حشوات؟</Text>
                 <ChoiceRow
                   options={yesNoOptions}
-                  selected={item.hasFillings ? 'yes' : 'no'}
+                  selected={item.hasFillings ? "yes" : "no"}
                   onSelect={(value) =>
                     updateItem(item.id, (current) => ({
                       ...current,
-                      hasFillings: value === 'yes',
-                      filling: value === 'yes' ? current.filling : '',
+                      hasFillings: value === "yes",
+                      filling: value === "yes" ? current.filling : "",
                     }))
                   }
                 />
@@ -816,7 +983,10 @@ export function NewOrderScreen() {
                     style={styles.input}
                     value={item.filling}
                     onChangeText={(filling) =>
-                      updateItem(item.id, (current) => ({ ...current, filling }))
+                      updateItem(item.id, (current) => ({
+                        ...current,
+                        filling,
+                      }))
                     }
                     placeholder="اكتب أنواع الحشوات"
                     textAlign="right"
@@ -835,15 +1005,15 @@ export function NewOrderScreen() {
                 <Text style={styles.label}>الفلين</Text>
                 <ChoiceRow
                   options={[
-                    { value: 'yes', label: 'مع فلين' },
-                    { value: 'no', label: 'بدون فلين' },
+                    { value: "yes", label: "مع فلين" },
+                    { value: "no", label: "بدون فلين" },
                   ]}
-                  selected={item.withFoam ? 'yes' : 'no'}
+                  selected={item.withFoam ? "yes" : "no"}
                   onSelect={(value) =>
                     updateItem(item.id, (current) => ({
                       ...current,
-                      withFoam: value === 'yes',
-                      foamCount: value === 'yes' ? current.foamCount : 1,
+                      withFoam: value === "yes",
+                      foamCount: value === "yes" ? current.foamCount : 1,
                     }))
                   }
                 />
@@ -852,7 +1022,10 @@ export function NewOrderScreen() {
                   <>
                     <Text style={styles.label}>عدد الفلين</Text>
                     {renderStepper(item.foamCount, (foamCount) =>
-                      updateItem(item.id, (current) => ({ ...current, foamCount })),
+                      updateItem(item.id, (current) => ({
+                        ...current,
+                        foamCount,
+                      })),
                     )}
                   </>
                 ) : null}
@@ -861,9 +1034,9 @@ export function NewOrderScreen() {
                 <ChoiceRow
                   options={layerOptions}
                   selected={
-                    ['1', '2', '3', '4'].includes(String(item.layers))
-                      ? (String(item.layers) as '1' | '2' | '3' | '4')
-                      : '1'
+                    ["1", "2", "3", "4"].includes(String(item.layers))
+                      ? (String(item.layers) as "1" | "2" | "3" | "4")
+                      : "1"
                   }
                   onSelect={(value) =>
                     updateItem(item.id, (current) => ({
@@ -878,7 +1051,10 @@ export function NewOrderScreen() {
                   options={finishOptions}
                   selected={item.finishType}
                   onSelect={(finishType) =>
-                    updateItem(item.id, (current) => ({ ...current, finishType }))
+                    updateItem(item.id, (current) => ({
+                      ...current,
+                      finishType,
+                    }))
                   }
                 />
 
@@ -887,7 +1063,10 @@ export function NewOrderScreen() {
                   style={styles.input}
                   value={item.writingText}
                   onChangeText={(writingText) =>
-                    updateItem(item.id, (current) => ({ ...current, writingText }))
+                    updateItem(item.id, (current) => ({
+                      ...current,
+                      writingText,
+                    }))
                   }
                   placeholder="اكتب النص المطلوب على القالب، أو اتركه فارغاً"
                   textAlign="right"
@@ -900,7 +1079,10 @@ export function NewOrderScreen() {
               style={styles.textArea}
               value={item.specialDetails}
               onChangeText={(specialDetails) =>
-                updateItem(item.id, (current) => ({ ...current, specialDetails }))
+                updateItem(item.id, (current) => ({
+                  ...current,
+                  specialDetails,
+                }))
               }
               placeholder="اكتب أي تفاصيل إضافية أو تعليمات خاصة..."
               multiline
@@ -912,21 +1094,31 @@ export function NewOrderScreen() {
             <TouchableOpacity
               style={[
                 styles.uploadButton,
-                uploadingItemId === item.id ? styles.uploadButtonDisabled : null,
+                uploadingItemId === item.id
+                  ? styles.uploadButtonDisabled
+                  : null,
               ]}
               disabled={uploadingItemId !== null}
               onPress={() => void pickImages(item.id)}
             >
               <Text style={styles.uploadButtonText}>
-                {uploadingItemId === item.id ? 'جاري رفع الصور...' : 'رفع صورة أو عدة صور'}
+                {uploadingItemId === item.id
+                  ? "جاري رفع الصور..."
+                  : "رفع صورة أو عدة صور"}
               </Text>
             </TouchableOpacity>
 
             {item.referenceImages.length ? (
               <View style={styles.imageGrid}>
                 {item.referenceImages.map((imageUrl, imageIndex) => (
-                  <View key={`${imageUrl}-${imageIndex}`} style={styles.imageCard}>
-                    <Image source={{ uri: imageUrl }} style={styles.referenceImage} />
+                  <View
+                    key={`${imageUrl}-${imageIndex}`}
+                    style={styles.imageCard}
+                  >
+                    <Image
+                      source={{ uri: imageUrl }}
+                      style={styles.referenceImage}
+                    />
                     <TouchableOpacity
                       style={styles.removeImageButton}
                       onPress={() => removeImage(item.id, imageIndex)}
@@ -957,25 +1149,25 @@ export function NewOrderScreen() {
           <View style={styles.infoBox}>
             <Text style={styles.infoTitle}>فرع تسجيل الطلب</Text>
             <Text style={styles.infoValue}>
-              {accountShop?.name ?? 'فرع الحساب الحالي'}
+              {accountShop?.name ?? "فرع الحساب الحالي"}
             </Text>
           </View>
         ) : (
           renderShopSelector(
-            'فرع تسجيل الطلب',
+            "فرع تسجيل الطلب",
             shopId,
             branches,
             setShopId,
-            'هذا هو الفرع الذي تم تسجيل الطلب لصالحه.',
+            "هذا هو الفرع الذي تم تسجيل الطلب لصالحه.",
           )
         )}
 
         {renderShopSelector(
-          'مكان التسليم',
+          "مكان التسليم",
           deliveryShopId,
           shops,
           setDeliveryShopId,
-          'يمكن اختيار أي فرع أو التسليم مباشرة في المعمل.',
+          "يمكن اختيار أي فرع أو التسليم مباشرة في المعمل.",
         )}
 
         <Text style={styles.label}>اسم الزبون</Text>
@@ -1001,7 +1193,7 @@ export function NewOrderScreen() {
             <TouchableOpacity
               accessibilityRole="button"
               style={styles.dateTimeField}
-              onPress={() => setActiveDeliveryPicker('time')}
+              onPress={() => setActiveDeliveryPicker("time")}
             >
               <Text style={styles.dateTimeValue}>
                 {formatDeliveryTime(deliveryTime)}
@@ -1014,7 +1206,7 @@ export function NewOrderScreen() {
             <TouchableOpacity
               accessibilityRole="button"
               style={styles.dateTimeField}
-              onPress={() => setActiveDeliveryPicker('date')}
+              onPress={() => setActiveDeliveryPicker("date")}
             >
               <Text style={styles.dateTimeValue}>
                 {formatDeliveryDate(deliveryDate)}
@@ -1037,7 +1229,7 @@ export function NewOrderScreen() {
               isUrgent ? styles.urgentButtonTextActive : null,
             ]}
           >
-            {isUrgent ? 'الطلب مستعجل' : 'الطلب عادي'}
+            {isUrgent ? "الطلب مستعجل" : "الطلب عادي"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -1065,7 +1257,9 @@ export function NewOrderScreen() {
 
         <View style={styles.summaryRow}>
           <Text style={styles.summaryTitle}>المتبقي</Text>
-          <Text style={styles.summaryValue}>{remainingAmount.toFixed(2)} ر.س</Text>
+          <Text style={styles.summaryValue}>
+            {remainingAmount.toFixed(2)} ر.س
+          </Text>
         </View>
 
         <Text style={styles.label}>ملاحظات الطلب العامة</Text>
@@ -1089,8 +1283,12 @@ export function NewOrderScreen() {
         >
           <Text style={styles.primaryButtonText}>
             {isSubmitting
-              ? 'جاري إرسال الطلب...'
-              : 'إرسال الطلب للمعمل'}
+              ? isEditing
+                ? "جاري حفظ التعديلات..."
+                : "جاري إرسال الطلب..."
+              : isEditing
+                ? "حفظ تعديلات الطلب"
+                : "إرسال الطلب للمعمل"}
           </Text>
         </TouchableOpacity>
 
@@ -1100,14 +1298,18 @@ export function NewOrderScreen() {
           </View>
         ) : null}
 
-        {createdOrder ? (
+        {!isEditing && createdOrder ? (
           <View style={styles.successBox}>
             <Text style={styles.successTitle}>تمت إضافة الطلب بنجاح</Text>
-            <Text style={styles.successText}>رقم الطلب: {createdOrder.orderNumber}</Text>
+            <Text style={styles.successText}>
+              رقم الطلب: {createdOrder.orderNumber}
+            </Text>
             <TouchableOpacity
               style={styles.successButton}
               onPress={() =>
-                navigation.navigate('OrderDetails', { orderId: createdOrder.id })
+                navigation.navigate("OrderDetails", {
+                  orderId: createdOrder.id,
+                })
               }
             >
               <Text style={styles.successButtonText}>عرض تفاصيل الطلب</Text>
@@ -1117,7 +1319,7 @@ export function NewOrderScreen() {
       </View>
 
       <DeliveryDatePicker
-        visible={activeDeliveryPicker === 'date'}
+        visible={activeDeliveryPicker === "date"}
         value={deliveryDate}
         onClose={() => setActiveDeliveryPicker(null)}
         onConfirm={(value) => {
@@ -1127,7 +1329,7 @@ export function NewOrderScreen() {
       />
 
       <DeliveryTimePicker
-        visible={activeDeliveryPicker === 'time'}
+        visible={activeDeliveryPicker === "time"}
         value={deliveryTime}
         onClose={() => setActiveDeliveryPicker(null)}
         onConfirm={(value) => {
@@ -1144,10 +1346,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.surface,
   },
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: theme.spacing.lg,
+    gap: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+  },
   content: {
-    width: '100%',
+    width: "100%",
     maxWidth: 1280,
-    alignSelf: 'center',
+    alignSelf: "center",
     padding: theme.spacing.lg,
     gap: theme.spacing.lg,
   },
@@ -1157,22 +1367,22 @@ const styles = StyleSheet.create({
   heading: {
     ...theme.typography.heading,
     color: theme.colors.onSurface,
-    textAlign: 'right',
+    textAlign: "right",
   },
   pageHint: {
     ...theme.typography.body,
     color: theme.colors.onSurfaceVariant,
-    textAlign: 'right',
+    textAlign: "right",
   },
   sectionTitle: {
     ...theme.typography.title,
     color: theme.colors.primary,
-    textAlign: 'right',
+    textAlign: "right",
   },
   primaryLabel: {
     ...theme.typography.title,
     color: theme.colors.onSurface,
-    textAlign: 'right',
+    textAlign: "right",
   },
   card: {
     backgroundColor: theme.colors.surfaceContainerLowest,
@@ -1183,9 +1393,9 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   itemHeader: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: theme.spacing.xs,
   },
   deleteButton: {
@@ -1213,21 +1423,21 @@ const styles = StyleSheet.create({
   infoTitle: {
     ...theme.typography.label,
     color: theme.colors.primary,
-    textAlign: 'right',
+    textAlign: "right",
   },
   infoValue: {
     ...theme.typography.title,
     color: theme.colors.onSurface,
-    textAlign: 'right',
+    textAlign: "right",
   },
   label: {
     ...theme.typography.label,
     color: theme.colors.onSurfaceVariant,
-    textAlign: 'right',
+    textAlign: "right",
     marginTop: theme.spacing.xs,
   },
   row: {
-    flexDirection: 'row-reverse',
+    flexDirection: "row-reverse",
     gap: theme.spacing.sm,
   },
   halfField: {
@@ -1252,20 +1462,20 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
-    alignItems: 'flex-end',
-    justifyContent: 'center',
+    alignItems: "flex-end",
+    justifyContent: "center",
     gap: 1,
   },
   dateTimeValue: {
     ...theme.typography.body,
     color: theme.colors.onSurface,
-    fontFamily: 'Cairo_600SemiBold',
-    textAlign: 'right',
+    fontFamily: "Cairo_600SemiBold",
+    textAlign: "right",
   },
   dateTimeHint: {
     ...theme.typography.label,
     color: theme.colors.primary,
-    textAlign: 'right',
+    textAlign: "right",
   },
   textArea: {
     minHeight: 96,
@@ -1279,8 +1489,8 @@ const styles = StyleSheet.create({
     ...theme.typography.body,
   },
   optionRow: {
-    flexDirection: 'row-reverse',
-    flexWrap: 'wrap',
+    flexDirection: "row-reverse",
+    flexWrap: "wrap",
     gap: theme.spacing.sm,
   },
   optionChip: {
@@ -1291,12 +1501,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     backgroundColor: theme.colors.surface,
-    alignItems: 'center',
+    alignItems: "center",
   },
   optionChipLarge: {
     flex: 1,
     minHeight: 52,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   optionChipActive: {
     borderColor: theme.colors.primary,
@@ -1308,7 +1518,7 @@ const styles = StyleSheet.create({
   },
   optionChipTextActive: {
     color: theme.colors.primary,
-    fontFamily: 'Cairo_700Bold',
+    fontFamily: "Cairo_700Bold",
   },
   shopChip: {
     minWidth: 200,
@@ -1327,7 +1537,7 @@ const styles = StyleSheet.create({
   shopChipTitle: {
     ...theme.typography.title,
     color: theme.colors.onSurface,
-    textAlign: 'right',
+    textAlign: "right",
   },
   shopChipTitleActive: {
     color: theme.colors.primary,
@@ -1335,24 +1545,24 @@ const styles = StyleSheet.create({
   shopChipLocation: {
     ...theme.typography.label,
     color: theme.colors.onSurfaceVariant,
-    textAlign: 'right',
+    textAlign: "right",
   },
   shopChipLocationActive: {
     color: theme.colors.primary,
   },
   stepper: {
-    flexDirection: 'row-reverse',
+    flexDirection: "row-reverse",
     borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.outlineVariant,
-    overflow: 'hidden',
+    overflow: "hidden",
     backgroundColor: theme.colors.surface,
   },
   stepperButton: {
     width: 48,
     height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: theme.colors.surfaceContainerLow,
   },
   stepperButtonText: {
@@ -1368,11 +1578,11 @@ const styles = StyleSheet.create({
   uploadButton: {
     borderRadius: theme.radius.lg,
     borderWidth: 1.5,
-    borderStyle: 'dashed',
+    borderStyle: "dashed",
     borderColor: theme.colors.primary,
     minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: theme.colors.secondaryContainer,
   },
   uploadButtonText: {
@@ -1383,26 +1593,26 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   imageGrid: {
-    flexDirection: 'row-reverse',
-    flexWrap: 'wrap',
+    flexDirection: "row-reverse",
+    flexWrap: "wrap",
     gap: theme.spacing.sm,
   },
   imageCard: {
     width: 116,
     borderRadius: theme.radius.md,
-    overflow: 'hidden',
+    overflow: "hidden",
     borderWidth: 1,
     borderColor: theme.colors.outlineVariant,
     backgroundColor: theme.colors.surface,
   },
   referenceImage: {
-    width: '100%',
+    width: "100%",
     height: 96,
   },
   removeImageButton: {
     minHeight: 34,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   removeImageText: {
     ...theme.typography.label,
@@ -1413,8 +1623,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.outlineVariant,
     height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: theme.colors.surface,
   },
   urgentButtonActive: {
@@ -1427,15 +1637,15 @@ const styles = StyleSheet.create({
   },
   urgentButtonTextActive: {
     color: theme.colors.error,
-    fontFamily: 'Cairo_700Bold',
+    fontFamily: "Cairo_700Bold",
   },
   addButton: {
     borderRadius: theme.radius.lg,
     borderWidth: 1.5,
     borderColor: theme.colors.primary,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
     height: 52,
   },
   addButtonText: {
@@ -1445,8 +1655,8 @@ const styles = StyleSheet.create({
   primaryButton: {
     backgroundColor: theme.colors.primary,
     borderRadius: theme.radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     height: 50,
     marginTop: theme.spacing.sm,
   },
@@ -1458,11 +1668,11 @@ const styles = StyleSheet.create({
     color: theme.colors.onPrimary,
   },
   inlineMessage: {
-    width: '100%',
+    width: "100%",
     gap: theme.spacing.sm,
   },
   retryButton: {
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
     borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.error,
@@ -1483,7 +1693,7 @@ const styles = StyleSheet.create({
   errorText: {
     ...theme.typography.body,
     color: theme.colors.error,
-    textAlign: 'right',
+    textAlign: "right",
   },
   successBox: {
     borderRadius: theme.radius.lg,
@@ -1496,15 +1706,15 @@ const styles = StyleSheet.create({
   successTitle: {
     ...theme.typography.title,
     color: theme.colors.primary,
-    textAlign: 'right',
+    textAlign: "right",
   },
   successText: {
     ...theme.typography.body,
     color: theme.colors.onSurface,
-    textAlign: 'right',
+    textAlign: "right",
   },
   successButton: {
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
     borderRadius: theme.radius.md,
     backgroundColor: theme.colors.primary,
     paddingHorizontal: theme.spacing.md,
@@ -1517,21 +1727,21 @@ const styles = StyleSheet.create({
   emptyText: {
     ...theme.typography.body,
     color: theme.colors.error,
-    textAlign: 'right',
+    textAlign: "right",
   },
   note: {
     ...theme.typography.label,
     color: theme.colors.onSurfaceVariant,
-    textAlign: 'right',
+    textAlign: "right",
   },
   summaryRow: {
     borderTopWidth: 1,
     borderTopColor: theme.colors.outlineVariant,
     paddingTop: theme.spacing.sm,
     marginTop: theme.spacing.xs,
-    flexDirection: 'row-reverse',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row-reverse",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   summaryTitle: {
     ...theme.typography.title,

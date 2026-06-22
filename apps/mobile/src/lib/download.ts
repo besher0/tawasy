@@ -26,11 +26,27 @@ async function shareDownloadedFile(uri: string, mimeType: string) {
   });
 }
 
-export async function downloadRemoteFile(
-  url: string,
-  fileName: string,
-  mimeType = 'image/jpeg',
-) {
+async function waitForPrintAssets(document: Document) {
+  const images = Array.from(document.images);
+  const imagesReady = Promise.all(
+    images.map((image) => {
+      if (image.complete) {
+        return Promise.resolve();
+      }
+
+      return new Promise<void>((resolve) => {
+        image.addEventListener('load', () => resolve(), { once: true });
+        image.addEventListener('error', () => resolve(), { once: true });
+      });
+    }),
+  );
+  const fontsReady = document.fonts?.ready ?? Promise.resolve();
+  const timeout = new Promise<void>((resolve) => setTimeout(resolve, 6000));
+
+  await Promise.race([Promise.all([imagesReady, fontsReady]), timeout]);
+}
+
+export async function downloadRemoteFile(url: string, fileName: string, mimeType = 'image/jpeg') {
   if (Platform.OS === 'web') {
     const response = await fetch(url);
     if (!response.ok) {
@@ -68,7 +84,7 @@ export async function printHtmlAsPdf(html: string, fileName: string) {
     frameDocument.write(html.replace('<title></title>', `<title>${fileName}</title>`));
     frameDocument.close();
 
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    await waitForPrintAssets(frameDocument);
     frame.contentWindow.focus();
     frame.contentWindow.print();
     setTimeout(() => frame.remove(), 1000);

@@ -263,7 +263,7 @@ export function IncomingOrdersScreen() {
         sections: [...branchGroups.entries()].map(([branchName, branchOrders]) => ({
           title: branchName,
           items: branchOrders.map((order) => ({
-            title: 'طلب إنتاج',
+            title: `طلب ${order.orderNumber} — ${order.customerName}`,
             lines: [
               `موعد التسليم: ${new Date(order.deliveryDatetime).toLocaleString('ar-SY')}`,
               `مكان التسليم: ${order.moldDeliveryShop?.name ?? order.shop?.name ?? 'غير محدد'}`,
@@ -279,6 +279,12 @@ export function IncomingOrdersScreen() {
                 ];
               }),
             ],
+            images: (order.items ?? []).flatMap((item, itemIndex) =>
+              (item.referenceImages ?? []).map((url, imageIndex) => ({
+                url,
+                caption: `صورة المنتج ${itemIndex + 1} — صورة ${imageIndex + 1}`,
+              })),
+            ),
           })),
         })),
       });
