@@ -1,8 +1,11 @@
 {
   "expo": {
-    "name": "SugarPrecision",
-    "slug": "sugarprecision",
+    "name": "Tawasy",
+    "slug": "tawasy",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "splash": {
@@ -14,7 +17,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.sugarprecision.app"
+      "bundleIdentifier": "com.tawasy.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -25,11 +28,15 @@
     "extra": {
       "apiBaseUrl": "${EXPO_PUBLIC_API_BASE_URL}",
       "eas": {
-        "projectId": "c8b57e3e-52e2-4ae9-8fdb-73bb7d232efd"
+        "projectId": "9ac2b71f-eb5e-4540-b345-3a0db95686e7"
       }
     },
+    "owner": "besher1",
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "updates": {
+      "url": "https://u.expo.dev/9ac2b71f-eb5e-4540-b345-3a0db95686e7"
+    }
   }
 }

@@ -548,6 +548,11 @@ export function NewOrderScreen({ orderId }: NewOrderScreenProps) {
       return;
     }
 
+    if (uploadingItemId) {
+      setSubmitError("انتظر حتى ينتهي رفع الصور قبل حفظ الطلب.");
+      return;
+    }
+
     setSubmitError(null);
     setCreatedOrder(null);
 
@@ -1276,13 +1281,17 @@ export function NewOrderScreen({ orderId }: NewOrderScreenProps) {
         <TouchableOpacity
           style={[
             styles.primaryButton,
-            isSubmitting || shopsLoading ? styles.primaryButtonDisabled : null,
+            isSubmitting || shopsLoading || uploadingItemId
+              ? styles.primaryButtonDisabled
+              : null,
           ]}
           onPress={() => void submit()}
-          disabled={isSubmitting || shopsLoading}
+          disabled={isSubmitting || shopsLoading || uploadingItemId !== null}
         >
           <Text style={styles.primaryButtonText}>
-            {isSubmitting
+            {uploadingItemId
+              ? "جاري رفع الصور..."
+              : isSubmitting
               ? isEditing
                 ? "جاري حفظ التعديلات..."
                 : "جاري إرسال الطلب..."

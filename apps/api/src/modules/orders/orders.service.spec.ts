@@ -303,7 +303,7 @@ describe("OrdersService", () => {
             withFoam: false,
             finishType: "None" as never,
             peopleCount: 10,
-            referenceImages: [],
+            referenceImages: ["https://images.example.com/order-reference.jpg"],
           },
         ],
       },
@@ -320,7 +320,14 @@ describe("OrdersService", () => {
         data: expect.objectContaining({
           items: expect.objectContaining({
             deleteMany: {},
-            create: [expect.objectContaining({ moldColor: "Blue" })],
+            create: [
+              expect.objectContaining({
+                moldColor: "Blue",
+                referenceImages: [
+                  "https://images.example.com/order-reference.jpg",
+                ],
+              }),
+            ],
           }),
         }),
       }),
