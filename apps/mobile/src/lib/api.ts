@@ -12,6 +12,8 @@ interface AuthTokens {
 
 export const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://tawasy-0bq7.onrender.com';
+export const API_REQUEST_TIMEOUT_MS = 60000;
+export const AUTH_BOOTSTRAP_TIMEOUT_MS = 8000;
 
 export function setAuthTokens(tokens: AuthTokens | null) {
   accessToken = tokens?.accessToken ?? null;
@@ -24,7 +26,7 @@ export function setAuthTokensListener(listener: ((tokens: AuthTokens | null) => 
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 60000,
+  timeout: API_REQUEST_TIMEOUT_MS,
 });
 
 api.interceptors.request.use((config) => {
@@ -54,11 +56,14 @@ api.interceptors.response.use(
     request._retry = true;
 
     try {
+      const refreshTimeout =
+        typeof request?.timeout === 'number' ? request.timeout : API_REQUEST_TIMEOUT_MS;
+
       refreshPromise ??= axios
         .post<{ tokens: AuthTokens }>(
           `${API_BASE_URL}/auth/refresh`,
           { refreshToken },
-          { timeout: 60000 },
+          { timeout: refreshTimeout },
         )
         .then((response) => response.data.tokens)
         .finally(() => {
