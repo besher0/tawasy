@@ -131,7 +131,12 @@ export class OrdersController {
     );
   }
 
-  @Roles(UserRole.ADMIN, UserRole.FACTORY_MANAGER)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.FACTORY_MANAGER,
+    UserRole.SHOP_MANAGER,
+    UserRole.SHOP_EMPLOYEE,
+  )
   @Post(":id/confirm-delivery")
   async confirmDelivery(
     @Param("id", new ParseUUIDPipe()) id: string,

@@ -461,6 +461,87 @@ describe("OrdersService", () => {
     );
   });
 
+  it.each(["New", "Reviewing", "In_Production", "Ready"])(
+    "allows confirming delivery from %s",
+    async (status) => {
+      prisma.order.findUnique.mockResolvedValue({
+        id: "order-active",
+        shopId: "shop-1",
+        status,
+      });
+      prisma.order.update.mockResolvedValue({
+        id: "order-active",
+        shopId: "shop-1",
+        status: "Delivered",
+        deliveredAt: new Date(),
+        items: [],
+      });
+
+      const result = await service.confirmDelivery("order-active", {
+        sub: "shop-user",
+        role: "ShopEmployee" as never,
+        shopId: "shop-1",
+      });
+
+      expect(result.status).toBe("Delivered");
+      expect(prisma.order.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "order-active" },
+          data: {
+            status: "Delivered",
+            deliveredAt: expect.any(Date),
+          },
+        }),
+      );
+    },
+  );
+
+  it("rejects delivery confirmation for a cancelled order", async () => {
+    prisma.order.findUnique.mockResolvedValue({
+      id: "order-cancelled",
+      shopId: "shop-1",
+      status: "Cancelled",
+    });
+
+    await expect(
+      service.confirmDelivery("order-cancelled", {
+        sub: "shop-user",
+        role: "ShopEmployee" as never,
+        shopId: "shop-1",
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(prisma.order.update).not.toHaveBeenCalled();
+  });
+
+  it("keeps delivery confirmation idempotent for delivered orders", async () => {
+    const deliveredAt = new Date("2026-06-05T09:30:00.000Z");
+    prisma.order.findUnique
+      .mockResolvedValueOnce({
+        id: "order-delivered",
+        shopId: "shop-1",
+        status: "Delivered",
+        deliveredAt,
+      })
+      .mockResolvedValueOnce({
+        id: "order-delivered",
+        shopId: "shop-1",
+        status: "Delivered",
+        deliveredAt,
+        items: [],
+      });
+
+    const result = await service.confirmDelivery("order-delivered", {
+      sub: "shop-user",
+      role: "ShopEmployee" as never,
+      shopId: "shop-1",
+    });
+
+    expect(result.deliveredAt).toBe(deliveredAt);
+    expect(prisma.order.update).not.toHaveBeenCalled();
+    expect(prisma.orderStatusHistory.create).not.toHaveBeenCalled();
+  });
+
   it("deletes delivered orders after the five-day retention period", async () => {
     const deliveredAt = new Date("2026-06-01T10:00:00.000Z");
     prisma.order.findMany.mockResolvedValue([

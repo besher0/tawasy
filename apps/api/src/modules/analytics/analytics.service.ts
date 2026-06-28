@@ -1,6 +1,24 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
+import { OrderStatus, Prisma } from '@prisma/client';
+import { UserRole } from '@sugarprecision/shared-types';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnalyticsCacheService } from './analytics-cache.service';
+
+interface RequestActor {
+  sub: string;
+  role: UserRole;
+  shopId?: string | null;
+}
+
+interface DeliveryTotalsQuery {
+  start?: string;
+  end?: string;
+  shopId?: string;
+}
 
 @Injectable()
 export class AnalyticsService {
@@ -193,6 +211,73 @@ export class AnalyticsService {
     return result;
   }
 
+  async getDeliveryTotals(query: DeliveryTotalsQuery, actor: RequestActor) {
+    const now = new Date();
+    const defaultStart = new Date(now);
+    defaultStart.setHours(0, 0, 0, 0);
+    const defaultEnd = new Date(defaultStart);
+    defaultEnd.setDate(defaultStart.getDate() + 1);
+
+    const startDate = query.start ? new Date(query.start) : defaultStart;
+    const endDate = query.end ? new Date(query.end) : defaultEnd;
+
+    if (
+      Number.isNaN(startDate.getTime()) ||
+      Number.isNaN(endDate.getTime()) ||
+      endDate <= startDate
+    ) {
+      throw new BadRequestException('Invalid delivery totals date range');
+    }
+
+    const scopedWhere = this.buildScopedOrderWhere(query.shopId, actor);
+
+    const [delivered, undelivered] = await Promise.all([
+      this.prisma.order.aggregate({
+        where: {
+          ...scopedWhere,
+          status: OrderStatus.Delivered,
+          deliveredAt: {
+            gte: startDate,
+            lt: endDate,
+          },
+        },
+        _sum: {
+          totalPrice: true,
+        },
+        _count: {
+          _all: true,
+        },
+      }),
+      this.prisma.order.aggregate({
+        where: {
+          ...scopedWhere,
+          status: {
+            notIn: [OrderStatus.Delivered, OrderStatus.Cancelled],
+          },
+          deliveryDatetime: {
+            lt: endDate,
+          },
+        },
+        _sum: {
+          totalPrice: true,
+        },
+        _count: {
+          _all: true,
+        },
+      }),
+    ]);
+
+    return {
+      start: startDate.toISOString(),
+      end: endDate.toISOString(),
+      deliveredTotal: delivered._sum.totalPrice ?? 0,
+      deliveredCount: delivered._count._all,
+      undeliveredTotal: undelivered._sum.totalPrice ?? 0,
+      undeliveredCount: undelivered._count._all,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
   async refreshSnapshots() {
     const [overview, trend, products, shops] = await Promise.all([
       this.getOverview(),
@@ -211,5 +296,24 @@ export class AnalyticsService {
     });
 
     return { overview, trend, products, shops };
+  }
+
+  private buildScopedOrderWhere(
+    shopId: string | undefined,
+    actor: RequestActor,
+  ): Prisma.OrderWhereInput {
+    if (this.isShopScopedRole(actor.role)) {
+      if (!actor.shopId) {
+        throw new ForbiddenException('Shop context missing');
+      }
+
+      return { shopId: actor.shopId };
+    }
+
+    return shopId ? { shopId } : {};
+  }
+
+  private isShopScopedRole(role: UserRole) {
+    return role === UserRole.SHOP_MANAGER || role === UserRole.SHOP_EMPLOYEE;
   }
 }

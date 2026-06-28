@@ -317,12 +317,56 @@ export class OrdersService {
   }
 
   async confirmDelivery(id: string, actor: RequestActor) {
-    return this.changeStatus(
-      id,
-      OrderStatus.Delivered,
-      actor,
-      "Delivery confirmed",
-    );
+    const existing = await this.prisma.order.findUnique({ where: { id } });
+
+    if (!existing) {
+      throw new NotFoundException("Order not found");
+    }
+
+    this.assertCanAccessOrder(existing.shopId, actor);
+
+    if (existing.status === OrderStatus.Delivered) {
+      return this.findOrderResponse(id);
+    }
+
+    if (existing.status === OrderStatus.Cancelled) {
+      throw new BadRequestException(
+        "Cannot confirm delivery for a cancelled order",
+      );
+    }
+
+    const status = OrderStatus.Delivered;
+    const note = "Delivery confirmed";
+    const updated = await this.prisma.order.update({
+      where: { id },
+      data: {
+        status,
+        deliveredAt: new Date(),
+      },
+      include: orderResponseInclude,
+    });
+
+    await this.recordStatusHistory({
+      orderId: id,
+      previousStatus: existing.status,
+      newStatus: status,
+      changedById: actor.sub,
+      note,
+    });
+
+    await this.auditService.log({
+      actorId: actor.sub,
+      action: "ORDER_STATUS_CHANGED",
+      entity: "Order",
+      entityId: id,
+      details: {
+        previousStatus: existing.status,
+        newStatus: status,
+        note,
+      },
+    });
+
+    return updated;
   }
 
   async cancel(id: string, actor: RequestActor) {

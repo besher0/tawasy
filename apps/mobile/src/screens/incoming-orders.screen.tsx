@@ -59,6 +59,8 @@ interface OrderRow {
   customerName: string;
   customerPhone?: string;
   deliveryDatetime: string;
+  deliveredAt?: string | null;
+  totalPrice: number;
   status: string;
   isUrgent: boolean;
   notes?: string | null;
@@ -82,6 +84,13 @@ interface OrderSection {
   data: OrderRow[];
 }
 
+interface DeliveryTotals {
+  deliveredTotal: number;
+  deliveredCount: number;
+  undeliveredTotal: number;
+  undeliveredCount: number;
+}
+
 const cancellationFilterOptions: Array<{
   value: CancellationFilter;
   label: string;
@@ -98,6 +107,21 @@ function getLocalDateKey(value: string) {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function getDateRange(dateKey: string) {
+  const start = new Date(`${dateKey}T00:00:00`);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 1);
+
+  return {
+    start: start.toISOString(),
+    end: end.toISOString(),
+  };
+}
+
+function formatMoney(value: number) {
+  return `${Math.round(value)} ر.س`;
 }
 
 function formatDayTitle(dateKey: string) {
@@ -151,8 +175,19 @@ export function IncomingOrdersScreen() {
   const [shops, setShops] = useState<ShopSummary[]>([]);
   const [shopIdFilter, setShopIdFilter] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [deliveryTotals, setDeliveryTotals] = useState<DeliveryTotals>({
+    deliveredTotal: 0,
+    deliveredCount: 0,
+    undeliveredTotal: 0,
+    undeliveredCount: 0,
+  });
+  const [confirmingDeliveryId, setConfirmingDeliveryId] = useState<
+    string | null
+  >(null);
   const isFactoryView =
     user?.role === UserRole.ADMIN || user?.role === UserRole.FACTORY_MANAGER;
+  const totalsDateKey =
+    deliveryDateFilter || getLocalDateKey(new Date().toISOString());
 
   const loadOrders = useCallback(async () => {
     const response = await api.get<OrderRow[]>('/orders', {
@@ -170,7 +205,36 @@ export function IncomingOrdersScreen() {
         : response.data;
 
     setOrders(loadedOrders);
-  }, [cancellationFilter, deliveryDateFilter, isFactoryView, search, shopIdFilter]);
+  }, [
+    cancellationFilter,
+    deliveryDateFilter,
+    isFactoryView,
+    search,
+    shopIdFilter,
+  ]);
+
+  const loadDeliveryTotals = useCallback(async () => {
+    const range = getDateRange(
+      deliveryDateFilter || getLocalDateKey(new Date().toISOString()),
+    );
+    const response = await api.get<DeliveryTotals>('/analytics/delivery-totals', {
+      params: {
+        ...range,
+        shopId: isFactoryView && shopIdFilter ? shopIdFilter : undefined,
+      },
+    });
+
+    setDeliveryTotals({
+      deliveredTotal: response.data.deliveredTotal ?? 0,
+      deliveredCount: response.data.deliveredCount ?? 0,
+      undeliveredTotal: response.data.undeliveredTotal ?? 0,
+      undeliveredCount: response.data.undeliveredCount ?? 0,
+    });
+  }, [deliveryDateFilter, isFactoryView, shopIdFilter]);
+
+  const loadScreenData = useCallback(async () => {
+    await Promise.all([loadOrders(), loadDeliveryTotals()]);
+  }, [loadDeliveryTotals, loadOrders]);
 
   useEffect(() => {
     if (!isFactoryView) {
@@ -241,8 +305,23 @@ export function IncomingOrdersScreen() {
     }, []);
 
   useFocusEffect(useCallback(() => {
-    void loadOrders();
-  }, [loadOrders]));
+    void loadScreenData();
+  }, [loadScreenData]));
+
+  const confirmDelivery = async (orderId: string) => {
+    try {
+      setConfirmingDeliveryId(orderId);
+      await api.post(`/orders/${orderId}/confirm-delivery`);
+      await loadScreenData();
+    } catch (error) {
+      Alert.alert(
+        'خطأ',
+        getApiErrorMessage(error, 'تعذر تأكيد تسليم التوصاية. حاول مرة أخرى.'),
+      );
+    } finally {
+      setConfirmingDeliveryId(null);
+    }
+  };
 
   const exportOrders = async () => {
     try {
@@ -310,6 +389,41 @@ export function IncomingOrdersScreen() {
               {exporting ? 'جاري التحضير...' : 'طباعة / حفظ الطلبيات PDF'}
             </Text>
           </TouchableOpacity>
+        </View>
+        <View style={styles.totalsGrid}>
+          <View style={[styles.totalCard, styles.deliveredTotalCard]}>
+            <View style={styles.totalTitleRow}>
+              <MaterialIcons
+                name="check-circle"
+                size={20}
+                color={theme.colors.primary}
+              />
+              <Text style={styles.totalTitle}>القوالب التي تسلمت</Text>
+            </View>
+            <Text style={styles.totalValue}>
+              {formatMoney(deliveryTotals.deliveredTotal)}
+            </Text>
+            <Text style={styles.totalSubtitle}>
+              {deliveryTotals.deliveredCount} توصاية -{' '}
+              {formatDeliveryDate(totalsDateKey)}
+            </Text>
+          </View>
+          <View style={[styles.totalCard, styles.undeliveredTotalCard]}>
+            <View style={styles.totalTitleRow}>
+              <MaterialIcons
+                name="schedule"
+                size={20}
+                color={theme.colors.warning}
+              />
+              <Text style={styles.totalTitle}>القوالب التي لم تسلم</Text>
+            </View>
+            <Text style={styles.totalValue}>
+              {formatMoney(deliveryTotals.undeliveredTotal)}
+            </Text>
+            <Text style={styles.totalSubtitle}>
+              {deliveryTotals.undeliveredCount} توصاية - حتى نهاية اليوم
+            </Text>
+          </View>
         </View>
         <TextInput
           style={styles.search}
@@ -465,43 +579,95 @@ export function IncomingOrdersScreen() {
             </View>
           </>
         )}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => navigation.navigate('OrderDetails', { orderId: item.id })}
-          >
-            <View style={styles.rowBetween}>
-              <Text style={styles.orderNumber}>{item.orderNumber}</Text>
-              <View style={styles.badgeRow}>
-                <StatusBadge
-                  label={orderStatusLabel(item.status)}
-                  tone={getStatusTone(item.status)}
-                />
-                <StatusBadge
-                  label={item.isUrgent ? 'عاجل' : 'عادي'}
-                  tone={item.isUrgent ? 'error' : 'neutral'}
-                />
-              </View>
-            </View>
-            <Text style={styles.customer}>{item.customerName}</Text>
-            {item.items?.map((orderItem, itemIndex) => {
-              const display = buildOrderItemDisplay(orderItem);
+        renderItem={({ item }) => {
+          const isDelivered = item.status === 'Delivered';
+          const isCancelled = item.status === 'Cancelled';
+          const canConfirmDelivery = !isDelivered && !isCancelled;
+          const isConfirmingDelivery = confirmingDeliveryId === item.id;
 
-              return (
-                <Text key={orderItem.id} style={styles.itemSummaryText}>
-                  {`${itemIndex + 1}. ${display.text}`}
-                </Text>
-              );
-            })}
-            <Text style={styles.meta}>
-              وقت التسليم: {new Date(item.deliveryDatetime).toLocaleTimeString('ar-SY', {
-                hour: '2-digit',
-                minute: '2-digit',
+          return (
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() =>
+                navigation.navigate('OrderDetails', { orderId: item.id })
+              }
+            >
+              <View style={styles.rowBetween}>
+                <Text style={styles.orderNumber}>{item.orderNumber}</Text>
+                <View style={styles.badgeRow}>
+                  <StatusBadge
+                    label={orderStatusLabel(item.status)}
+                    tone={getStatusTone(item.status)}
+                  />
+                  <StatusBadge
+                    label={item.isUrgent ? 'عاجل' : 'عادي'}
+                    tone={item.isUrgent ? 'error' : 'neutral'}
+                  />
+                </View>
+              </View>
+              <Text style={styles.customer}>{item.customerName}</Text>
+              {item.items?.map((orderItem, itemIndex) => {
+                const display = buildOrderItemDisplay(orderItem);
+
+                return (
+                  <Text key={orderItem.id} style={styles.itemSummaryText}>
+                    {`${itemIndex + 1}. ${display.text}`}
+                  </Text>
+                );
               })}
-            </Text>
-            <Text style={styles.meta}>مكان التسليم: {item.moldDeliveryShop?.name ?? 'غير محدد'}</Text>
-          </TouchableOpacity>
-        )}
+              <Text style={styles.meta}>
+                وقت التسليم:{' '}
+                {new Date(item.deliveryDatetime).toLocaleTimeString('ar-SY', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </Text>
+              <Text style={styles.meta}>
+                مكان التسليم: {item.moldDeliveryShop?.name ?? 'غير محدد'}
+              </Text>
+              {isDelivered ? (
+                <View style={styles.deliveredIndicator}>
+                  <MaterialIcons
+                    name="check-circle"
+                    size={20}
+                    color={theme.colors.primary}
+                  />
+                  <Text style={styles.deliveredIndicatorText}>
+                    تم التسليم
+                    {item.deliveredAt
+                      ? ` - ${new Date(item.deliveredAt).toLocaleString('ar-SY')}`
+                      : ''}
+                  </Text>
+                </View>
+              ) : null}
+              {canConfirmDelivery ? (
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  style={[
+                    styles.confirmDeliveryButton,
+                    isConfirmingDelivery ? styles.buttonDisabled : null,
+                  ]}
+                  disabled={isConfirmingDelivery}
+                  onPress={(event) => {
+                    event.stopPropagation();
+                    void confirmDelivery(item.id);
+                  }}
+                >
+                  <MaterialIcons
+                    name="done"
+                    size={20}
+                    color={theme.colors.onPrimary}
+                  />
+                  <Text style={styles.confirmDeliveryButtonText}>
+                    {isConfirmingDelivery
+                      ? 'جاري تأكيد التسليم...'
+                      : 'تأكيد التسليم'}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+            </TouchableOpacity>
+          );
+        }}
       />
       <DeliveryDatePicker
         visible={showDateFilterPicker}
@@ -536,6 +702,49 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: theme.spacing.sm,
+  },
+  totalsGrid: {
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    gap: theme.spacing.md,
+  },
+  totalCard: {
+    flexGrow: 1,
+    flexBasis: 260,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.outlineVariant,
+    backgroundColor: theme.colors.surfaceContainerLowest,
+    padding: theme.spacing.lg,
+    gap: theme.spacing.xs,
+  },
+  deliveredTotalCard: {
+    borderRightWidth: 4,
+    borderRightColor: theme.colors.primary,
+  },
+  undeliveredTotalCard: {
+    borderRightWidth: 4,
+    borderRightColor: theme.colors.warning,
+  },
+  totalTitleRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  totalTitle: {
+    ...theme.typography.label,
+    color: theme.colors.onSurfaceVariant,
+    textAlign: 'right',
+  },
+  totalValue: {
+    ...theme.typography.heading,
+    color: theme.colors.onSurface,
+    textAlign: 'right',
+  },
+  totalSubtitle: {
+    ...theme.typography.label,
+    color: theme.colors.primary,
+    textAlign: 'right',
   },
   exportButton: {
     minHeight: 44,
@@ -693,6 +902,40 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.outlineVariant,
     padding: theme.spacing.lg,
     gap: theme.spacing.xs,
+  },
+  deliveredIndicator: {
+    minHeight: 42,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.secondaryContainer,
+    paddingHorizontal: theme.spacing.md,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.xs,
+    marginTop: theme.spacing.sm,
+  },
+  deliveredIndicatorText: {
+    ...theme.typography.label,
+    color: theme.colors.primary,
+    textAlign: 'right',
+  },
+  confirmDeliveryButton: {
+    minHeight: 44,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.md,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+  },
+  confirmDeliveryButtonText: {
+    ...theme.typography.label,
+    color: theme.colors.onPrimary,
+    fontFamily: 'Cairo_700Bold',
   },
   rowBetween: {
     flexDirection: 'row-reverse',
