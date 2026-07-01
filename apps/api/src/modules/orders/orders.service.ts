@@ -39,6 +39,15 @@ const statusTransitions: Record<OrderStatus, OrderStatus[]> = {
   Cancelled: [],
 };
 
+function getLocalDayRange(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const start = new Date(year, month - 1, day);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 1);
+
+  return { start, end };
+}
+
 @Injectable()
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
@@ -126,9 +135,7 @@ export class OrdersService {
     }
 
     if (query.date) {
-      const start = new Date(query.date);
-      const end = new Date(start);
-      end.setDate(start.getDate() + 1);
+      const { start, end } = getLocalDayRange(query.date);
       where.deliveryDatetime = {
         gte: start,
         lt: end,

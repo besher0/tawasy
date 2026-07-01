@@ -685,11 +685,12 @@ export function NewOrderScreen({ orderId }: NewOrderScreenProps) {
         navigation.goBack();
       } else {
         const response = await api.post<{ id: string; orderNumber: string }>(
-          "/orders",
+          "/orders/",
           payload,
         );
         resetForm();
         setCreatedOrder(response.data);
+        navigation.navigate("OrderDetails", { orderId: response.data.id });
       }
     } catch (error) {
       setSubmitError(

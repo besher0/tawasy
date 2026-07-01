@@ -233,7 +233,20 @@ export function IncomingOrdersScreen() {
   }, [deliveryDateFilter, isFactoryView, shopIdFilter]);
 
   const loadScreenData = useCallback(async () => {
-    await Promise.all([loadOrders(), loadDeliveryTotals()]);
+    try {
+      await loadOrders();
+    } catch (error) {
+      Alert.alert(
+        'خطأ',
+        getApiErrorMessage(error, 'تعذر تحميل الطلبات. حاول مرة أخرى.'),
+      );
+    }
+
+    try {
+      await loadDeliveryTotals();
+    } catch (error) {
+      console.warn('Failed to load delivery totals', error);
+    }
   }, [loadDeliveryTotals, loadOrders]);
 
   useEffect(() => {

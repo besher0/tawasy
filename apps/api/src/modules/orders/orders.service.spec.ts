@@ -253,6 +253,30 @@ describe("OrdersService", () => {
     );
   });
 
+  it("filters orders by local delivery day when a date is provided", async () => {
+    prisma.order.findMany.mockResolvedValue([]);
+
+    await service.findAll(
+      { date: "2026-06-30" },
+      {
+        sub: "admin-user",
+        role: "Admin" as never,
+        shopId: null,
+      },
+    );
+
+    expect(prisma.order.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          deliveryDatetime: {
+            gte: new Date(2026, 5, 30),
+            lt: new Date(2026, 6, 1),
+          },
+        }),
+      }),
+    );
+  });
+
   it("keeps submit as a no-op so new orders do not wait for review", async () => {
     prisma.order.findUnique.mockResolvedValue({
       id: "order-new",

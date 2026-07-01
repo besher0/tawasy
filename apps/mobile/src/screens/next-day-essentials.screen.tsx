@@ -228,7 +228,7 @@ export function NextDayEssentialsScreen() {
     }
 
     try {
-      await api.post('/daily-essentials', {
+      await api.post('/daily-essentials/', {
         ...(!isShopScoped ? { shopId: writableShopId } : {}),
         category: 'Supplies',
         itemName: itemName.trim(),
