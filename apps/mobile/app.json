@@ -28,15 +28,15 @@
     "extra": {
       "apiBaseUrl": "${EXPO_PUBLIC_API_BASE_URL}",
       "eas": {
-        "projectId": "9ac2b71f-eb5e-4540-b345-3a0db95686e7"
+        "projectId": "908d770e-0a56-497f-81c7-c4b33962f116"
       }
     },
-    "owner": "besher1",
+    "owner": "test3233",
     "plugins": [
       "expo-font"
     ],
     "updates": {
-      "url": "https://u.expo.dev/9ac2b71f-eb5e-4540-b345-3a0db95686e7"
+      "url": "https://u.expo.dev/908d770e-0a56-497f-81c7-c4b33962f116"
     }
   }
 }
