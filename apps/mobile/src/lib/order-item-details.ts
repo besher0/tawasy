@@ -17,8 +17,9 @@ export interface DisplayOrderItem {
   moldColor?: string | null;
   hasFillings?: boolean;
   filling?: string | null;
-  withFoam?: boolean;
+  moldBaseType?: string | null;
   foamCount?: number | null;
+  cakeLayerCount?: number | null;
   finishType?: string | null;
   specialDetails?: string | null;
   writingText?: string | null;
@@ -27,9 +28,12 @@ export interface DisplayOrderItem {
 
 export function buildOrderItemDisplay(item: DisplayOrderItem) {
   const notes = item.specialDetails?.trim() || '-';
-  const foamDetails = item.withFoam
-    ? `مع فلين${item.foamCount ? ` (${item.foamCount})` : ''}`
-    : 'بدون فلين';
+  const baseDetails =
+    item.moldBaseType === 'Foam'
+      ? `مع فلين${item.foamCount ? ` (${item.foamCount})` : ''}`
+      : item.moldBaseType === 'Cake'
+        ? `كيك${item.cakeLayerCount ? ` (${item.cakeLayerCount} طبقات)` : ''}`
+        : 'بدون فلين';
   const writing = item.writingText?.trim() || 'مافي كتابة';
   const layerColors = item.moldLayerColors?.trim();
   const innerColorDetails =
@@ -56,7 +60,7 @@ export function buildOrderItemDisplay(item: DisplayOrderItem) {
     innerColorDetails,
     cakeShapeLabel(item.shape),
     item.hasFillings ? item.filling?.trim() || 'يوجد حشوة' : null,
-    foamDetails,
+    baseDetails,
     `${item.layers ?? '-'}`,
     moldFlavorLabel(item.moldFlavor),
     item.moldColor?.trim() || '-',

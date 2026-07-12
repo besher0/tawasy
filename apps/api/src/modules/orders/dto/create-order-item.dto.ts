@@ -3,6 +3,7 @@ import {
   CakeFinish,
   CakeShape,
   CakeType,
+  MoldBaseType,
   MoldFlavor,
   MoldInnerColor,
   OrderItemKind,
@@ -83,15 +84,25 @@ export class CreateOrderItemDto {
   @IsString()
   filling?: string;
 
-  @ApiProperty({ default: false })
-  @IsBoolean()
-  withFoam!: boolean;
+  @ApiProperty({ enum: MoldBaseType, default: MoldBaseType.NONE })
+  @IsEnum(MoldBaseType)
+  moldBaseType!: MoldBaseType;
 
   @ApiPropertyOptional({ minimum: 1, description: 'Number of foam pieces when foam is selected' })
-  @ValidateIf((item: CreateOrderItemDto) => item.withFoam)
+  @ValidateIf(
+    (item: CreateOrderItemDto) => item.moldBaseType === MoldBaseType.FOAM,
+  )
   @IsInt()
   @Min(1)
   foamCount?: number;
+
+  @ApiPropertyOptional({ minimum: 1, description: 'Number of cake layers when cake is selected' })
+  @ValidateIf(
+    (item: CreateOrderItemDto) => item.moldBaseType === MoldBaseType.CAKE,
+  )
+  @IsInt()
+  @Min(1)
+  cakeLayerCount?: number;
 
   @ApiProperty({ enum: CakeFinish })
   @IsEnum(CakeFinish)

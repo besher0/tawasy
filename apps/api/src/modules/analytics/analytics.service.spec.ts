@@ -37,6 +37,10 @@ describe('AnalyticsService', () => {
     service = new AnalyticsService(prisma, cache);
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('returns overview metrics object', async () => {
     const overview = await service.getOverview();
     expect(overview).toHaveProperty('totalSales');
@@ -90,6 +94,74 @@ describe('AnalyticsService', () => {
           status: {
             notIn: ['Delivered', 'Cancelled'],
           },
+          deliveryDatetime: {
+            lt: new Date(end),
+          },
+        }),
+      }),
+    );
+  });
+
+  it('caps undelivered totals at the end of the current day for a future range', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-06-10T12:00:00.000Z'));
+    const start = '2026-06-12T00:00:00.000Z';
+    const end = '2026-06-13T00:00:00.000Z';
+    const currentDayEnd = new Date();
+    currentDayEnd.setHours(0, 0, 0, 0);
+    currentDayEnd.setDate(currentDayEnd.getDate() + 1);
+
+    await service.getDeliveryTotals(
+      { start, end },
+      {
+        sub: 'admin-user',
+        role: 'Admin' as never,
+        shopId: null,
+      },
+    );
+
+    expect(prisma.order.aggregate).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          deliveredAt: {
+            gte: new Date(start),
+            lt: new Date(end),
+          },
+        }),
+      }),
+    );
+    expect(prisma.order.aggregate).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          deliveryDatetime: {
+            lt: currentDayEnd,
+          },
+        }),
+      }),
+    );
+  });
+
+  it('keeps the requested undelivered end for an older range', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-06-10T12:00:00.000Z'));
+    const start = '2026-06-05T00:00:00.000Z';
+    const end = '2026-06-06T00:00:00.000Z';
+
+    await service.getDeliveryTotals(
+      { start, end },
+      {
+        sub: 'admin-user',
+        role: 'Admin' as never,
+        shopId: null,
+      },
+    );
+
+    expect(prisma.order.aggregate).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: expect.objectContaining({
           deliveryDatetime: {
             lt: new Date(end),
           },

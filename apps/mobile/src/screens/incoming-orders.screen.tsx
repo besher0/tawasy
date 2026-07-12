@@ -19,6 +19,10 @@ import theme from '../theme';
 import api from '../lib/api';
 import { getApiErrorMessage } from '../lib/api-error';
 import { printReport } from '../lib/print-report';
+import {
+  buildFactoryOrderReport,
+  type FactoryReportOrderItem,
+} from '../lib/factory-order-report';
 import { StatusBadge } from '../components/status-badge';
 import {
   DeliveryDatePicker,
@@ -30,28 +34,7 @@ import { buildOrderItemDisplay } from '../lib/order-item-details';
 type MaterialIconName = React.ComponentProps<typeof MaterialIcons>['name'];
 type CancellationFilter = 'all' | 'active' | 'cancelled';
 
-interface OrderItemPreview {
-  id: string;
-  itemKind: string;
-  pieceType?: string | null;
-  hasTopDecoration?: boolean;
-  cakeType?: string | null;
-  layers?: number;
-  shape?: string | null;
-  moldFlavor?: string | null;
-  moldInnerColor?: string | null;
-  moldLayerColors?: string | null;
-  moldColor?: string | null;
-  hasFillings?: boolean;
-  filling?: string | null;
-  withFoam?: boolean;
-  foamCount?: number | null;
-  finishType?: string | null;
-  specialDetails?: string | null;
-  writingText?: string | null;
-  peopleCount?: number;
-  referenceImages?: string[];
-}
+type OrderItemPreview = FactoryReportOrderItem;
 
 interface OrderRow {
   id: string;
@@ -339,46 +322,14 @@ export function IncomingOrdersScreen() {
   const exportOrders = async () => {
     try {
       setExporting(true);
-      const branchGroups = new Map<string, OrderRow[]>();
-      orders.forEach((order) => {
-        const branchName = order.shop?.name ?? 'فرع غير محدد';
-        branchGroups.set(branchName, [
-          ...(branchGroups.get(branchName) ?? []),
-          order,
-        ]);
-      });
+      const report = buildFactoryOrderReport(orders);
 
       await printReport({
         title: 'تفاصيل طلبيات الإنتاج حسب الفروع',
         subtitle: 'تفاصيل التجهيز المطلوبة للمعمل',
         fileName: 'orders-by-branch.pdf',
-        sections: [...branchGroups.entries()].map(([branchName, branchOrders]) => ({
-          title: branchName,
-          items: branchOrders.map((order) => ({
-            title: `طلب ${order.orderNumber} — ${order.customerName}`,
-            lines: [
-              `موعد التسليم: ${new Date(order.deliveryDatetime).toLocaleString('ar-SY')}`,
-              `مكان التسليم: ${order.moldDeliveryShop?.name ?? order.shop?.name ?? 'غير محدد'}`,
-              `الأولوية: ${order.isUrgent ? 'عاجل' : 'عادي'}`,
-              order.notes ? `ملاحظات الطلب: ${order.notes}` : '',
-              ...(order.items ?? []).flatMap((item, itemIndex) => {
-                const display = buildOrderItemDisplay(item);
-                return [
-                  `المنتج ${itemIndex + 1}: ${display.text}`,
-                  item.referenceImages?.length
-                    ? `الصور المرجعية: ${item.referenceImages.length}`
-                    : '',
-                ];
-              }),
-            ],
-            images: (order.items ?? []).flatMap((item, itemIndex) =>
-              (item.referenceImages ?? []).map((url, imageIndex) => ({
-                url,
-                caption: `صورة المنتج ${itemIndex + 1} — صورة ${imageIndex + 1}`,
-              })),
-            ),
-          })),
-        })),
+        summaryLines: report.summaryLines,
+        sections: report.sections,
       });
     } catch {
       Alert.alert('خطأ', 'تعذر فتح ملف طباعة الطلبيات.');

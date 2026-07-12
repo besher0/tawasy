@@ -69,6 +69,12 @@ enum MoldInnerColor {
   Mixed
 }
 
+enum MoldBaseType {
+  None
+  Foam
+  Cake
+}
+
 enum CakeFinish {
   None
   Disk_Enlargement
@@ -183,8 +189,9 @@ model OrderItem {
   moldColor        String?
   hasFillings      Boolean       @default(false)
   filling          String?
-  withFoam         Boolean       @default(false)
+  moldBaseType     MoldBaseType  @default(None)
   foamCount        Int?
+  cakeLayerCount   Int?
   finishType       CakeFinish    @default(None)
   specialDetails   String?
   writingText      String?

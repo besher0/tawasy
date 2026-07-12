@@ -59,6 +59,12 @@ export enum MoldInnerColor {
   MIXED = 'Mixed',
 }
 
+export enum MoldBaseType {
+  NONE = 'None',
+  FOAM = 'Foam',
+  CAKE = 'Cake',
+}
+
 export enum CakeFinish {
   NONE = 'None',
   DISK_ENLARGEMENT = 'Disk_Enlargement',

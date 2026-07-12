@@ -32,8 +32,9 @@ type KanbanOrder = {
     moldColor?: string | null;
     hasFillings?: boolean;
     filling?: string | null;
-    withFoam?: boolean;
+    moldBaseType?: string | null;
     foamCount?: number | null;
+    cakeLayerCount?: number | null;
     finishType?: string | null;
     specialDetails?: string | null;
     writingText?: string | null;

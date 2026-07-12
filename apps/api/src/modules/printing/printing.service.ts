@@ -41,8 +41,8 @@ const flavorLabels: Record<string, string> = {
 };
 
 const innerColorLabels: Record<string, string> = {
-  White: 'أبيض',
-  Black: 'أسود',
+  White: 'حليب',
+  Black: 'شوكولا',
   Mixed: 'مشكل',
 };
 
@@ -54,9 +54,9 @@ const shapeLabels: Record<string, string> = {
 };
 
 const finishLabels: Record<string, string> = {
-  None: 'ما في',
-  Disk_Enlargement: 'تكبير ديسك',
-  Covering: 'تلبيس',
+  None: 'مافي تكبير ديسك',
+  Disk_Enlargement: 'نكبر الديسك',
+  Covering: 'نكبر ونلبس الديسك',
 };
 
 @Injectable()
@@ -133,7 +133,13 @@ export class PrintingService {
       }
       doc.text(`- Fillings: ${item.hasFillings ? item.filling ?? 'Yes' : 'No'}`);
       doc.text(
-        `- Foam: ${item.withFoam ? `Yes${item.foamCount ? ` (${item.foamCount})` : ''}` : 'No'}`,
+        `- Foam/cake base: ${
+          item.moldBaseType === 'Foam'
+            ? `Foam${item.foamCount ? ` (${item.foamCount})` : ''}`
+            : item.moldBaseType === 'Cake'
+              ? `Cake${item.cakeLayerCount ? ` (${item.cakeLayerCount} layers)` : ''}`
+              : 'None'
+        }`,
       );
       doc.text(`- Finish: ${item.finishType}`);
       doc.text(`- Quantity/people: ${item.peopleCount}`);
@@ -246,9 +252,15 @@ export class PrintingService {
                     item.hasFillings
                       ? item.filling?.trim() || 'يوجد حشوة'
                       : null,
-                    item.withFoam
+                    item.moldBaseType === 'Foam'
                       ? `مع فلين${item.foamCount ? ` (${item.foamCount})` : ''}`
-                      : 'بدون فلين',
+                      : item.moldBaseType === 'Cake'
+                        ? `كيك${
+                            item.cakeLayerCount
+                              ? ` (${item.cakeLayerCount} طبقات)`
+                              : ''
+                          }`
+                        : 'بدون فلين',
                     `${item.layers ?? '-'}`,
                     item.moldFlavor
                       ? (flavorLabels[item.moldFlavor] ?? item.moldFlavor)

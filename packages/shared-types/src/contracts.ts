@@ -5,6 +5,7 @@ import {
   EssentialsCategory,
   EssentialsStatus,
   MoldFlavor,
+  MoldBaseType,
   MoldInnerColor,
   OrderItemKind,
   OrderStatus,
@@ -39,8 +40,9 @@ export interface OrderItemInput {
   moldColor?: string;
   hasFillings: boolean;
   filling?: string;
-  withFoam: boolean;
+  moldBaseType: MoldBaseType;
   foamCount?: number;
+  cakeLayerCount?: number;
   finishType: CakeFinish;
   specialDetails?: string;
   writingText?: string;

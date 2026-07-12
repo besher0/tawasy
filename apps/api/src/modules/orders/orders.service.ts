@@ -6,7 +6,11 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { CakeType, Prisma, OrderStatus } from "@prisma/client";
-import { MoldInnerColor, UserRole } from "@sugarprecision/shared-types";
+import {
+  MoldBaseType,
+  MoldInnerColor,
+  UserRole,
+} from "@sugarprecision/shared-types";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
 import { CreateOrderDto } from "./dto/create-order.dto";
@@ -59,6 +63,7 @@ export class OrdersService {
 
   async create(dto: CreateOrderDto, actor: RequestActor) {
     this.assertDeposit(dto.depositAmount, dto.totalPrice);
+    dto.items.forEach((item) => this.assertMoldBaseConfiguration(item));
     const shopId = this.resolveWritableShopId(actor, dto.shopId);
     const moldDeliveryShopId = dto.moldDeliveryShopId ?? shopId;
     await this.assertDeliveryLocation(moldDeliveryShopId);
@@ -195,6 +200,8 @@ export class OrdersService {
         dto.totalPrice ?? existing.totalPrice,
       );
     }
+
+    dto.items?.forEach((item) => this.assertMoldBaseConfiguration(item));
 
     const nextShopId =
       dto.shopId !== undefined
@@ -458,8 +465,15 @@ export class OrdersService {
       moldColor: item.moldColor,
       hasFillings: item.hasFillings,
       filling: item.filling,
-      withFoam: item.withFoam,
-      foamCount: item.withFoam ? item.foamCount : undefined,
+      moldBaseType: item.moldBaseType,
+      foamCount:
+        item.moldBaseType === MoldBaseType.FOAM
+          ? item.foamCount
+          : undefined,
+      cakeLayerCount:
+        item.moldBaseType === MoldBaseType.CAKE
+          ? item.cakeLayerCount
+          : undefined,
       finishType: item.finishType,
       specialDetails: item.specialDetails,
       writingText: item.writingText,
@@ -471,6 +485,56 @@ export class OrdersService {
   private assertDeposit(deposit: number, total: number) {
     if (deposit > total) {
       throw new BadRequestException("Deposit cannot exceed total price");
+    }
+  }
+
+  private assertMoldBaseConfiguration(
+    item: CreateOrderDto["items"][number],
+  ) {
+    if (
+      item.moldBaseType === MoldBaseType.FOAM &&
+      (!Number.isInteger(item.foamCount) || (item.foamCount ?? 0) < 1)
+    ) {
+      throw new BadRequestException(
+        "Foam count must be at least one when foam is selected",
+      );
+    }
+
+    if (
+      item.moldBaseType === MoldBaseType.CAKE &&
+      (!Number.isInteger(item.cakeLayerCount) ||
+        (item.cakeLayerCount ?? 0) < 1)
+    ) {
+      throw new BadRequestException(
+        "Cake layer count must be at least one when cake is selected",
+      );
+    }
+
+    if (
+      item.moldBaseType === MoldBaseType.FOAM &&
+      item.cakeLayerCount !== undefined
+    ) {
+      throw new BadRequestException(
+        "Cake layer count is not allowed when foam is selected",
+      );
+    }
+
+    if (
+      item.moldBaseType === MoldBaseType.CAKE &&
+      item.foamCount !== undefined
+    ) {
+      throw new BadRequestException(
+        "Foam count is not allowed when cake is selected",
+      );
+    }
+
+    if (
+      item.moldBaseType === MoldBaseType.NONE &&
+      (item.foamCount !== undefined || item.cakeLayerCount !== undefined)
+    ) {
+      throw new BadRequestException(
+        "Base counts are not allowed when no foam or cake is selected",
+      );
     }
   }
 

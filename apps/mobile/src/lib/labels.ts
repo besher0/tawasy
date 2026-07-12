@@ -62,15 +62,15 @@ const moldFlavorLabels: Record<string, string> = {
 };
 
 const moldInnerColorLabels: Record<string, string> = {
-  White: 'أبيض',
-  Black: 'أسود',
+  White: 'حليب',
+  Black: 'شوكولا',
   Mixed: 'مشكل',
 };
 
 const cakeFinishLabels: Record<string, string> = {
-  None: 'ما في',
-  Disk_Enlargement: 'تكبير ديسك',
-  Covering: 'تلبيس',
+  None: 'مافي تكبير ديسك',
+  Disk_Enlargement: 'نكبر الديسك',
+  Covering: 'نكبر ونلبس الديسك',
 };
 
 export function roleLabel(value?: string | null) {

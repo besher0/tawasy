@@ -1,6 +1,6 @@
 import { printHtmlAsPdf } from './download';
 
-interface ReportItem {
+export interface ReportItem {
   title: string;
   lines: string[];
   images?: Array<{
@@ -9,14 +9,21 @@ interface ReportItem {
   }>;
 }
 
-interface ReportSection {
+export interface ReportGroup {
   title: string;
   items: ReportItem[];
 }
 
-interface PrintReportOptions {
+export interface ReportSection {
+  title: string;
+  items?: ReportItem[];
+  groups?: ReportGroup[];
+}
+
+export interface PrintReportOptions {
   title: string;
   subtitle?: string;
+  summaryLines?: string[];
   fileName: string;
   sections: ReportSection[];
 }
@@ -53,23 +60,41 @@ function renderImages(images: ReportItem['images']) {
   `;
 }
 
-export async function printReport(options: PrintReportOptions) {
+function renderItems(items: ReportItem[]) {
+  if (!items.length) {
+    return '<p class="empty-group">لا توجد عناصر.</p>';
+  }
+
+  return items
+    .map(
+      (item, index) => `
+        <article class="item">
+          <h3>${index + 1}. ${escapeHtml(item.title)}</h3>
+          ${item.lines
+            .filter(Boolean)
+            .map((line) => `<p>${escapeHtml(line)}</p>`)
+            .join('')}
+          ${renderImages(item.images)}
+        </article>
+      `,
+    )
+    .join('');
+}
+
+export function buildPrintReportHtml(options: PrintReportOptions) {
   const sections = options.sections
     .map(
       (section) => `
         <section class="branch">
           <h2>${escapeHtml(section.title)}</h2>
-          ${section.items
+          ${section.items ? renderItems(section.items) : ''}
+          ${(section.groups ?? [])
             .map(
-              (item, index) => `
-                <article class="item">
-                  <h3>${index + 1}. ${escapeHtml(item.title)}</h3>
-                  ${item.lines
-                    .filter(Boolean)
-                    .map((line) => `<p>${escapeHtml(line)}</p>`)
-                    .join('')}
-                  ${renderImages(item.images)}
-                </article>
+              (group) => `
+                <section class="report-group">
+                  <h3 class="group-title">${escapeHtml(group.title)}</h3>
+                  ${renderItems(group.items)}
+                </section>
               `,
             )
             .join('')}
@@ -78,7 +103,17 @@ export async function printReport(options: PrintReportOptions) {
     )
     .join('');
 
-  const html = `
+  const summaryLines = (options.summaryLines ?? []).filter(Boolean);
+  const summary = summaryLines.length
+    ? `
+        <section class="report-summary">
+          ${summaryLines.map((line) => `<p>${escapeHtml(line)}</p>`).join('')}
+        </section>
+        <hr class="summary-divider" />
+      `
+    : '';
+
+  return `
     <!doctype html>
     <html lang="ar" dir="rtl">
       <head>
@@ -95,6 +130,18 @@ export async function printReport(options: PrintReportOptions) {
           }
           h1 { margin: 0 0 8px; font-size: 30px; color: #0a6fb8; line-height: 1.4; }
           .subtitle { margin: 0 0 24px; color: #587083; font-size: 16px; line-height: 1.6; }
+          .report-summary {
+            margin: 0 0 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            background: #f0f8fd;
+          }
+          .report-summary p { margin: 3px 0; font-weight: 700; }
+          .summary-divider {
+            margin: 0 0 24px;
+            border: 0;
+            border-top: 2px solid #102436;
+          }
           .branch { margin-bottom: 28px; }
           h2 {
             margin: 0 0 12px;
@@ -105,6 +152,16 @@ export async function printReport(options: PrintReportOptions) {
             font-size: 24px;
             line-height: 1.45;
           }
+          .report-group { margin: 0 0 20px; }
+          .group-title {
+            margin: 0 0 10px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #b8d7ea;
+            color: #102436;
+            font-size: 22px;
+            line-height: 1.5;
+          }
+          .empty-group { color: #587083; }
           .item {
             margin-bottom: 14px;
             padding: 14px 16px;
@@ -146,10 +203,13 @@ export async function printReport(options: PrintReportOptions) {
       <body>
         <h1>${escapeHtml(options.title)}</h1>
         ${options.subtitle ? `<p class="subtitle">${escapeHtml(options.subtitle)}</p>` : ''}
+        ${summary}
         ${sections || '<p>لا توجد بيانات للطباعة.</p>'}
       </body>
     </html>
   `;
+}
 
-  await printHtmlAsPdf(html, options.fileName);
+export async function printReport(options: PrintReportOptions) {
+  await printHtmlAsPdf(buildPrintReportHtml(options), options.fileName);
 }

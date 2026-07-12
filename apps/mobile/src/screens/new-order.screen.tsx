@@ -1,6 +1,7 @@
 import {
   CakeFinish,
   CakeShape,
+  MoldBaseType,
   MoldFlavor,
   MoldInnerColor,
   OrderItemKind,
@@ -19,6 +20,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Image,
+  KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
@@ -52,8 +54,9 @@ type DraftOrderItem = {
   moldColor: string;
   hasFillings: boolean;
   filling: string;
-  withFoam: boolean;
+  moldBaseType: MoldBaseType;
   foamCount: number;
+  cakeLayerCount: number;
   finishType: CakeFinish;
   peopleCount: number;
   specialDetails: string;
@@ -102,9 +105,15 @@ const moldFlavorOptions: Choice<MoldFlavor>[] = [
 ];
 
 const moldInnerColorOptions: Choice<MoldInnerColor>[] = [
-  { value: MoldInnerColor.WHITE, label: "أبيض" },
-  { value: MoldInnerColor.BLACK, label: "أسود" },
+  { value: MoldInnerColor.WHITE, label: "حليب" },
+  { value: MoldInnerColor.BLACK, label: "شوكولا" },
   { value: MoldInnerColor.MIXED, label: "مشكل" },
+];
+
+const moldBaseTypeOptions: Choice<MoldBaseType>[] = [
+  { value: MoldBaseType.FOAM, label: "مع فلين" },
+  { value: MoldBaseType.NONE, label: "بدون فلين" },
+  { value: MoldBaseType.CAKE, label: "كيك" },
 ];
 
 const cakeShapeOptions: Choice<CakeShape>[] = [
@@ -121,9 +130,9 @@ const layerOptions: Choice<"1" | "2" | "3" | "4">[] = [
 ];
 
 const finishOptions: Choice<CakeFinish>[] = [
-  { value: CakeFinish.NONE, label: "ما في" },
-  { value: CakeFinish.DISK_ENLARGEMENT, label: "تكبير ديسك" },
-  { value: CakeFinish.COVERING, label: "تلبيس" },
+  { value: CakeFinish.NONE, label: "مافي تكبير ديسك" },
+  { value: CakeFinish.DISK_ENLARGEMENT, label: "نكبر الديسك" },
+  { value: CakeFinish.COVERING, label: "نكبر ونلبس الديسك" },
 ];
 
 function buildDefaultDelivery() {
@@ -153,8 +162,9 @@ function createEmptyItem(): DraftOrderItem {
     moldColor: "",
     hasFillings: false,
     filling: "",
-    withFoam: false,
+    moldBaseType: MoldBaseType.NONE,
     foamCount: 1,
+    cakeLayerCount: 1,
     finishType: CakeFinish.NONE,
     peopleCount: 1,
     specialDetails: "",
@@ -200,10 +210,15 @@ function toDraftOrderItem(item: any): DraftOrderItem {
     moldColor: item.moldColor ?? "",
     hasFillings: Boolean(item.hasFillings),
     filling: item.filling ?? "",
-    withFoam: Boolean(item.withFoam),
+    moldBaseType:
+      item.moldBaseType ??
+      (item.withFoam ? MoldBaseType.FOAM : MoldBaseType.NONE),
     foamCount: Number.isFinite(item.foamCount)
       ? item.foamCount
       : empty.foamCount,
+    cakeLayerCount: Number.isFinite(item.cakeLayerCount)
+      ? item.cakeLayerCount
+      : empty.cakeLayerCount,
     finishType: item.finishType ?? empty.finishType,
     peopleCount: Number.isFinite(item.peopleCount)
       ? item.peopleCount
@@ -661,8 +676,15 @@ export function NewOrderScreen({ orderId }: NewOrderScreenProps) {
           moldColor: isMold ? item.moldColor.trim() : undefined,
           hasFillings: isMold && item.hasFillings,
           filling: isMold && item.hasFillings ? item.filling.trim() : undefined,
-          withFoam: isMold && item.withFoam,
-          foamCount: isMold && item.withFoam ? item.foamCount : undefined,
+          moldBaseType: isMold ? item.moldBaseType : MoldBaseType.NONE,
+          foamCount:
+            isMold && item.moldBaseType === MoldBaseType.FOAM
+              ? item.foamCount
+              : undefined,
+          cakeLayerCount:
+            isMold && item.moldBaseType === MoldBaseType.CAKE
+              ? item.cakeLayerCount
+              : undefined,
           finishType: isMold ? item.finishType : CakeFinish.NONE,
           peopleCount: item.peopleCount,
           specialDetails: item.specialDetails.trim() || undefined,
@@ -817,7 +839,16 @@ export function NewOrderScreen({ orderId }: NewOrderScreenProps) {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.content}
+        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+        keyboardShouldPersistTaps="handled"
+      >
       <View style={styles.pageHeader}>
         <Text style={styles.heading}>
           {isEditing ? "تعديل الطلب" : "إنشاء طلب جديد"}
@@ -1008,29 +1039,45 @@ export function NewOrderScreen({ orderId }: NewOrderScreenProps) {
                   }
                 />
 
-                <Text style={styles.label}>الفلين</Text>
+                <Text style={styles.label}>الفلين أو الكيك</Text>
                 <ChoiceRow
-                  options={[
-                    { value: "yes", label: "مع فلين" },
-                    { value: "no", label: "بدون فلين" },
-                  ]}
-                  selected={item.withFoam ? "yes" : "no"}
-                  onSelect={(value) =>
+                  options={moldBaseTypeOptions}
+                  selected={item.moldBaseType}
+                  onSelect={(moldBaseType) =>
                     updateItem(item.id, (current) => ({
                       ...current,
-                      withFoam: value === "yes",
-                      foamCount: value === "yes" ? current.foamCount : 1,
+                      moldBaseType,
+                      foamCount:
+                        moldBaseType === MoldBaseType.FOAM
+                          ? current.foamCount
+                          : 1,
+                      cakeLayerCount:
+                        moldBaseType === MoldBaseType.CAKE
+                          ? current.cakeLayerCount
+                          : 1,
                     }))
                   }
                 />
 
-                {item.withFoam ? (
+                {item.moldBaseType === MoldBaseType.FOAM ? (
                   <>
                     <Text style={styles.label}>عدد الفلين</Text>
                     {renderStepper(item.foamCount, (foamCount) =>
                       updateItem(item.id, (current) => ({
                         ...current,
                         foamCount,
+                      })),
+                    )}
+                  </>
+                ) : null}
+
+                {item.moldBaseType === MoldBaseType.CAKE ? (
+                  <>
+                    <Text style={styles.label}>عدد طبقات الكيك</Text>
+                    {renderStepper(item.cakeLayerCount, (cakeLayerCount) =>
+                      updateItem(item.id, (current) => ({
+                        ...current,
+                        cakeLayerCount,
                       })),
                     )}
                   </>
@@ -1052,7 +1099,7 @@ export function NewOrderScreen({ orderId }: NewOrderScreenProps) {
                   }
                 />
 
-                <Text style={styles.label}>التجهيز الخارجي</Text>
+                <Text style={styles.label}>تكبير الديسك</Text>
                 <ChoiceRow
                   options={finishOptions}
                   selected={item.finishType}
@@ -1347,7 +1394,8 @@ export function NewOrderScreen({ orderId }: NewOrderScreenProps) {
           setActiveDeliveryPicker(null);
         }}
       />
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -1369,6 +1417,7 @@ const styles = StyleSheet.create({
     maxWidth: 1280,
     alignSelf: "center",
     padding: theme.spacing.lg,
+    paddingBottom: theme.spacing.xxl * 3,
     gap: theme.spacing.lg,
   },
   pageHeader: {

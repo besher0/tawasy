@@ -158,7 +158,8 @@ describe("OrdersService", () => {
             moldInnerColor: "White" as never,
             moldColor: "White",
             hasFillings: false,
-            withFoam: false,
+            moldBaseType: "Cake" as never,
+            cakeLayerCount: 3,
             finishType: "None" as never,
             peopleCount: 8,
             referenceImages: [],
@@ -181,12 +182,54 @@ describe("OrdersService", () => {
                 moldFlavor: "Cream",
                 moldInnerColor: "White",
                 moldColor: "White",
+                moldBaseType: "Cake",
+                cakeLayerCount: 3,
               }),
             ],
           },
         }),
       }),
     );
+  });
+
+  it("rejects contradictory foam and cake counts", async () => {
+    await expect(
+      service.create(
+        {
+          shopId: "shop-1",
+          customerName: "Customer",
+          customerPhone: "0500000000",
+          deliveryDatetime: new Date().toISOString(),
+          totalPrice: 100,
+          depositAmount: 50,
+          paymentStatus: "Partial" as never,
+          isUrgent: false,
+          items: [
+            {
+              itemKind: "Mold" as never,
+              hasTopDecoration: false,
+              layers: 1,
+              shape: "Round" as never,
+              moldFlavor: "Cream" as never,
+              moldInnerColor: "White" as never,
+              moldColor: "White",
+              hasFillings: false,
+              moldBaseType: "Foam" as never,
+              foamCount: 2,
+              cakeLayerCount: 3,
+              finishType: "None" as never,
+              peopleCount: 8,
+              referenceImages: [],
+            },
+          ],
+        },
+        {
+          sub: "user-1",
+          role: "Admin" as never,
+          shopId: null,
+        },
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it("accepts the factory as a delivery location", async () => {
@@ -324,7 +367,7 @@ describe("OrdersService", () => {
             moldInnerColor: "White" as never,
             moldColor: "Blue",
             hasFillings: false,
-            withFoam: false,
+            moldBaseType: "None" as never,
             finishType: "None" as never,
             peopleCount: 10,
             referenceImages: ["https://images.example.com/order-reference.jpg"],

@@ -229,6 +229,8 @@ export class AnalyticsService {
       throw new BadRequestException('Invalid delivery totals date range');
     }
 
+    const undeliveredEndDate = endDate < defaultEnd ? endDate : defaultEnd;
+
     const scopedWhere = this.buildScopedOrderWhere(query.shopId, actor);
 
     const [delivered, undelivered] = await Promise.all([
@@ -255,7 +257,7 @@ export class AnalyticsService {
             notIn: [OrderStatus.Delivered, OrderStatus.Cancelled],
           },
           deliveryDatetime: {
-            lt: endDate,
+            lt: undeliveredEndDate,
           },
         },
         _sum: {

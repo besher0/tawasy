@@ -11,7 +11,7 @@ describe('buildOrderItemDisplay', () => {
       hasFillings: true,
       filling: 'فستق',
       shape: 'Round',
-      withFoam: true,
+      moldBaseType: 'Foam',
       foamCount: 2,
       layers: 3,
       finishType: 'Covering',
@@ -22,7 +22,7 @@ describe('buildOrderItemDisplay', () => {
     expect(display).toEqual({
       title: 'قالب',
       text:
-        'قالب 12، أبيض، دائري، فستق، مع فلين (2)، 3، شوكولا، زهري، تلبيس، عيد ميلاد سعيد، الملاحظات والإضافات الأخرى: كتابة اسم',
+        'قالب 12، حليب، دائري، فستق، مع فلين (2)، 3، شوكولا، زهري، نكبر ونلبس الديسك، عيد ميلاد سعيد، الملاحظات والإضافات الأخرى: كتابة اسم',
     });
   });
 
@@ -36,14 +36,14 @@ describe('buildOrderItemDisplay', () => {
       moldColor: 'أبيض',
       hasFillings: false,
       shape: 'Square',
-      withFoam: false,
+      moldBaseType: 'None',
       finishType: 'None',
       specialDetails: '',
       writingText: '   ',
     });
 
     expect(display.text).toBe(
-      'قالب 8، أسود، مربع، بدون فلين، 1، كريمة، أبيض، ما في، مافي كتابة، الملاحظات والإضافات الأخرى: -',
+      'قالب 8، شوكولا، مربع، بدون فلين، 1، كريمة، أبيض، مافي تكبير ديسك، مافي كتابة، الملاحظات والإضافات الأخرى: -',
     );
     expect(display.text).not.toContain('نوع الحشوة');
     expect(display.text).not.toContain('لون القالب من الداخل');
@@ -60,13 +60,32 @@ describe('buildOrderItemDisplay', () => {
       moldColor: 'أزرق',
       hasFillings: false,
       shape: 'Round',
-      withFoam: false,
+      moldBaseType: 'None',
       finishType: 'None',
     });
 
     expect(display.text).toContain(
       'مشكل - الأول أبيض، الثاني شوكولا',
     );
+  });
+
+  it('shows the independent cake layer count', () => {
+    const display = buildOrderItemDisplay({
+      itemKind: 'Mold',
+      peopleCount: 10,
+      layers: 2,
+      moldInnerColor: 'White',
+      moldFlavor: 'Cream',
+      moldColor: 'زهري',
+      hasFillings: false,
+      shape: 'Round',
+      moldBaseType: 'Cake',
+      cakeLayerCount: 3,
+      finishType: 'Disk_Enlargement',
+    });
+
+    expect(display.text).toContain('كيك (3 طبقات)');
+    expect(display.text).toContain('نكبر الديسك');
   });
 
   it('orders pieces details for production reading', () => {
