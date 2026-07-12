@@ -11,9 +11,24 @@ interface AuthTokens {
 }
 
 export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://tawasy-0bq7.onrender.com';
+  process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://zerba.duckdns.org';
 export const API_REQUEST_TIMEOUT_MS = 60000;
 export const AUTH_BOOTSTRAP_TIMEOUT_MS = 8000;
+
+export function ensureTrailingSlash(url: string): string;
+export function ensureTrailingSlash(url: undefined): undefined;
+export function ensureTrailingSlash(url: string | undefined): string | undefined;
+export function ensureTrailingSlash(url: string | undefined) {
+  if (!url) {
+    return url;
+  }
+
+  const suffixIndex = url.search(/[?#]/);
+  const path = suffixIndex >= 0 ? url.slice(0, suffixIndex) : url;
+  const suffix = suffixIndex >= 0 ? url.slice(suffixIndex) : '';
+
+  return path.endsWith('/') ? url : `${path}/${suffix}`;
+}
 
 export function setAuthTokens(tokens: AuthTokens | null) {
   accessToken = tokens?.accessToken ?? null;
@@ -30,6 +45,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
+  config.url = ensureTrailingSlash(config.url);
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
   }
@@ -61,7 +77,7 @@ api.interceptors.response.use(
 
       refreshPromise ??= axios
         .post<{ tokens: AuthTokens }>(
-          `${API_BASE_URL}/auth/refresh`,
+          ensureTrailingSlash(`${API_BASE_URL}/auth/refresh`),
           { refreshToken },
           { timeout: refreshTimeout },
         )

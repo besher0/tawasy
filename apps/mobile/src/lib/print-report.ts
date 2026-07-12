@@ -1,4 +1,4 @@
-import { printHtmlAsPdf } from './download';
+import { preparePrintImageSources, printHtmlAsPdf } from './download';
 
 export interface ReportItem {
   title: string;
@@ -37,7 +37,10 @@ function escapeHtml(value: string | number) {
     .replaceAll("'", '&#039;');
 }
 
-function renderImages(images: ReportItem['images']) {
+function renderImages(
+  images: ReportItem['images'],
+  imageSources: ReadonlyMap<string, string>,
+) {
   const printableImages = (images ?? []).filter((image) => image.url.trim());
 
   if (!printableImages.length) {
@@ -50,7 +53,7 @@ function renderImages(images: ReportItem['images']) {
         .map(
           (image, index) => `
             <figure class="image-card">
-              <img src="${escapeHtml(image.url)}" alt="${escapeHtml(image.caption ?? `صورة مرجعية ${index + 1}`)}" />
+              <img src="${escapeHtml(imageSources.get(image.url) ?? image.url)}" alt="${escapeHtml(image.caption ?? `صورة مرجعية ${index + 1}`)}" />
               <figcaption>${escapeHtml(image.caption ?? `صورة مرجعية ${index + 1}`)}</figcaption>
             </figure>
           `,
@@ -60,7 +63,10 @@ function renderImages(images: ReportItem['images']) {
   `;
 }
 
-function renderItems(items: ReportItem[]) {
+function renderItems(
+  items: ReportItem[],
+  imageSources: ReadonlyMap<string, string>,
+) {
   if (!items.length) {
     return '<p class="empty-group">لا توجد عناصر.</p>';
   }
@@ -74,26 +80,29 @@ function renderItems(items: ReportItem[]) {
             .filter(Boolean)
             .map((line) => `<p>${escapeHtml(line)}</p>`)
             .join('')}
-          ${renderImages(item.images)}
+          ${renderImages(item.images, imageSources)}
         </article>
       `,
     )
     .join('');
 }
 
-export function buildPrintReportHtml(options: PrintReportOptions) {
+export function buildPrintReportHtml(
+  options: PrintReportOptions,
+  imageSources: ReadonlyMap<string, string> = new Map(),
+) {
   const sections = options.sections
     .map(
       (section) => `
         <section class="branch">
           <h2>${escapeHtml(section.title)}</h2>
-          ${section.items ? renderItems(section.items) : ''}
+          ${section.items ? renderItems(section.items, imageSources) : ''}
           ${(section.groups ?? [])
             .map(
               (group) => `
                 <section class="report-group">
                   <h3 class="group-title">${escapeHtml(group.title)}</h3>
-                  ${renderItems(group.items)}
+                  ${renderItems(group.items, imageSources)}
                 </section>
               `,
             )
@@ -211,5 +220,16 @@ export function buildPrintReportHtml(options: PrintReportOptions) {
 }
 
 export async function printReport(options: PrintReportOptions) {
-  await printHtmlAsPdf(buildPrintReportHtml(options), options.fileName);
+  const imageUrls = options.sections.flatMap((section) => [
+    ...(section.items ?? []).flatMap((item) => item.images ?? []),
+    ...(section.groups ?? []).flatMap((group) =>
+      group.items.flatMap((item) => item.images ?? []),
+    ),
+  ]).map((image) => image.url);
+  const imageSources = await preparePrintImageSources(imageUrls);
+
+  await printHtmlAsPdf(
+    buildPrintReportHtml(options, imageSources),
+    options.fileName,
+  );
 }

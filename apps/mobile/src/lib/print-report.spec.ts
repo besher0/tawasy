@@ -48,4 +48,33 @@ describe('buildPrintReportHtml', () => {
     expect(html).not.toContain('<hr class="summary-divider" />');
     expect(html).toContain('1. طحين');
   });
+
+  it('uses a cached image source without changing the report dimensions', () => {
+    const originalUrl = 'https://example.com/original.jpg';
+    const cachedSource = 'data:image/jpeg;base64,original-bytes';
+    const html = buildPrintReportHtml(
+      {
+        title: 'تقرير الصور',
+        fileName: 'images.pdf',
+        sections: [
+          {
+            title: 'فرع',
+            items: [
+              {
+                title: 'قالب',
+                lines: [],
+                images: [{ url: originalUrl }],
+              },
+            ],
+          },
+        ],
+      },
+      new Map([[originalUrl, cachedSource]]),
+    );
+
+    expect(html).toContain(cachedSource);
+    expect(html).not.toContain(originalUrl);
+    expect(html).toContain('height: 380px');
+    expect(html).toContain('object-fit: contain');
+  });
 });
