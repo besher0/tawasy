@@ -49,6 +49,32 @@ describe('buildPrintReportHtml', () => {
     expect(html).toContain('1. طحين');
   });
 
+  it('renders recommendation cards without automatic numbering and with top-left meta', () => {
+    const html = buildPrintReportHtml({
+      title: 'تواصي الإنتاج',
+      fileName: 'orders.pdf',
+      sections: [
+        {
+          title: 'فرع',
+          items: [
+            {
+              title: 'توصاية رقم 1',
+              numbered: false,
+              metaLines: ['ساعة التسليم: 03:00 م', 'الفرع: فرع أول'],
+              lines: ['قالب 12'],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(html).toContain('<h3>توصاية رقم 1</h3>');
+    expect(html).not.toContain('<h3>1. توصاية رقم 1</h3>');
+    expect(html).toContain('class="item-meta"');
+    expect(html).toContain('ساعة التسليم: 03:00 م');
+    expect(html).toContain('الفرع: فرع أول');
+  });
+
   it('uses a cached image source without changing the report dimensions', () => {
     const originalUrl = 'https://example.com/original.jpg';
     const cachedSource = 'data:image/jpeg;base64,original-bytes';

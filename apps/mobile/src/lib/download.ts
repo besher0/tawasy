@@ -65,7 +65,9 @@ export async function preparePrintImageSources(urls: string[]) {
     return sources;
   }
 
-  const uniqueUrls = [...new Set(urls)].filter((url) => /^https?:\/\//i.test(url));
+  const uniqueUrls = [...new Set(urls)].filter((url) =>
+    /^https?:\/\//i.test(url),
+  );
   let nextIndex = 0;
 
   async function worker() {
@@ -103,7 +105,7 @@ function triggerWebDownload(blob: Blob, fileName: string) {
   URL.revokeObjectURL(url);
 }
 
-async function shareDownloadedFile(uri: string, mimeType: string) {
+export async function shareLocalFile(uri: string, mimeType: string) {
   if (!(await Sharing.isAvailableAsync())) {
     throw new Error('File sharing is not available on this device');
   }
@@ -134,7 +136,11 @@ async function waitForPrintAssets(document: Document) {
   await Promise.race([Promise.all([imagesReady, fontsReady]), timeout]);
 }
 
-export async function downloadRemoteFile(url: string, fileName: string, mimeType = 'image/jpeg') {
+export async function downloadRemoteFile(
+  url: string,
+  fileName: string,
+  mimeType = 'image/jpeg',
+) {
   if (Platform.OS === 'web') {
     const response = await fetch(url);
     if (!response.ok) {
@@ -148,7 +154,7 @@ export async function downloadRemoteFile(url: string, fileName: string, mimeType
   const result = await FileSystem.File.downloadFileAsync(url, targetFile, {
     idempotent: true,
   });
-  await shareDownloadedFile(result.uri, mimeType);
+  await shareLocalFile(result.uri, mimeType);
 }
 
 export async function printHtmlAsPdf(html: string, fileName: string) {
@@ -169,7 +175,9 @@ export async function printHtmlAsPdf(html: string, fileName: string) {
     }
 
     frameDocument.open();
-    frameDocument.write(html.replace('<title></title>', `<title>${fileName}</title>`));
+    frameDocument.write(
+      html.replace('<title></title>', `<title>${fileName}</title>`),
+    );
     frameDocument.close();
 
     await waitForPrintAssets(frameDocument);
@@ -180,5 +188,5 @@ export async function printHtmlAsPdf(html: string, fileName: string) {
   }
 
   const result = await Print.printToFileAsync({ html });
-  await shareDownloadedFile(result.uri, 'application/pdf');
+  await shareLocalFile(result.uri, 'application/pdf');
 }

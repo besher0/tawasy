@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "e06b313b-239f-48de-8c54-79eaf4cf0d94"
+      }
+    },
+    "android": {
+      "package": "com.test3233.sugarprecisionmonorepo"
+    }
+  }
+}

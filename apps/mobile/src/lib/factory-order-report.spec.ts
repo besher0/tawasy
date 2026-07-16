@@ -1,7 +1,15 @@
 import { buildFactoryOrderReport } from './factory-order-report';
 
+function expectedTime(value: string) {
+  return new Date(value).toLocaleTimeString('ar-SY', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Damascus',
+  });
+}
+
 describe('buildFactoryOrderReport', () => {
-  it('counts molds and groups every visible item by branch and inner color', () => {
+  it('numbers each order item as a recommendation inside its branch without exposing order identity', () => {
     const report = buildFactoryOrderReport([
       {
         orderNumber: 'B-10',
@@ -23,22 +31,6 @@ describe('buildFactoryOrderReport', () => {
             referenceImages: ['https://example.com/milk.jpg'],
           },
           {
-            id: 'chocolate-mold',
-            itemKind: 'Mold',
-            moldInnerColor: 'Black',
-            moldBaseType: 'Cake',
-            cakeLayerCount: 3,
-            peopleCount: 16,
-            referenceImages: [],
-          },
-          {
-            id: 'mixed-mold',
-            itemKind: 'Mold',
-            moldInnerColor: 'Mixed',
-            moldLayerColors: 'حليب وشوكولا',
-            peopleCount: 20,
-          },
-          {
             id: 'pieces',
             itemKind: 'Pieces',
             pieceType: 'كب كيك',
@@ -48,9 +40,24 @@ describe('buildFactoryOrderReport', () => {
         ],
       },
       {
+        orderNumber: 'B-20',
+        customerName: 'زبون ثاني',
+        deliveryDatetime: '2026-07-13T10:00:00.000Z',
+        isUrgent: false,
+        shop: { name: 'فرع ب' },
+        items: [
+          {
+            id: 'chocolate-mold',
+            itemKind: 'Mold',
+            moldInnerColor: 'Black',
+            peopleCount: 8,
+          },
+        ],
+      },
+      {
         orderNumber: 'A-20',
         customerName: 'زبون أ',
-        deliveryDatetime: '2026-07-13T10:00:00.000Z',
+        deliveryDatetime: '2026-07-13T09:00:00.000Z',
         isUrgent: false,
         shop: { name: 'فرع أ' },
         items: [
@@ -58,59 +65,61 @@ describe('buildFactoryOrderReport', () => {
             id: 'second-chocolate-mold',
             itemKind: 'Mold',
             moldInnerColor: 'Black',
-            peopleCount: 8,
+            peopleCount: 16,
           },
         ],
       },
     ]);
 
-    expect(report).toMatchObject({
-      milkMoldCount: 1,
-      chocolateMoldCount: 2,
-      mixedMoldCount: 1,
-      summaryLines: [
-        'مجمل عدد القوالب التي لونها من الداخل حليب: 1',
-        'مجمل عدد القوالب التي لونها من الداخل شوكولا: 2',
-      ],
-    });
-
-    const branchB = report.sections.find((section) => section.title === 'فرع ب');
-    expect(branchB?.groups?.map((group) => group.title)).toEqual([
-      'قلب حليب (1)',
-      'قلب شوكولا (1)',
-      'قلب مشكل (1)',
-      'قطع (1)',
-    ]);
-
-    const milkItem = branchB?.groups?.[0].items[0];
-    expect(milkItem?.title).toBe('طلب B-10 — زبون ب — المنتج 1');
-    expect(milkItem?.lines).toEqual(
-      expect.arrayContaining([
-        'مكان التسليم: فرع التسليم',
-        'الأولوية: عاجل',
-        'ملاحظات الطلب: ملاحظة الطلب',
-        'الصور المرجعية: 1',
-      ]),
-    );
-    expect(milkItem?.lines.join(' ')).toContain('مع فلين (2)');
-    expect(branchB?.groups?.[1].items[0].lines.join(' ')).toContain(
-      'كيك (3 طبقات)',
-    );
-    expect(milkItem?.images).toEqual([
-      {
-        url: 'https://example.com/milk.jpg',
-        caption: 'طلب B-10 — المنتج 1 — صورة 1',
-      },
-    ]);
-
-    expect(branchB?.groups?.[3].items[0].title).toContain('المنتج 4');
+    expect(report.summaryLines).toEqual([]);
     expect(report.sections.map((section) => section.title)).toEqual([
       'فرع أ',
       'فرع ب',
     ]);
+    expect(report.sections[0].items?.map((item) => item.title)).toEqual([
+      'توصاية رقم 1',
+    ]);
+    expect(report.sections[1].items?.map((item) => item.title)).toEqual([
+      'توصاية رقم 1',
+      'توصاية رقم 2',
+      'توصاية رقم 3',
+    ]);
+    expect(report.sections[0].groups).toBeUndefined();
+
+    const firstBranchBItem = report.sections[1].items?.[0];
+    expect(firstBranchBItem?.metaLines).toEqual([
+      `ساعة التسليم: ${expectedTime('2026-07-13T10:00:00.000Z')}`,
+      'الفرع: فرع ب',
+    ]);
+    expect(firstBranchBItem?.lines.join(' ')).toContain('قالب 8');
+    expect(firstBranchBItem?.lines.join(' ')).not.toContain('B-20');
+    expect(firstBranchBItem?.lines.join(' ')).not.toContain('زبون ثاني');
+
+    const secondBranchBItem = report.sections[1].items?.[1];
+    expect(secondBranchBItem?.metaLines).toEqual([
+      `ساعة التسليم: ${expectedTime('2026-07-13T12:00:00.000Z')}`,
+      'الفرع: فرع التسليم',
+    ]);
+    expect(secondBranchBItem?.lines.join(' ')).toContain('قالب 12');
+    expect(secondBranchBItem?.lines.join(' ')).not.toContain('قطع');
+    expect(secondBranchBItem?.images).toEqual([
+      {
+        url: 'https://example.com/milk.jpg',
+        caption: 'توصاية رقم 2 - صورة 1',
+      },
+    ]);
+
+    const thirdBranchBItem = report.sections[1].items?.[2];
+    expect(thirdBranchBItem?.lines.join(' ')).toContain('قطع');
+    expect(thirdBranchBItem?.images).toEqual([
+      {
+        url: 'https://example.com/pieces.jpg',
+        caption: 'توصاية رقم 3 - صورة 1',
+      },
+    ]);
   });
 
-  it('keeps molds with a missing or unknown inner color in the mixed group', () => {
+  it('keeps a printable card for an order with no item details', () => {
     const report = buildFactoryOrderReport([
       {
         orderNumber: 'A-1',
@@ -118,19 +127,18 @@ describe('buildFactoryOrderReport', () => {
         deliveryDatetime: '2026-07-13T10:00:00.000Z',
         isUrgent: false,
         shop: null,
-        items: [
-          { id: 'missing', itemKind: 'Mold' },
-          { id: 'unknown', itemKind: 'Mold', moldInnerColor: 'Unknown' },
-        ],
+        items: [],
       },
     ]);
 
-    expect(report.milkMoldCount).toBe(0);
-    expect(report.chocolateMoldCount).toBe(0);
-    expect(report.mixedMoldCount).toBe(2);
-    expect(report.sections[0].title).toBe('فرع غير محدد');
-    expect(report.sections[0].groups?.[2]).toMatchObject({
-      title: 'قلب مشكل (2)',
+    expect(report.sections[0]).toMatchObject({
+      title: 'فرع غير محدد',
+      items: [
+        {
+          title: 'توصاية رقم 1',
+          lines: ['لا توجد تفاصيل توصاية.'],
+        },
+      ],
     });
   });
 });

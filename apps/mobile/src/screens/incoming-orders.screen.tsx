@@ -21,8 +21,10 @@ import { getApiErrorMessage } from '../lib/api-error';
 import { printReport } from '../lib/print-report';
 import {
   buildFactoryOrderReport,
+  type FactoryOrderReport,
   type FactoryReportOrderItem,
 } from '../lib/factory-order-report';
+import { ReportImageExporter } from '../lib/report-image-exporter';
 import { StatusBadge } from '../components/status-badge';
 import {
   DeliveryDatePicker,
@@ -148,7 +150,8 @@ function getStatusTone(
 
 export function IncomingOrdersScreen() {
   const { user } = useAuth();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [search, setSearch] = useState('');
   const [cancellationFilter, setCancellationFilter] =
@@ -158,6 +161,8 @@ export function IncomingOrdersScreen() {
   const [shops, setShops] = useState<ShopSummary[]>([]);
   const [shopIdFilter, setShopIdFilter] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [imageExportReport, setImageExportReport] =
+    useState<FactoryOrderReport | null>(null);
   const [deliveryTotals, setDeliveryTotals] = useState<DeliveryTotals>({
     deliveredTotal: 0,
     deliveredCount: 0,
@@ -200,12 +205,15 @@ export function IncomingOrdersScreen() {
     const range = getDateRange(
       deliveryDateFilter || getLocalDateKey(new Date().toISOString()),
     );
-    const response = await api.get<DeliveryTotals>('/analytics/delivery-totals', {
-      params: {
-        ...range,
-        shopId: isFactoryView && shopIdFilter ? shopIdFilter : undefined,
+    const response = await api.get<DeliveryTotals>(
+      '/analytics/delivery-totals',
+      {
+        params: {
+          ...range,
+          shopId: isFactoryView && shopIdFilter ? shopIdFilter : undefined,
+        },
       },
-    });
+    );
 
     setDeliveryTotals({
       deliveredTotal: response.data.deliveredTotal ?? 0,
@@ -255,28 +263,28 @@ export function IncomingOrdersScreen() {
   }, [isFactoryView]);
 
   const sections = [...orders]
-    .sort(
-      (first, second) => {
-        if (isFactoryView) {
-          const branchComparison = (first.shop?.name ?? '').localeCompare(
-            second.shop?.name ?? '',
-            'ar',
-          );
-
-          if (branchComparison !== 0) {
-            return branchComparison;
-          }
-        }
-
-        return (
-          new Date(first.deliveryDatetime).getTime() -
-          new Date(second.deliveryDatetime).getTime()
+    .sort((first, second) => {
+      if (isFactoryView) {
+        const branchComparison = (first.shop?.name ?? '').localeCompare(
+          second.shop?.name ?? '',
+          'ar',
         );
-      },
-    )
+
+        if (branchComparison !== 0) {
+          return branchComparison;
+        }
+      }
+
+      return (
+        new Date(first.deliveryDatetime).getTime() -
+        new Date(second.deliveryDatetime).getTime()
+      );
+    })
     .reduce<OrderSection[]>((result, order) => {
       const dateKey = getLocalDateKey(order.deliveryDatetime);
-      const branchKey = isFactoryView ? order.shop?.id ?? 'unassigned' : 'current';
+      const branchKey = isFactoryView
+        ? (order.shop?.id ?? 'unassigned')
+        : 'current';
       const branchName = order.shop?.name ?? 'فرع غير محدد';
       const existingSection = result[result.length - 1];
 
@@ -300,9 +308,11 @@ export function IncomingOrdersScreen() {
       return result;
     }, []);
 
-  useFocusEffect(useCallback(() => {
-    void loadScreenData();
-  }, [loadScreenData]));
+  useFocusEffect(
+    useCallback(() => {
+      void loadScreenData();
+    }, [loadScreenData]),
+  );
 
   const confirmDelivery = async (orderId: string) => {
     try {
@@ -325,8 +335,8 @@ export function IncomingOrdersScreen() {
       const report = buildFactoryOrderReport(orders);
 
       await printReport({
-        title: 'تفاصيل طلبيات الإنتاج حسب الفروع',
-        subtitle: 'تفاصيل التجهيز المطلوبة للمعمل',
+        title: 'تواصي الإنتاج حسب الفروع',
+        subtitle: 'تفاصيل التواصي والصور حسب رقم التوصاية',
         fileName: 'orders-by-branch.pdf',
         summaryLines: report.summaryLines,
         sections: report.sections,
@@ -338,198 +348,253 @@ export function IncomingOrdersScreen() {
     }
   };
 
-  return (
-    <View style={styles.wrapper}>
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <Text style={styles.heading}>الطلبات الواردة</Text>
+  const exportOrderImages = () => {
+    const report = buildFactoryOrderReport(orders);
+    const hasPages = report.sections.some((section) => section.items?.length);
+
+    if (!hasPages) {
+      Alert.alert('لا توجد بيانات', 'لا توجد تواصي لتصديرها كصور.');
+      return;
+    }
+
+    setImageExportReport(report);
+  };
+
+  const listHeader = (
+    <View style={styles.header}>
+      <View style={styles.headerRow}>
+        <Text style={styles.heading}>الطلبات الواردة</Text>
+        <View style={styles.exportActions}>
           <TouchableOpacity
-            style={[styles.exportButton, exporting ? styles.buttonDisabled : null]}
+            style={[
+              styles.exportButton,
+              exporting ? styles.buttonDisabled : null,
+            ]}
             onPress={() => void exportOrders()}
-            disabled={exporting}
+            disabled={exporting || Boolean(imageExportReport)}
           >
-            <MaterialIcons name="picture-as-pdf" size={20} color={theme.colors.onPrimary} />
+            <MaterialIcons
+              name="picture-as-pdf"
+              size={20}
+              color={theme.colors.onPrimary}
+            />
             <Text style={styles.exportButtonText}>
-              {exporting ? 'جاري التحضير...' : 'طباعة / حفظ الطلبيات PDF'}
+              {exporting ? 'جاري التحضير...' : 'طباعة PDF'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.exportButton,
+              imageExportReport ? styles.buttonDisabled : null,
+            ]}
+            onPress={exportOrderImages}
+            disabled={exporting || Boolean(imageExportReport)}
+          >
+            <MaterialIcons
+              name="image"
+              size={20}
+              color={theme.colors.onPrimary}
+            />
+            <Text style={styles.exportButtonText}>
+              {imageExportReport ? 'جاري حفظ الصور...' : 'تصدير صور'}
             </Text>
           </TouchableOpacity>
         </View>
-        <View style={styles.totalsGrid}>
-          <View style={[styles.totalCard, styles.deliveredTotalCard]}>
-            <View style={styles.totalTitleRow}>
-              <MaterialIcons
-                name="check-circle"
-                size={20}
-                color={theme.colors.primary}
-              />
-              <Text style={styles.totalTitle}>القوالب التي تسلمت</Text>
-            </View>
-            <Text style={styles.totalValue}>
-              {formatMoney(deliveryTotals.deliveredTotal)}
-            </Text>
-            <Text style={styles.totalSubtitle}>
-              {deliveryTotals.deliveredCount} توصاية -{' '}
-              {formatDeliveryDate(totalsDateKey)}
-            </Text>
-          </View>
-          <View style={[styles.totalCard, styles.undeliveredTotalCard]}>
-            <View style={styles.totalTitleRow}>
-              <MaterialIcons
-                name="schedule"
-                size={20}
-                color={theme.colors.warning}
-              />
-              <Text style={styles.totalTitle}>القوالب التي لم تسلم</Text>
-            </View>
-            <Text style={styles.totalValue}>
-              {formatMoney(deliveryTotals.undeliveredTotal)}
-            </Text>
-            <Text style={styles.totalSubtitle}>
-              {deliveryTotals.undeliveredCount} توصاية - حتى نهاية اليوم
-            </Text>
-          </View>
-        </View>
-        <TextInput
-          style={styles.search}
-          placeholder="بحث عن طلب أو عميل"
-          value={search}
-          onChangeText={setSearch}
-          onSubmitEditing={() => void loadOrders()}
-        />
-        <View style={styles.filterPanel}>
-          <View style={styles.filterTitleRow}>
+      </View>
+      <View style={styles.totalsGrid}>
+        <View style={[styles.totalCard, styles.deliveredTotalCard]}>
+          <View style={styles.totalTitleRow}>
             <MaterialIcons
-              name="filter-list"
+              name="check-circle"
               size={20}
               color={theme.colors.primary}
             />
-            <Text style={styles.filterTitle}>فلترة الطلبات</Text>
+            <Text style={styles.totalTitle}>القوالب التي تسلمت</Text>
           </View>
-          <View style={styles.filterChips}>
-            {cancellationFilterOptions.map((option) => {
-              const active = cancellationFilter === option.value;
-
-              return (
-                <TouchableOpacity
-                  key={option.value}
-                  style={[styles.filterChip, active ? styles.filterChipActive : null]}
-                  onPress={() => setCancellationFilter(option.value)}
-                >
-                  <MaterialIcons
-                    name={option.icon}
-                    size={18}
-                    color={
-                      active ? theme.colors.onPrimary : theme.colors.onSurfaceVariant
-                    }
-                  />
-                  <Text
-                    style={[
-                      styles.filterChipText,
-                      active ? styles.filterChipTextActive : null,
-                    ]}
-                  >
-                    {option.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+          <Text style={styles.totalValue}>
+            {formatMoney(deliveryTotals.deliveredTotal)}
+          </Text>
+          <Text style={styles.totalSubtitle}>
+            {deliveryTotals.deliveredCount} توصاية -{' '}
+            {formatDeliveryDate(totalsDateKey)}
+          </Text>
+        </View>
+        <View style={[styles.totalCard, styles.undeliveredTotalCard]}>
+          <View style={styles.totalTitleRow}>
+            <MaterialIcons
+              name="schedule"
+              size={20}
+              color={theme.colors.warning}
+            />
+            <Text style={styles.totalTitle}>القوالب التي لم تسلم</Text>
           </View>
-          <View style={styles.dateFilterRow}>
-            <TouchableOpacity
-              style={styles.dateFilterButton}
-              onPress={() => setShowDateFilterPicker(true)}
-            >
-              <MaterialIcons name="event" size={20} color={theme.colors.primary} />
-              <Text style={styles.dateFilterText}>
-                {deliveryDateFilter
-                  ? formatDeliveryDate(deliveryDateFilter)
-                  : 'كل تواريخ التواصي'}
-              </Text>
-            </TouchableOpacity>
-            {deliveryDateFilter ? (
-              <TouchableOpacity
-                accessibilityLabel="مسح فلتر التاريخ"
-                style={styles.clearDateButton}
-                onPress={() => setDeliveryDateFilter('')}
-              >
-                <MaterialIcons
-                  name="close"
-                  size={20}
-                  color={theme.colors.onSurfaceVariant}
-                />
-              </TouchableOpacity>
-            ) : null}
-          </View>
-          {isFactoryView ? (
-            <View style={styles.shopFilterGroup}>
-              <Text style={styles.filterSubtitle}>فلترة حسب المحل</Text>
-              <View style={styles.filterChips}>
-                <TouchableOpacity
-                  style={[
-                    styles.filterChip,
-                    !shopIdFilter ? styles.filterChipActive : null,
-                  ]}
-                  onPress={() => setShopIdFilter('')}
-                >
-                  <MaterialIcons
-                    name="storefront"
-                    size={18}
-                    color={
-                      !shopIdFilter
-                        ? theme.colors.onPrimary
-                        : theme.colors.onSurfaceVariant
-                    }
-                  />
-                  <Text
-                    style={[
-                      styles.filterChipText,
-                      !shopIdFilter ? styles.filterChipTextActive : null,
-                    ]}
-                  >
-                    كل المحلات
-                  </Text>
-                </TouchableOpacity>
-                {shops.map((shop) => {
-                  const active = shopIdFilter === shop.id;
-
-                  return (
-                    <TouchableOpacity
-                      key={shop.id}
-                      style={[styles.filterChip, active ? styles.filterChipActive : null]}
-                      onPress={() => setShopIdFilter(shop.id)}
-                    >
-                      <MaterialIcons
-                        name="store"
-                        size={18}
-                        color={
-                          active
-                            ? theme.colors.onPrimary
-                            : theme.colors.onSurfaceVariant
-                        }
-                      />
-                      <Text
-                        style={[
-                          styles.filterChipText,
-                          active ? styles.filterChipTextActive : null,
-                        ]}
-                      >
-                        {shop.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          ) : null}
+          <Text style={styles.totalValue}>
+            {formatMoney(deliveryTotals.undeliveredTotal)}
+          </Text>
+          <Text style={styles.totalSubtitle}>
+            {deliveryTotals.undeliveredCount} توصاية - حتى نهاية اليوم
+          </Text>
         </View>
       </View>
+      <TextInput
+        style={styles.search}
+        placeholder="بحث عن طلب أو عميل"
+        value={search}
+        onChangeText={setSearch}
+        onSubmitEditing={() => void loadOrders()}
+      />
+      <View style={styles.filterPanel}>
+        <View style={styles.filterTitleRow}>
+          <MaterialIcons
+            name="filter-list"
+            size={20}
+            color={theme.colors.primary}
+          />
+          <Text style={styles.filterTitle}>فلترة الطلبات</Text>
+        </View>
+        <View style={styles.filterChips}>
+          {cancellationFilterOptions.map((option) => {
+            const active = cancellationFilter === option.value;
 
+            return (
+              <TouchableOpacity
+                key={option.value}
+                style={[
+                  styles.filterChip,
+                  active ? styles.filterChipActive : null,
+                ]}
+                onPress={() => setCancellationFilter(option.value)}
+              >
+                <MaterialIcons
+                  name={option.icon}
+                  size={18}
+                  color={
+                    active
+                      ? theme.colors.onPrimary
+                      : theme.colors.onSurfaceVariant
+                  }
+                />
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    active ? styles.filterChipTextActive : null,
+                  ]}
+                >
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <View style={styles.dateFilterRow}>
+          <TouchableOpacity
+            style={styles.dateFilterButton}
+            onPress={() => setShowDateFilterPicker(true)}
+          >
+            <MaterialIcons
+              name="event"
+              size={20}
+              color={theme.colors.primary}
+            />
+            <Text style={styles.dateFilterText}>
+              {deliveryDateFilter
+                ? formatDeliveryDate(deliveryDateFilter)
+                : 'كل تواريخ التواصي'}
+            </Text>
+          </TouchableOpacity>
+          {deliveryDateFilter ? (
+            <TouchableOpacity
+              accessibilityLabel="مسح فلتر التاريخ"
+              style={styles.clearDateButton}
+              onPress={() => setDeliveryDateFilter('')}
+            >
+              <MaterialIcons
+                name="close"
+                size={20}
+                color={theme.colors.onSurfaceVariant}
+              />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+        {isFactoryView ? (
+          <View style={styles.shopFilterGroup}>
+            <Text style={styles.filterSubtitle}>فلترة حسب المحل</Text>
+            <View style={styles.filterChips}>
+              <TouchableOpacity
+                style={[
+                  styles.filterChip,
+                  !shopIdFilter ? styles.filterChipActive : null,
+                ]}
+                onPress={() => setShopIdFilter('')}
+              >
+                <MaterialIcons
+                  name="storefront"
+                  size={18}
+                  color={
+                    !shopIdFilter
+                      ? theme.colors.onPrimary
+                      : theme.colors.onSurfaceVariant
+                  }
+                />
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    !shopIdFilter ? styles.filterChipTextActive : null,
+                  ]}
+                >
+                  كل المحلات
+                </Text>
+              </TouchableOpacity>
+              {shops.map((shop) => {
+                const active = shopIdFilter === shop.id;
+
+                return (
+                  <TouchableOpacity
+                    key={shop.id}
+                    style={[
+                      styles.filterChip,
+                      active ? styles.filterChipActive : null,
+                    ]}
+                    onPress={() => setShopIdFilter(shop.id)}
+                  >
+                    <MaterialIcons
+                      name="store"
+                      size={18}
+                      color={
+                        active
+                          ? theme.colors.onPrimary
+                          : theme.colors.onSurfaceVariant
+                      }
+                    />
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        active ? styles.filterChipTextActive : null,
+                      ]}
+                    >
+                      {shop.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={styles.wrapper}>
       <SectionList
         sections={sections}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
+        ListHeaderComponent={listHeader}
         stickySectionHeadersEnabled={false}
-        ListEmptyComponent={<Text style={styles.emptyText}>لا توجد طلبات لعرضها.</Text>}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>لا توجد طلبات لعرضها.</Text>
+        }
         renderSectionHeader={({ section }) => (
           <>
             {section.showBranchHeader ? (
@@ -642,6 +707,22 @@ export function IncomingOrdersScreen() {
           setShowDateFilterPicker(false);
         }}
       />
+      {imageExportReport ? (
+        <ReportImageExporter
+          title="تواصي الإنتاج حسب الفروع"
+          subtitle="تفاصيل التواصي والصور حسب رقم التوصاية"
+          fileNamePrefix="orders-by-branch"
+          sections={imageExportReport.sections}
+          onDone={() => {
+            setImageExportReport(null);
+            Alert.alert('تم الحفظ', 'تم حفظ صور التواصي في معرض الصور.');
+          }}
+          onError={() => {
+            setImageExportReport(null);
+            Alert.alert('خطأ', 'تعذر حفظ التواصي كصور.');
+          }}
+        />
+      ) : null}
     </View>
   );
 }
@@ -649,7 +730,7 @@ export function IncomingOrdersScreen() {
 const styles = StyleSheet.create({
   wrapper: { flex: 1, backgroundColor: theme.colors.surface },
   header: {
-    padding: theme.spacing.lg,
+    paddingVertical: theme.spacing.lg,
     gap: theme.spacing.sm,
     width: '100%',
     maxWidth: 1280,
@@ -667,19 +748,24 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: theme.spacing.sm,
   },
+  exportActions: {
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
   totalsGrid: {
     flexDirection: 'row-reverse',
     flexWrap: 'wrap',
-    gap: theme.spacing.md,
+    gap: theme.spacing.sm,
   },
   totalCard: {
     flexGrow: 1,
-    flexBasis: 260,
+    flexBasis: 220,
     borderRadius: theme.radius.lg,
     borderWidth: 1,
     borderColor: theme.colors.outlineVariant,
     backgroundColor: theme.colors.surfaceContainerLowest,
-    padding: theme.spacing.lg,
+    padding: theme.spacing.md,
     gap: theme.spacing.xs,
   },
   deliveredTotalCard: {
@@ -701,7 +787,9 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   totalValue: {
-    ...theme.typography.heading,
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 18,
+    lineHeight: 26,
     color: theme.colors.onSurface,
     textAlign: 'right',
   },
@@ -739,7 +827,7 @@ const styles = StyleSheet.create({
     ...theme.typography.body,
   },
   filterPanel: {
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   filterTitleRow: {
     flexDirection: 'row-reverse',
@@ -759,17 +847,17 @@ const styles = StyleSheet.create({
   filterChips: {
     flexDirection: 'row-reverse',
     flexWrap: 'wrap',
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   filterChip: {
-    minHeight: 42,
-    minWidth: 104,
+    minHeight: 36,
+    minWidth: 88,
     flexGrow: 1,
     borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.outlineVariant,
     backgroundColor: theme.colors.surfaceContainerLowest,
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: theme.spacing.sm,
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'center',
@@ -790,16 +878,16 @@ const styles = StyleSheet.create({
   dateFilterRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   dateFilterButton: {
     flex: 1,
-    minHeight: 46,
+    minHeight: 40,
     borderRadius: theme.radius.lg,
     borderWidth: 1,
     borderColor: theme.colors.outlineVariant,
     backgroundColor: theme.colors.surfaceContainerLowest,
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: theme.spacing.sm,
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: theme.spacing.sm,
@@ -811,8 +899,8 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   clearDateButton: {
-    width: 46,
-    height: 46,
+    width: 40,
+    height: 40,
     borderRadius: theme.radius.lg,
     borderWidth: 1,
     borderColor: theme.colors.outlineVariant,

@@ -3,6 +3,8 @@ import { preparePrintImageSources, printHtmlAsPdf } from './download';
 export interface ReportItem {
   title: string;
   lines: string[];
+  metaLines?: string[];
+  numbered?: boolean;
   images?: Array<{
     url: string;
     caption?: string;
@@ -75,7 +77,17 @@ function renderItems(
     .map(
       (item, index) => `
         <article class="item">
-          <h3>${index + 1}. ${escapeHtml(item.title)}</h3>
+          <div class="item-header">
+            ${
+              item.metaLines?.length
+                ? `<div class="item-meta">${item.metaLines
+                    .filter(Boolean)
+                    .map((line) => `<p>${escapeHtml(line)}</p>`)
+                    .join('')}</div>`
+                : ''
+            }
+            <h3>${item.numbered === false ? '' : `${index + 1}. `}${escapeHtml(item.title)}</h3>
+          </div>
           ${item.lines
             .filter(Boolean)
             .map((line) => `<p>${escapeHtml(line)}</p>`)
@@ -177,7 +189,34 @@ export function buildPrintReportHtml(
             border: 1px solid #b8d7ea;
             border-radius: 8px;
           }
-          h3 { margin: 0 0 10px; font-size: 24px; line-height: 1.55; }
+          .item-header {
+            display: flex;
+            direction: ltr;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 10px;
+          }
+          .item-header h3 {
+            flex: 1;
+            margin: 0;
+            direction: rtl;
+            text-align: right;
+            font-size: 24px;
+            line-height: 1.55;
+          }
+          .item-meta {
+            min-width: 145px;
+            direction: rtl;
+            text-align: left;
+            color: #587083;
+          }
+          .item-meta p {
+            margin: 0 0 3px;
+            font-size: 16px;
+            line-height: 1.45;
+            font-weight: 700;
+          }
           p { margin: 5px 0; font-size: 22px; line-height: 1.8; }
           .image-grid {
             display: grid;
@@ -220,12 +259,14 @@ export function buildPrintReportHtml(
 }
 
 export async function printReport(options: PrintReportOptions) {
-  const imageUrls = options.sections.flatMap((section) => [
-    ...(section.items ?? []).flatMap((item) => item.images ?? []),
-    ...(section.groups ?? []).flatMap((group) =>
-      group.items.flatMap((item) => item.images ?? []),
-    ),
-  ]).map((image) => image.url);
+  const imageUrls = options.sections
+    .flatMap((section) => [
+      ...(section.items ?? []).flatMap((item) => item.images ?? []),
+      ...(section.groups ?? []).flatMap((group) =>
+        group.items.flatMap((item) => item.images ?? []),
+      ),
+    ])
+    .map((image) => image.url);
   const imageSources = await preparePrintImageSources(imageUrls);
 
   await printHtmlAsPdf(

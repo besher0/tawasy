@@ -26,14 +26,29 @@ export interface DisplayOrderItem {
   peopleCount?: number;
 }
 
-export function buildOrderItemDisplay(item: DisplayOrderItem) {
+export interface BuildOrderItemDisplayOptions {
+  showEmptyProductionOptions?: boolean;
+}
+
+export function buildOrderItemDisplay(
+  item: DisplayOrderItem,
+  options: BuildOrderItemDisplayOptions = {},
+) {
+  const showEmptyProductionOptions = options.showEmptyProductionOptions ?? true;
   const notes = item.specialDetails?.trim() || '-';
   const baseDetails =
     item.moldBaseType === 'Foam'
       ? `مع فلين${item.foamCount ? ` (${item.foamCount})` : ''}`
       : item.moldBaseType === 'Cake'
         ? `كيك${item.cakeLayerCount ? ` (${item.cakeLayerCount} طبقات)` : ''}`
-        : 'بدون فلين';
+        : showEmptyProductionOptions
+          ? 'بدون فلين'
+          : null;
+  const finishDetails =
+    !showEmptyProductionOptions &&
+    (!item.finishType || item.finishType === 'None')
+      ? null
+      : cakeFinishLabel(item.finishType);
   const writing = item.writingText?.trim() || 'مافي كتابة';
   const layerColors = item.moldLayerColors?.trim();
   const innerColorDetails =
@@ -64,7 +79,7 @@ export function buildOrderItemDisplay(item: DisplayOrderItem) {
     `${item.layers ?? '-'}`,
     moldFlavorLabel(item.moldFlavor),
     item.moldColor?.trim() || '-',
-    cakeFinishLabel(item.finishType),
+    finishDetails,
     writing,
     `الملاحظات والإضافات الأخرى: ${notes}`,
   ].filter((detail): detail is string => Boolean(detail));

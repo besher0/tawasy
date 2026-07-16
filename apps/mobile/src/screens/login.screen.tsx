@@ -27,7 +27,7 @@ export function LoginScreen() {
 
   return (
     <ScreenContainer style={styles.container}>
-      <Text style={styles.title}>SugarPrecision</Text>
+      <Text style={styles.title}>tawasy</Text>
       <Text style={styles.subtitle}>تسجيل دخول فريق الإنتاج</Text>
 
       <View style={styles.formCard}>

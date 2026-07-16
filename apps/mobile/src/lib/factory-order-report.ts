@@ -1,5 +1,5 @@
 import { buildOrderItemDisplay } from './order-item-details';
-import type { ReportGroup, ReportItem, ReportSection } from './print-report';
+import type { ReportItem, ReportSection } from './print-report';
 
 export interface FactoryReportOrderItem {
   id: string;
@@ -41,60 +41,55 @@ export interface FactoryReportOrder {
 }
 
 export interface FactoryOrderReport {
-  milkMoldCount: number;
-  chocolateMoldCount: number;
-  mixedMoldCount: number;
   summaryLines: string[];
   sections: ReportSection[];
 }
 
-type GroupKey = 'milk' | 'chocolate' | 'mixed' | 'pieces';
+interface FactoryReportRecommendation {
+  order: FactoryReportOrder;
+  item: FactoryReportOrderItem | null;
+}
 
-const groupDefinitions: Array<{ key: GroupKey; title: string }> = [
-  { key: 'milk', title: 'قلب حليب' },
-  { key: 'chocolate', title: 'قلب شوكولا' },
-  { key: 'mixed', title: 'قلب مشكل' },
-  { key: 'pieces', title: 'قطع' },
-];
+function formatDeliveryTime(value: string) {
+  return new Date(value).toLocaleTimeString('ar-SY', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Damascus',
+  });
+}
 
-function getGroupKey(item: FactoryReportOrderItem): GroupKey {
-  if (item.itemKind !== 'Mold') {
-    return 'pieces';
-  }
+function getOrderBranchName(order: FactoryReportOrder) {
+  return order.shop?.name ?? 'فرع غير محدد';
+}
 
-  if (item.moldInnerColor === 'White') {
-    return 'milk';
-  }
-
-  if (item.moldInnerColor === 'Black') {
-    return 'chocolate';
-  }
-
-  return 'mixed';
+function getDeliveryBranchName(order: FactoryReportOrder) {
+  return order.moldDeliveryShop?.name ?? order.shop?.name ?? 'فرع غير محدد';
 }
 
 function buildReportItem(
-  order: FactoryReportOrder,
-  item: FactoryReportOrderItem,
-  itemIndex: number,
+  recommendation: FactoryReportRecommendation,
+  recommendationNumber: number,
 ): ReportItem {
-  const display = buildOrderItemDisplay(item);
+  const { item, order } = recommendation;
+  const images = item?.referenceImages ?? [];
 
   return {
-    title: `طلب ${order.orderNumber} — ${order.customerName} — المنتج ${itemIndex + 1}`,
-    lines: [
-      `موعد التسليم: ${new Date(order.deliveryDatetime).toLocaleString('ar-SY')}`,
-      `مكان التسليم: ${order.moldDeliveryShop?.name ?? order.shop?.name ?? 'غير محدد'}`,
-      `الأولوية: ${order.isUrgent ? 'عاجل' : 'عادي'}`,
-      order.notes ? `ملاحظات الطلب: ${order.notes}` : '',
-      display.text,
-      item.referenceImages?.length
-        ? `الصور المرجعية: ${item.referenceImages.length}`
-        : '',
+    title: `توصاية رقم ${recommendationNumber}`,
+    numbered: false,
+    metaLines: [
+      `ساعة التسليم: ${formatDeliveryTime(order.deliveryDatetime)}`,
+      `الفرع: ${getDeliveryBranchName(order)}`,
     ],
-    images: (item.referenceImages ?? []).map((url, imageIndex) => ({
+    lines: item
+      ? [
+          buildOrderItemDisplay(item, {
+            showEmptyProductionOptions: false,
+          }).text,
+        ]
+      : ['لا توجد تفاصيل توصاية.'],
+    images: images.map((url, imageIndex) => ({
       url,
-      caption: `طلب ${order.orderNumber} — المنتج ${itemIndex + 1} — صورة ${imageIndex + 1}`,
+      caption: `توصاية رقم ${recommendationNumber} - صورة ${imageIndex + 1}`,
     })),
   };
 }
@@ -102,58 +97,47 @@ function buildReportItem(
 export function buildFactoryOrderReport(
   orders: FactoryReportOrder[],
 ): FactoryOrderReport {
-  const branchGroups = new Map<string, Record<GroupKey, ReportItem[]>>();
-  let milkMoldCount = 0;
-  let chocolateMoldCount = 0;
-  let mixedMoldCount = 0;
+  const branchGroups = new Map<string, FactoryReportRecommendation[]>();
 
-  orders.forEach((order) => {
-    const branchName = order.shop?.name ?? 'فرع غير محدد';
-    const groups = branchGroups.get(branchName) ?? {
-      milk: [],
-      chocolate: [],
-      mixed: [],
-      pieces: [],
-    };
+  [...orders]
+    .sort((first, second) => {
+      const branchComparison = getOrderBranchName(first).localeCompare(
+        getOrderBranchName(second),
+        'ar',
+      );
 
-    (order.items ?? []).forEach((item, itemIndex) => {
-      const groupKey = getGroupKey(item);
-      groups[groupKey].push(buildReportItem(order, item, itemIndex));
-
-      if (groupKey === 'milk') {
-        milkMoldCount += 1;
-      } else if (groupKey === 'chocolate') {
-        chocolateMoldCount += 1;
-      } else if (item.itemKind === 'Mold') {
-        mixedMoldCount += 1;
+      if (branchComparison !== 0) {
+        return branchComparison;
       }
+
+      return (
+        new Date(first.deliveryDatetime).getTime() -
+        new Date(second.deliveryDatetime).getTime()
+      );
+    })
+    .forEach((order) => {
+      const branchName = getOrderBranchName(order);
+      const recommendations = (order.items?.length ? order.items : [null]).map(
+        (item) => ({ order, item }),
+      );
+
+      branchGroups.set(branchName, [
+        ...(branchGroups.get(branchName) ?? []),
+        ...recommendations,
+      ]);
     });
 
-    branchGroups.set(branchName, groups);
-  });
-
-  const sections = [...branchGroups.entries()]
-    .sort(([firstBranch], [secondBranch]) =>
-      firstBranch.localeCompare(secondBranch, 'ar'),
-    )
-    .map(([branchName, groups]): ReportSection => ({
+  const sections = [...branchGroups.entries()].map(
+    ([branchName, branchRecommendations]): ReportSection => ({
       title: branchName,
-      groups: groupDefinitions.map(
-        ({ key, title }): ReportGroup => ({
-          title: `${title} (${groups[key].length})`,
-          items: groups[key],
-        }),
+      items: branchRecommendations.map((recommendation, recommendationIndex) =>
+        buildReportItem(recommendation, recommendationIndex + 1),
       ),
-    }));
+    }),
+  );
 
   return {
-    milkMoldCount,
-    chocolateMoldCount,
-    mixedMoldCount,
-    summaryLines: [
-      `مجمل عدد القوالب التي لونها من الداخل حليب: ${milkMoldCount}`,
-      `مجمل عدد القوالب التي لونها من الداخل شوكولا: ${chocolateMoldCount}`,
-    ],
+    summaryLines: [],
     sections,
   };
 }

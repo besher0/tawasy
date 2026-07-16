@@ -12,9 +12,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#f4faff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.tawasy.app"
@@ -33,7 +31,15 @@
     },
     "owner": "test3233",
     "plugins": [
-      "expo-font"
+      "expo-font",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "يحتاج التطبيق للوصول إلى الصور لحفظ تواصي الإنتاج.",
+          "savePhotosPermission": "يحتاج التطبيق للسماح بحفظ صور التواصي على الجهاز.",
+          "isAccessMediaLocationEnabled": false
+        }
+      ]
     ],
     "updates": {
       "url": "https://u.expo.dev/908d770e-0a56-497f-81c7-c4b33962f116"

@@ -21,8 +21,7 @@ describe('buildOrderItemDisplay', () => {
 
     expect(display).toEqual({
       title: 'قالب',
-      text:
-        'قالب 12، حليب، دائري، فستق، مع فلين (2)، 3، شوكولا، زهري، نكبر ونلبس الديسك، عيد ميلاد سعيد، الملاحظات والإضافات الأخرى: كتابة اسم',
+      text: 'قالب 12، حليب، دائري، فستق، مع فلين (2)، 3، شوكولا، زهري، نكبر ونلبس الديسك، عيد ميلاد سعيد، الملاحظات والإضافات الأخرى: كتابة اسم',
     });
   });
 
@@ -49,6 +48,32 @@ describe('buildOrderItemDisplay', () => {
     expect(display.text).not.toContain('لون القالب من الداخل');
   });
 
+  it('can hide empty foam and disk enlargement options for print reports', () => {
+    const display = buildOrderItemDisplay(
+      {
+        itemKind: 'Mold',
+        peopleCount: 8,
+        layers: 1,
+        moldInnerColor: 'Black',
+        moldFlavor: 'Cream',
+        moldColor: 'أبيض',
+        hasFillings: false,
+        shape: 'Square',
+        moldBaseType: 'None',
+        finishType: 'None',
+        specialDetails: '',
+        writingText: '   ',
+      },
+      { showEmptyProductionOptions: false },
+    );
+
+    expect(display.text).toBe(
+      'قالب 8، شوكولا، مربع، 1، كريمة، أبيض، مافي كتابة، الملاحظات والإضافات الأخرى: -',
+    );
+    expect(display.text).not.toContain('بدون فلين');
+    expect(display.text).not.toContain('مافي تكبير ديسك');
+  });
+
   it('shows layer colors when the inner mold color is mixed', () => {
     const display = buildOrderItemDisplay({
       itemKind: 'Mold',
@@ -64,9 +89,7 @@ describe('buildOrderItemDisplay', () => {
       finishType: 'None',
     });
 
-    expect(display.text).toContain(
-      'مشكل - الأول أبيض، الثاني شوكولا',
-    );
+    expect(display.text).toContain('مشكل - الأول أبيض، الثاني شوكولا');
   });
 
   it('shows the independent cake layer count', () => {
@@ -100,8 +123,7 @@ describe('buildOrderItemDisplay', () => {
 
     expect(display).toEqual({
       title: 'قطع',
-      text:
-        'قطع، عدد القطع: 24، عدد الطبقات: 2، نوع القطع: كب كيك، هل يوجد فوقها شيء: نعم، الملاحظات والإضافات الأخرى: لون أزرق',
+      text: 'قطع، عدد القطع: 24، عدد الطبقات: 2، نوع القطع: كب كيك، هل يوجد فوقها شيء: نعم، الملاحظات والإضافات الأخرى: لون أزرق',
     });
   });
 });

@@ -12,12 +12,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthenticatedRequestUser } from '../../common/decorators/current-user.decorator';
 
-const cairoRegular = require.resolve(
-  '@expo-google-fonts/cairo/400Regular/Cairo_400Regular.ttf',
-);
-const cairoBold = require.resolve(
-  '@expo-google-fonts/cairo/700Bold/Cairo_700Bold.ttf',
-);
+const cairoRegular =
+  require.resolve('@expo-google-fonts/cairo/400Regular/Cairo_400Regular.ttf');
+const cairoBold =
+  require.resolve('@expo-google-fonts/cairo/700Bold/Cairo_700Bold.ttf');
 
 const categoryLabels: Record<string, string> = {
   Ready_Cake: 'كيك جاهز',
@@ -89,13 +87,17 @@ export class PrintingService {
 
     doc.on('data', (chunk) => chunks.push(chunk as Buffer));
 
-    doc.fontSize(20).text('SugarPrecision - Production Sheet', { align: 'left' });
+    doc
+      .fontSize(20)
+      .text('SugarPrecision - Production Sheet', { align: 'left' });
     doc.moveDown();
 
     doc.fontSize(12);
     doc.text(`Order Number: ${order.orderNumber}`);
     doc.text(`Shop: ${order.shop.name}`);
-    doc.text(`Delivery Location: ${order.moldDeliveryShop?.name ?? order.shop.name}`);
+    doc.text(
+      `Delivery Location: ${order.moldDeliveryShop?.name ?? order.shop.name}`,
+    );
     doc.text(`Customer: ${order.customerName}`);
     doc.text(`Phone: ${order.customerPhone}`);
     doc.text(`Delivery: ${order.deliveryDatetime.toISOString()}`);
@@ -131,17 +133,23 @@ export class PrintingService {
       if (item.shape) {
         doc.text(`- Shape: ${item.shape}`);
       }
-      doc.text(`- Fillings: ${item.hasFillings ? item.filling ?? 'Yes' : 'No'}`);
       doc.text(
-        `- Foam/cake base: ${
-          item.moldBaseType === 'Foam'
-            ? `Foam${item.foamCount ? ` (${item.foamCount})` : ''}`
-            : item.moldBaseType === 'Cake'
-              ? `Cake${item.cakeLayerCount ? ` (${item.cakeLayerCount} layers)` : ''}`
-              : 'None'
-        }`,
+        `- Fillings: ${item.hasFillings ? (item.filling ?? 'Yes') : 'No'}`,
       );
-      doc.text(`- Finish: ${item.finishType}`);
+      if (item.moldBaseType === 'Foam') {
+        doc.text(
+          `- Foam/cake base: Foam${item.foamCount ? ` (${item.foamCount})` : ''}`,
+        );
+      } else if (item.moldBaseType === 'Cake') {
+        doc.text(
+          `- Foam/cake base: Cake${
+            item.cakeLayerCount ? ` (${item.cakeLayerCount} layers)` : ''
+          }`,
+        );
+      }
+      if (item.finishType && item.finishType !== 'None') {
+        doc.text(`- Finish: ${item.finishType}`);
+      }
       doc.text(`- Quantity/people: ${item.peopleCount}`);
       if (item.specialDetails) {
         doc.text(`- Notes: ${item.specialDetails}`);
@@ -172,9 +180,18 @@ export class PrintingService {
 
     if (params.search?.trim()) {
       where.OR = [
-        { orderNumber: { contains: params.search.trim(), mode: 'insensitive' } },
-        { customerName: { contains: params.search.trim(), mode: 'insensitive' } },
-        { customerPhone: { contains: params.search.trim(), mode: 'insensitive' } },
+        {
+          orderNumber: { contains: params.search.trim(), mode: 'insensitive' },
+        },
+        {
+          customerName: { contains: params.search.trim(), mode: 'insensitive' },
+        },
+        {
+          customerPhone: {
+            contains: params.search.trim(),
+            mode: 'insensitive',
+          },
+        },
       ];
     }
 
@@ -196,7 +213,9 @@ export class PrintingService {
       this.writeHeading(doc, 'الطلبيات حسب الفروع');
       this.writeSubheading(
         doc,
-        params.date ? `التاريخ: ${this.formatDate(params.date)}` : 'جميع التواريخ',
+        params.date
+          ? `التاريخ: ${this.formatDate(params.date)}`
+          : 'جميع التواريخ',
       );
 
       if (!orders.length) {
@@ -212,36 +231,36 @@ export class PrintingService {
       groups.forEach((branchOrders, branchName) => {
         this.ensureSpace(doc, 110);
         this.writeSectionTitle(doc, branchName);
+        let recommendationNumber = 1;
 
-        branchOrders.forEach((order, index) => {
-          this.ensureSpace(doc, 150);
-          this.writeBody(
-            doc,
-            `${index + 1}. الطلب ${order.orderNumber} - ${order.customerName}`,
-            true,
-          );
-          this.writeBody(doc, `الهاتف: ${order.customerPhone}`);
-          this.writeBody(
-            doc,
-            `موعد التسليم: ${this.formatDateTime(order.deliveryDatetime)}`,
-          );
-          this.writeBody(
-            doc,
-            `مكان التسليم: ${order.moldDeliveryShop?.name ?? order.shop?.name ?? '-'}`,
-          );
-          this.writeBody(doc, `الأولوية: ${order.isUrgent ? 'عاجل' : 'عادي'}`);
-          if (order.notes) {
-            this.writeBody(doc, `ملاحظات الطلب: ${order.notes}`);
-          }
+        branchOrders.forEach((order) => {
+          const recommendationItems = order.items.length ? order.items : [null];
 
-          order.items.forEach((item, itemIndex) => {
+          recommendationItems.forEach((item) => {
+            this.ensureSpace(doc, 150);
+            this.writeBody(doc, `توصاية رقم ${recommendationNumber}`, true);
+            this.writeBody(
+              doc,
+              `ساعة التسليم: ${this.formatTime(order.deliveryDatetime)} - الفرع: ${
+                order.moldDeliveryShop?.name ?? order.shop?.name ?? '-'
+              }`,
+            );
+
+            if (!item) {
+              this.writeBody(doc, 'لا توجد تفاصيل توصاية.');
+              doc.moveDown(0.5);
+              recommendationNumber += 1;
+              return;
+            }
+
             const itemDetails =
               item.itemKind === 'Mold'
                 ? [
-                    `${itemIndex + 1}) قالب ${item.peopleCount}`,
+                    `قالب ${item.peopleCount}`,
                     `${
                       item.moldInnerColor
-                        ? (innerColorLabels[item.moldInnerColor] ?? item.moldInnerColor)
+                        ? (innerColorLabels[item.moldInnerColor] ??
+                          item.moldInnerColor)
                         : '-'
                     }${
                       item.moldInnerColor === 'Mixed'
@@ -255,27 +274,21 @@ export class PrintingService {
                     item.moldBaseType === 'Foam'
                       ? `مع فلين${item.foamCount ? ` (${item.foamCount})` : ''}`
                       : item.moldBaseType === 'Cake'
-                        ? `كيك${
-                            item.cakeLayerCount
-                              ? ` (${item.cakeLayerCount} طبقات)`
-                              : ''
-                          }`
-                        : 'بدون فلين',
+                        ? `كيك${item.cakeLayerCount ? ` (${item.cakeLayerCount} طبقات)` : ''}`
+                        : null,
                     `${item.layers ?? '-'}`,
                     item.moldFlavor
                       ? (flavorLabels[item.moldFlavor] ?? item.moldFlavor)
                       : '-',
                     item.moldColor?.trim() || '-',
-                    finishLabels[item.finishType] ?? item.finishType,
+                    item.finishType && item.finishType !== 'None'
+                      ? (finishLabels[item.finishType] ?? item.finishType)
+                      : null,
                     item.writingText?.trim() || 'مافي كتابة',
-                    `الملاحظات والإضافات الأخرى: ${
-                      item.specialDetails?.trim() || '-'
-                    }`,
+                    `الملاحظات والإضافات الأخرى: ${item.specialDetails?.trim() || '-'}`,
                   ].filter(Boolean)
                 : [
-                    `${itemIndex + 1}) ${
-                      itemKindLabels[item.itemKind] ?? item.itemKind
-                    }`,
+                    itemKindLabels[item.itemKind] ?? item.itemKind,
                     `عدد الطبقات: ${item.layers}`,
                     `الكمية/الأشخاص: ${item.peopleCount}`,
                     item.specialDetails
@@ -283,8 +296,9 @@ export class PrintingService {
                       : null,
                   ].filter(Boolean);
             this.writeBody(doc, itemDetails.join(' - '));
+            doc.moveDown(0.5);
+            recommendationNumber += 1;
           });
-          doc.moveDown(0.5);
         });
       });
     });
@@ -361,14 +375,18 @@ export class PrintingService {
     copies: number;
     requestedById?: string;
   }) {
-    const order = await this.prisma.order.findUnique({ where: { id: params.orderId } });
+    const order = await this.prisma.order.findUnique({
+      where: { id: params.orderId },
+    });
     if (!order) {
       throw new NotFoundException('Order not found');
     }
 
     let printer = null;
     if (params.printerId) {
-      printer = await this.prisma.printer.findUnique({ where: { id: params.printerId } });
+      printer = await this.prisma.printer.findUnique({
+        where: { id: params.printerId },
+      });
       if (!printer || !printer.isActive) {
         throw new NotFoundException('Printer not available');
       }
@@ -386,7 +404,12 @@ export class PrintingService {
 
     if (printer) {
       try {
-        await this.sendToPrinter(printer.ipAddress, printer.port, pdf, params.copies);
+        await this.sendToPrinter(
+          printer.ipAddress,
+          printer.port,
+          pdf,
+          params.copies,
+        );
 
         await this.prisma.printJob.update({
           where: { id: printJob.id },
@@ -400,7 +423,8 @@ export class PrintingService {
           where: { id: printJob.id },
           data: {
             status: 'Failed',
-            errorMessage: error instanceof Error ? error.message : 'Unknown printer error',
+            errorMessage:
+              error instanceof Error ? error.message : 'Unknown printer error',
             completedAt: new Date(),
           },
         });
@@ -473,35 +497,49 @@ export class PrintingService {
   }
 
   private writeHeading(doc: PDFKit.PDFDocument, text: string) {
-    doc.font('CairoBold').fontSize(19).text(text, {
-      align: 'right',
-      features: ['rtla'],
-    });
+    doc
+      .font('CairoBold')
+      .fontSize(19)
+      .text(text, {
+        align: 'right',
+        features: ['rtla'],
+      });
     doc.moveDown(0.3);
   }
 
   private writeSubheading(doc: PDFKit.PDFDocument, text: string) {
-    doc.font('Cairo').fontSize(10).fillColor('#587083').text(text, {
-      align: 'right',
-      features: ['rtla'],
-    });
+    doc
+      .font('Cairo')
+      .fontSize(10)
+      .fillColor('#587083')
+      .text(text, {
+        align: 'right',
+        features: ['rtla'],
+      });
     doc.fillColor('#102436').moveDown();
   }
 
   private writeSectionTitle(doc: PDFKit.PDFDocument, text: string) {
-    doc.font('CairoBold').fontSize(14).fillColor('#0a6fb8').text(text, {
-      align: 'right',
-      features: ['rtla'],
-    });
+    doc
+      .font('CairoBold')
+      .fontSize(14)
+      .fillColor('#0a6fb8')
+      .text(text, {
+        align: 'right',
+        features: ['rtla'],
+      });
     doc.fillColor('#102436').moveDown(0.35);
   }
 
   private writeBody(doc: PDFKit.PDFDocument, text: string, bold = false) {
-    doc.font(bold ? 'CairoBold' : 'Cairo').fontSize(10.5).text(text, {
-      align: 'right',
-      features: ['rtla'],
-      lineGap: 2,
-    });
+    doc
+      .font(bold ? 'CairoBold' : 'Cairo')
+      .fontSize(10.5)
+      .text(text, {
+        align: 'right',
+        features: ['rtla'],
+        lineGap: 2,
+      });
   }
 
   private ensureSpace(doc: PDFKit.PDFDocument, minimumHeight: number) {
@@ -558,11 +596,8 @@ export class PrintingService {
     });
   }
 
-  private formatDateTime(value: Date) {
-    return value.toLocaleString('ar-SY', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
+  private formatTime(value: Date) {
+    return value.toLocaleTimeString('ar-SY', {
       hour: '2-digit',
       minute: '2-digit',
       timeZone: 'Asia/Damascus',
