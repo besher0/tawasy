@@ -1,6 +1,6 @@
 import {
   cakeFinishLabel,
-  cakeShapeLabel,
+  cakeShapeWithTextLabel,
   moldFlavorLabel,
   moldInnerColorLabel,
 } from './labels';
@@ -11,6 +11,7 @@ export interface DisplayOrderItem {
   hasTopDecoration?: boolean;
   layers?: number;
   shape?: string | null;
+  shapeText?: string | null;
   moldFlavor?: string | null;
   moldInnerColor?: string | null;
   moldLayerColors?: string | null;
@@ -73,7 +74,7 @@ export function buildOrderItemDisplay(
 
   const details = [
     innerColorDetails,
-    cakeShapeLabel(item.shape),
+    cakeShapeWithTextLabel(item.shape, item.shapeText),
     item.hasFillings ? item.filling?.trim() || 'يوجد حشوة' : null,
     baseDetails,
     `${item.layers ?? '-'}`,

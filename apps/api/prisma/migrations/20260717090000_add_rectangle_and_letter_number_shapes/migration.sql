@@ -1,0 +1,5 @@
+ALTER TYPE "CakeShape" ADD VALUE IF NOT EXISTS 'Rectangle';
+ALTER TYPE "CakeShape" ADD VALUE IF NOT EXISTS 'LetterOrNumber';
+
+ALTER TABLE "OrderItem"
+  ADD COLUMN IF NOT EXISTS "shapeText" TEXT;

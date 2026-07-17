@@ -48,6 +48,7 @@ type DraftOrderItem = {
   hasTopDecoration: boolean;
   layers: number;
   shape: CakeShape;
+  shapeText: string;
   moldFlavor: MoldFlavor;
   moldInnerColor: MoldInnerColor;
   moldLayerColors: string;
@@ -120,6 +121,8 @@ const cakeShapeOptions: Choice<CakeShape>[] = [
   { value: CakeShape.ROUND, label: "مدور" },
   { value: CakeShape.SQUARE, label: "مربع" },
   { value: CakeShape.HEART, label: "قلب" },
+  { value: CakeShape.RECTANGLE, label: "مستطيل" },
+  { value: CakeShape.LETTER_OR_NUMBER, label: "حرف/رقم" },
 ];
 
 const layerOptions: Choice<"1" | "2" | "3" | "4">[] = [
@@ -156,6 +159,7 @@ function createEmptyItem(): DraftOrderItem {
     hasTopDecoration: false,
     layers: 1,
     shape: CakeShape.ROUND,
+    shapeText: "",
     moldFlavor: MoldFlavor.CREAM,
     moldInnerColor: MoldInnerColor.WHITE,
     moldLayerColors: "",
@@ -204,6 +208,7 @@ function toDraftOrderItem(item: any): DraftOrderItem {
     hasTopDecoration: Boolean(item.hasTopDecoration),
     layers: Number.isFinite(item.layers) ? item.layers : empty.layers,
     shape: item.shape ?? empty.shape,
+    shapeText: item.shapeText ?? "",
     moldFlavor: item.moldFlavor ?? empty.moldFlavor,
     moldInnerColor: item.moldInnerColor ?? empty.moldInnerColor,
     moldLayerColors: item.moldLayerColors ?? "",
@@ -543,6 +548,20 @@ export function NewOrderScreen({ orderId }: NewOrderScreenProps) {
       return false;
     }
 
+    const invalidShapeTextIndex = items.findIndex(
+      (item) =>
+        item.itemKind === OrderItemKind.MOLD &&
+        item.shape === CakeShape.LETTER_OR_NUMBER &&
+        !item.shapeText.trim(),
+    );
+
+    if (invalidShapeTextIndex >= 0) {
+      setSubmitError(
+        `اكتب الحرف أو الرقم للقالب رقم ${invalidShapeTextIndex + 1}`,
+      );
+      return false;
+    }
+
     const invalidFillingIndex = items.findIndex(
       (item) =>
         item.itemKind === OrderItemKind.MOLD &&
@@ -667,6 +686,10 @@ export function NewOrderScreen({ orderId }: NewOrderScreenProps) {
           hasTopDecoration: isMold ? false : item.hasTopDecoration,
           layers: item.layers,
           shape: isMold ? item.shape : undefined,
+          shapeText:
+            isMold && item.shape === CakeShape.LETTER_OR_NUMBER
+              ? item.shapeText.trim()
+              : undefined,
           moldFlavor: isMold ? item.moldFlavor : undefined,
           moldInnerColor: isMold ? item.moldInnerColor : undefined,
           moldLayerColors:
@@ -1035,9 +1058,31 @@ export function NewOrderScreen({ orderId }: NewOrderScreenProps) {
                   options={cakeShapeOptions}
                   selected={item.shape}
                   onSelect={(shape) =>
-                    updateItem(item.id, (current) => ({ ...current, shape }))
+                    updateItem(item.id, (current) => ({
+                      ...current,
+                      shape,
+                      shapeText:
+                        shape === CakeShape.LETTER_OR_NUMBER
+                          ? current.shapeText
+                          : "",
+                    }))
                   }
                 />
+
+                {item.shape === CakeShape.LETTER_OR_NUMBER ? (
+                  <TextInput
+                    style={styles.input}
+                    value={item.shapeText}
+                    onChangeText={(shapeText) =>
+                      updateItem(item.id, (current) => ({
+                        ...current,
+                        shapeText,
+                      }))
+                    }
+                    placeholder="مثال: A أو 7"
+                    textAlign="right"
+                  />
+                ) : null}
 
                 <Text style={styles.label}>الفلين أو الكيك</Text>
                 <ChoiceRow

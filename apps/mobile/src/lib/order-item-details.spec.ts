@@ -111,6 +111,24 @@ describe('buildOrderItemDisplay', () => {
     expect(display.text).toContain('نكبر الديسك');
   });
 
+  it('shows the selected letter or number shape text', () => {
+    const display = buildOrderItemDisplay({
+      itemKind: 'Mold',
+      peopleCount: 6,
+      layers: 1,
+      moldInnerColor: 'White',
+      moldFlavor: 'Cream',
+      moldColor: 'أبيض',
+      hasFillings: false,
+      shape: 'LetterOrNumber',
+      shapeText: '7',
+      moldBaseType: 'None',
+      finishType: 'None',
+    });
+
+    expect(display.text).toContain('حرف/رقم: 7');
+  });
+
   it('orders pieces details for production reading', () => {
     const display = buildOrderItemDisplay({
       itemKind: 'Pieces',

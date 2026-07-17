@@ -26,6 +26,7 @@ type KanbanOrder = {
     hasTopDecoration?: boolean;
     layers?: number;
     shape?: string | null;
+    shapeText?: string | null;
     moldFlavor?: string | null;
     moldInnerColor?: string | null;
     moldLayerColors?: string | null;

@@ -36,6 +36,8 @@ export enum CakeShape {
   ROUND = 'Round',
   SQUARE = 'Square',
   HEART = 'Heart',
+  RECTANGLE = 'Rectangle',
+  LETTER_OR_NUMBER = 'LetterOrNumber',
   CUSTOM = 'Custom',
 }
 

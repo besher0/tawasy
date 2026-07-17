@@ -7,6 +7,7 @@ import {
 } from "@nestjs/common";
 import { CakeType, Prisma, OrderStatus } from "@prisma/client";
 import {
+  CakeShape,
   MoldBaseType,
   MoldInnerColor,
   UserRole,
@@ -456,6 +457,10 @@ export class OrdersService {
         (item.itemKind === "Pieces" ? CakeType.Uncovered : CakeType.Cake),
       layers: item.layers,
       shape: item.shape,
+      shapeText:
+        item.shape === CakeShape.LETTER_OR_NUMBER
+          ? item.shapeText?.trim()
+          : undefined,
       moldFlavor: item.moldFlavor,
       moldInnerColor: item.moldInnerColor,
       moldLayerColors:

@@ -46,6 +46,8 @@ enum CakeShape {
   Round
   Square
   Heart
+  Rectangle
+  LetterOrNumber
   Custom
 }
 
@@ -183,6 +185,7 @@ model OrderItem {
   cakeType         CakeType      @default(Cake)
   layers           Int
   shape            CakeShape?
+  shapeText        String?
   moldFlavor       MoldFlavor?
   moldInnerColor   MoldInnerColor?
   moldLayerColors  String?

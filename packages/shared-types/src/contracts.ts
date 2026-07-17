@@ -34,6 +34,7 @@ export interface OrderItemInput {
   cakeType?: CakeType;
   layers: number;
   shape?: CakeShape;
+  shapeText?: string;
   moldFlavor?: MoldFlavor;
   moldInnerColor?: MoldInnerColor;
   moldLayerColors?: string;

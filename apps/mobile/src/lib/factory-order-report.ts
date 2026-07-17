@@ -9,6 +9,7 @@ export interface FactoryReportOrderItem {
   cakeType?: string | null;
   layers?: number;
   shape?: string | null;
+  shapeText?: string | null;
   moldFlavor?: string | null;
   moldInnerColor?: string | null;
   moldLayerColors?: string | null;

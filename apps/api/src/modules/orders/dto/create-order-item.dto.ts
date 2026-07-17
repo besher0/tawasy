@@ -49,6 +49,16 @@ export class CreateOrderItemDto {
   @IsEnum(CakeShape)
   shape?: CakeShape;
 
+  @ApiPropertyOptional({ description: 'Letter or number when LetterOrNumber shape is selected' })
+  @ValidateIf(
+    (item: CreateOrderItemDto) =>
+      item.itemKind === OrderItemKind.MOLD &&
+      item.shape === CakeShape.LETTER_OR_NUMBER,
+  )
+  @IsString()
+  @IsNotEmpty()
+  shapeText?: string;
+
   @ApiPropertyOptional({ enum: MoldFlavor })
   @ValidateIf((item: CreateOrderItemDto) => item.itemKind === OrderItemKind.MOLD)
   @IsEnum(MoldFlavor)

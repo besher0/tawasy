@@ -44,6 +44,8 @@ const cakeShapeLabels: Record<string, string> = {
   Round: 'دائري',
   Square: 'مربع',
   Heart: 'قلب',
+  Rectangle: 'مستطيل',
+  LetterOrNumber: 'حرف/رقم',
   Custom: 'مخصص',
 };
 
@@ -99,6 +101,16 @@ export function cakeTypeLabel(value?: string | null) {
 
 export function cakeShapeLabel(value?: string | null) {
   return value ? cakeShapeLabels[value] ?? value : '-';
+}
+
+export function cakeShapeWithTextLabel(
+  value?: string | null,
+  shapeText?: string | null,
+) {
+  const label = cakeShapeLabel(value);
+  const text = shapeText?.trim();
+
+  return value === 'LetterOrNumber' && text ? `${label}: ${text}` : label;
 }
 
 export function orderItemKindLabel(value?: string | null) {

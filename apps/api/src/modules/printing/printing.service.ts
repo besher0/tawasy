@@ -48,8 +48,21 @@ const shapeLabels: Record<string, string> = {
   Round: 'دائري',
   Square: 'مربع',
   Heart: 'قلب',
+  Rectangle: 'مستطيل',
+  LetterOrNumber: 'حرف/رقم',
   Custom: 'مخصص',
 };
+
+function shapeLabel(shape?: string | null, shapeText?: string | null) {
+  if (!shape) {
+    return '-';
+  }
+
+  const label = shapeLabels[shape] ?? shape;
+  const text = shapeText?.trim();
+
+  return shape === 'LetterOrNumber' && text ? `${label}: ${text}` : label;
+}
 
 const finishLabels: Record<string, string> = {
   None: 'مافي تكبير ديسك',
@@ -131,7 +144,7 @@ export class PrintingService {
         doc.text(`- Mold external color: ${item.moldColor}`);
       }
       if (item.shape) {
-        doc.text(`- Shape: ${item.shape}`);
+        doc.text(`- Shape: ${shapeLabel(item.shape, item.shapeText)}`);
       }
       doc.text(
         `- Fillings: ${item.hasFillings ? (item.filling ?? 'Yes') : 'No'}`,
@@ -267,7 +280,7 @@ export class PrintingService {
                         ? ` - ${item.moldLayerColors?.trim() || 'غير محدد'}`
                         : ''
                     }`,
-                    item.shape ? (shapeLabels[item.shape] ?? item.shape) : '-',
+                    shapeLabel(item.shape, item.shapeText),
                     item.hasFillings
                       ? item.filling?.trim() || 'يوجد حشوة'
                       : null,
