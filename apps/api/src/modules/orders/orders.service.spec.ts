@@ -192,6 +192,98 @@ describe("OrdersService", () => {
     );
   });
 
+  it("stores fridge molds without requiring standard mold details", async () => {
+    prisma.order.create = jest.fn().mockResolvedValue({
+      id: "order-fridge-mold",
+      orderNumber: "SP-FRIDGE-1",
+      customerName: "Customer",
+      status: "New",
+      items: [],
+    });
+
+    await service.create(
+      {
+        shopId: "shop-1",
+        customerName: "Customer",
+        customerPhone: "0500000000",
+        deliveryDatetime: new Date().toISOString(),
+        totalPrice: 100,
+        depositAmount: 50,
+        paymentStatus: "Partial" as never,
+        isUrgent: false,
+        items: [
+          {
+            itemKind: "Mold" as never,
+            moldOrderType: "FRIDGE" as never,
+            fridgeMoldName: "  Fruit fridge mold  ",
+            writingText: "Happy birthday",
+            specialDetails: "No nuts",
+            referenceImages: ["https://images.example.com/fridge.jpg"],
+          } as never,
+        ],
+      },
+      {
+        sub: "user-1",
+        role: "Admin" as never,
+        shopId: null,
+      },
+    );
+
+    expect(prisma.order.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          items: {
+            create: [
+              expect.objectContaining({
+                moldOrderType: "FRIDGE",
+                fridgeMoldName: "Fruit fridge mold",
+                moldFlavor: undefined,
+                moldInnerColor: undefined,
+                moldColor: undefined,
+                hasFillings: false,
+                moldBaseType: "None",
+                finishType: "None",
+                writingText: "Happy birthday",
+                specialDetails: "No nuts",
+                referenceImages: ["https://images.example.com/fridge.jpg"],
+              }),
+            ],
+          },
+        }),
+      }),
+    );
+  });
+
+  it("rejects fridge molds without a trimmed name", async () => {
+    await expect(
+      service.create(
+        {
+          shopId: "shop-1",
+          customerName: "Customer",
+          customerPhone: "0500000000",
+          deliveryDatetime: new Date().toISOString(),
+          totalPrice: 100,
+          depositAmount: 50,
+          paymentStatus: "Partial" as never,
+          isUrgent: false,
+          items: [
+            {
+              itemKind: "Mold" as never,
+              moldOrderType: "FRIDGE" as never,
+              fridgeMoldName: "   ",
+              referenceImages: [],
+            } as never,
+          ],
+        },
+        {
+          sub: "user-1",
+          role: "Admin" as never,
+          shopId: null,
+        },
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
   it("rejects contradictory foam and cake counts", async () => {
     await expect(
       service.create(

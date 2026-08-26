@@ -1,4 +1,4 @@
-import { ensureTrailingSlash } from './api';
+import { ensureTrailingSlash, isDefinitiveRefreshFailure } from './api';
 
 describe('ensureTrailingSlash', () => {
   it.each([
@@ -14,4 +14,27 @@ describe('ensureTrailingSlash', () => {
     expect(ensureTrailingSlash('')).toBe('');
     expect(ensureTrailingSlash(undefined)).toBeUndefined();
   });
+});
+
+describe('isDefinitiveRefreshFailure', () => {
+  it.each([401, 403])('recognizes refresh credential rejection %s', (status) => {
+    expect(
+      isDefinitiveRefreshFailure({
+        isAxiosError: true,
+        response: { status },
+      }),
+    ).toBe(true);
+  });
+
+  it.each([undefined, 408, 500, 503])(
+    'preserves authentication for transient status %s',
+    (status) => {
+      expect(
+        isDefinitiveRefreshFailure({
+          isAxiosError: true,
+          response: status ? { status } : undefined,
+        }),
+      ).toBe(false);
+    },
+  );
 });

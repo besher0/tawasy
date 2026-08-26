@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   SectionList,
   StyleSheet,
@@ -8,10 +9,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialIcons } from '@expo/vector-icons';
-import { ShopType, UserRole } from '@sugarprecision/shared-types';
+import { UserRole } from '@sugarprecision/shared-types';
 import type { ShopSummary } from '@sugarprecision/shared-types';
 import { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../context/auth-context';
@@ -22,7 +23,6 @@ import { printReport } from '../lib/print-report';
 import {
   buildFactoryOrderReport,
   type FactoryOrderReport,
-  type FactoryReportOrderItem,
 } from '../lib/factory-order-report';
 import { ReportImageExporter } from '../lib/report-image-exporter';
 import { StatusBadge } from '../components/status-badge';
@@ -32,33 +32,25 @@ import {
 } from '../components/delivery-date-time-picker';
 import { orderStatusLabel } from '../lib/labels';
 import { buildOrderItemDisplay } from '../lib/order-item-details';
+import {
+  getCachedDeliveryTotals,
+  getCachedOrders,
+  getCachedShops,
+  getLastSuccessfulSync,
+  type DeliveryTotals,
+  type IncomingOrder,
+  upsertCachedOrder,
+} from '../storage/orders-cache';
+import {
+  getDeliveryTotalsDateRange,
+  requestIncomingOrdersSync,
+  subscribeToIncomingOrdersSyncRequests,
+  syncIncomingOrders,
+  type IncomingOrdersSyncResult,
+} from '../services/orders-sync.service';
 
 type MaterialIconName = React.ComponentProps<typeof MaterialIcons>['name'];
 type CancellationFilter = 'all' | 'active' | 'cancelled';
-
-type OrderItemPreview = FactoryReportOrderItem;
-
-interface OrderRow {
-  id: string;
-  orderNumber: string;
-  customerName: string;
-  customerPhone?: string;
-  deliveryDatetime: string;
-  deliveredAt?: string | null;
-  totalPrice: number;
-  status: string;
-  isUrgent: boolean;
-  notes?: string | null;
-  items?: OrderItemPreview[];
-  shop?: {
-    id: string;
-    name: string;
-  } | null;
-  moldDeliveryShop?: {
-    name: string;
-    location: string;
-  } | null;
-}
 
 interface OrderSection {
   title: string;
@@ -66,14 +58,7 @@ interface OrderSection {
   branchKey: string;
   branchName: string;
   showBranchHeader: boolean;
-  data: OrderRow[];
-}
-
-interface DeliveryTotals {
-  deliveredTotal: number;
-  deliveredCount: number;
-  undeliveredTotal: number;
-  undeliveredCount: number;
+  data: IncomingOrder[];
 }
 
 const cancellationFilterOptions: Array<{
@@ -94,19 +79,109 @@ function getLocalDateKey(value: string) {
   return `${year}-${month}-${day}`;
 }
 
-function getDateRange(dateKey: string) {
-  const start = new Date(`${dateKey}T00:00:00`);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 1);
-
-  return {
-    start: start.toISOString(),
-    end: end.toISOString(),
-  };
-}
-
 function formatMoney(value: number) {
   return `${Math.round(value)} ر.س`;
+}
+
+export function filterIncomingOrders(
+  orders: IncomingOrder[],
+  filters: {
+    search: string;
+    cancellation: CancellationFilter;
+    deliveryDate: string;
+    shopId: string;
+    isFactoryView: boolean;
+  },
+) {
+  const normalizedSearch = filters.search.trim().toLocaleLowerCase();
+
+  return orders.filter((order) => {
+    if (
+      filters.cancellation === 'active' &&
+      order.status === 'Cancelled'
+    ) {
+      return false;
+    }
+    if (
+      filters.cancellation === 'cancelled' &&
+      order.status !== 'Cancelled'
+    ) {
+      return false;
+    }
+    if (
+      filters.deliveryDate &&
+      getLocalDateKey(order.deliveryDatetime) !== filters.deliveryDate
+    ) {
+      return false;
+    }
+    if (
+      filters.isFactoryView &&
+      filters.shopId &&
+      order.shop?.id !== filters.shopId
+    ) {
+      return false;
+    }
+    if (!normalizedSearch) {
+      return true;
+    }
+
+    return [order.orderNumber, order.customerName, order.customerPhone ?? '']
+      .some((value) => value.toLocaleLowerCase().includes(normalizedSearch));
+  });
+}
+
+export function deriveDeliveryTotals(
+  orders: IncomingOrder[],
+  dateKey: string,
+  shopId: string,
+  isFactoryView: boolean,
+): DeliveryTotals {
+  const { start, end } = getDeliveryTotalsDateRange(dateKey);
+  const startTime = new Date(start).getTime();
+  const endTime = new Date(end).getTime();
+  const todayKey = getLocalDateKey(new Date().toISOString());
+  const todayEndTime = new Date(
+    getDeliveryTotalsDateRange(todayKey).end,
+  ).getTime();
+  const undeliveredEndTime = Math.min(endTime, todayEndTime);
+
+  return orders.reduce<DeliveryTotals>(
+    (totals, order) => {
+      if (isFactoryView && shopId && order.shop?.id !== shopId) {
+        return totals;
+      }
+
+      const deliveredAtTime = order.deliveredAt
+        ? new Date(order.deliveredAt).getTime()
+        : Number.NaN;
+      if (
+        order.status === 'Delivered' &&
+        deliveredAtTime >= startTime &&
+        deliveredAtTime < endTime
+      ) {
+        totals.deliveredCount += 1;
+        totals.deliveredTotal += order.totalPrice;
+      }
+
+      const deliveryTime = new Date(order.deliveryDatetime).getTime();
+      if (
+        order.status !== 'Delivered' &&
+        order.status !== 'Cancelled' &&
+        deliveryTime < undeliveredEndTime
+      ) {
+        totals.undeliveredCount += 1;
+        totals.undeliveredTotal += order.totalPrice;
+      }
+
+      return totals;
+    },
+    {
+      deliveredTotal: 0,
+      deliveredCount: 0,
+      undeliveredTotal: 0,
+      undeliveredCount: 0,
+    },
+  );
 }
 
 function formatDayTitle(dateKey: string) {
@@ -152,7 +227,7 @@ export function IncomingOrdersScreen() {
   const { user } = useAuth();
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [orders, setOrders] = useState<IncomingOrder[] | null>(null);
   const [search, setSearch] = useState('');
   const [cancellationFilter, setCancellationFilter] =
     useState<CancellationFilter>('all');
@@ -163,12 +238,16 @@ export function IncomingOrdersScreen() {
   const [exporting, setExporting] = useState(false);
   const [imageExportReport, setImageExportReport] =
     useState<FactoryOrderReport | null>(null);
-  const [deliveryTotals, setDeliveryTotals] = useState<DeliveryTotals>({
-    deliveredTotal: 0,
-    deliveredCount: 0,
-    undeliveredTotal: 0,
-    undeliveredCount: 0,
-  });
+  const [cachedTotals, setCachedTotals] = useState<{
+    scopeKey: string;
+    value: DeliveryTotals;
+  } | null>(null);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [syncWarning, setSyncWarning] = useState<string | null>(null);
+  const [lastSuccessfulSync, setLastSuccessfulSyncState] = useState<
+    string | null
+  >(null);
   const [confirmingDeliveryId, setConfirmingDeliveryId] = useState<
     string | null
   >(null);
@@ -176,93 +255,252 @@ export function IncomingOrdersScreen() {
     user?.role === UserRole.ADMIN || user?.role === UserRole.FACTORY_MANAGER;
   const totalsDateKey =
     deliveryDateFilter || getLocalDateKey(new Date().toISOString());
+  const totalsScopeKey = `${totalsDateKey}:${isFactoryView ? shopIdFilter || 'all' : 'current'}`;
+  const allOrders = orders ?? [];
 
-  const loadOrders = useCallback(async () => {
-    const response = await api.get<OrderRow[]>('/orders', {
-      params: {
-        search: search.trim() || undefined,
-        date: deliveryDateFilter || undefined,
-        status: cancellationFilter === 'cancelled' ? 'Cancelled' : undefined,
-        shopId: isFactoryView && shopIdFilter ? shopIdFilter : undefined,
-      },
-    });
+  const visibleOrders = useMemo(
+    () =>
+      filterIncomingOrders(allOrders, {
+        search,
+        cancellation: cancellationFilter,
+        deliveryDate: deliveryDateFilter,
+        shopId: shopIdFilter,
+        isFactoryView,
+      }),
+    [
+      allOrders,
+      cancellationFilter,
+      deliveryDateFilter,
+      isFactoryView,
+      search,
+      shopIdFilter,
+    ],
+  );
 
-    const loadedOrders =
-      cancellationFilter === 'active'
-        ? response.data.filter((order) => order.status !== 'Cancelled')
-        : response.data;
+  const derivedTotals = useMemo(
+    () =>
+      deriveDeliveryTotals(
+        allOrders,
+        totalsDateKey,
+        shopIdFilter,
+        isFactoryView,
+      ),
+    [allOrders, isFactoryView, shopIdFilter, totalsDateKey],
+  );
+  const deliveryTotals =
+    cachedTotals?.scopeKey === totalsScopeKey
+      ? cachedTotals.value
+      : derivedTotals;
 
-    setOrders(loadedOrders);
-  }, [
-    cancellationFilter,
-    deliveryDateFilter,
-    isFactoryView,
-    search,
-    shopIdFilter,
-  ]);
+  const applySyncResult = useCallback(
+    (result: IncomingOrdersSyncResult) => {
+      if (result.orders !== undefined) {
+        setOrders(result.orders);
+      }
+      if (result.shops !== undefined) {
+        setShops(result.shops);
+      }
+      if (result.deliveryTotals !== undefined) {
+        setCachedTotals({
+          scopeKey: totalsScopeKey,
+          value: result.deliveryTotals,
+        });
+      } else if (result.orders !== undefined) {
+        setCachedTotals(null);
+      }
+      if (result.lastSuccessfulSync) {
+        setLastSuccessfulSyncState(result.lastSuccessfulSync);
+      }
 
-  const loadDeliveryTotals = useCallback(async () => {
-    const range = getDateRange(
-      deliveryDateFilter || getLocalDateKey(new Date().toISOString()),
-    );
-    const response = await api.get<DeliveryTotals>(
-      '/analytics/delivery-totals',
-      {
-        params: {
-          ...range,
-          shopId: isFactoryView && shopIdFilter ? shopIdFilter : undefined,
-        },
-      },
-    );
-
-    setDeliveryTotals({
-      deliveredTotal: response.data.deliveredTotal ?? 0,
-      deliveredCount: response.data.deliveredCount ?? 0,
-      undeliveredTotal: response.data.undeliveredTotal ?? 0,
-      undeliveredCount: response.data.undeliveredCount ?? 0,
-    });
-  }, [deliveryDateFilter, isFactoryView, shopIdFilter]);
-
-  const loadScreenData = useCallback(async () => {
-    try {
-      await loadOrders();
-    } catch (error) {
-      Alert.alert(
-        'خطأ',
-        getApiErrorMessage(error, 'تعذر تحميل الطلبات. حاول مرة أخرى.'),
+      const failedResources = Object.keys(result.errors);
+      setSyncWarning(
+        failedResources.length > 0
+          ? 'تعذر تحديث بعض البيانات. يتم عرض آخر بيانات محفوظة.'
+          : null,
       );
-    }
+    },
+    [totalsScopeKey],
+  );
 
-    try {
-      await loadDeliveryTotals();
-    } catch (error) {
-      console.warn('Failed to load delivery totals', error);
-    }
-  }, [loadDeliveryTotals, loadOrders]);
+  const runSynchronization = useCallback(
+    async (manual = false) => {
+      if (!user) {
+        return;
+      }
+
+      if (manual) {
+        setRefreshing(true);
+      }
+
+      try {
+        const result = await syncIncomingOrders({
+          userId: user.id,
+          isFactoryView,
+          totalsDateKey,
+          shopId: isFactoryView && shopIdFilter ? shopIdFilter : undefined,
+        });
+        applySyncResult(result);
+      } catch (error) {
+        console.warn('Failed to synchronize incoming orders', error);
+        setSyncWarning('تعذر التحديث. يتم عرض آخر بيانات محفوظة.');
+      } finally {
+        if (manual) {
+          setRefreshing(false);
+        }
+      }
+    },
+    [
+      applySyncResult,
+      isFactoryView,
+      shopIdFilter,
+      totalsDateKey,
+      user,
+    ],
+  );
 
   useEffect(() => {
-    if (!isFactoryView) {
-      setShops([]);
+    let cancelled = false;
+
+    async function hydrate() {
+      if (!user) {
+        setOrders([]);
+        setInitialLoading(false);
+        return;
+      }
+
+      setInitialLoading(true);
+      setOrders(null);
+      setSyncWarning(null);
+      setSearch('');
+      setCancellationFilter('all');
+      setDeliveryDateFilter('');
       setShopIdFilter('');
+
+      const initialDateKey = getLocalDateKey(new Date().toISOString());
+      const [storedOrders, storedShops, storedTotals, storedSyncTime] =
+        await Promise.all([
+          getCachedOrders(user.id).catch((error) => {
+            console.warn('Failed to load cached orders', error);
+            return null;
+          }),
+          isFactoryView
+            ? getCachedShops(user.id).catch((error) => {
+                console.warn('Failed to load cached shops', error);
+                return null;
+              })
+            : Promise.resolve(null),
+          getCachedDeliveryTotals(user.id, initialDateKey).catch((error) => {
+            console.warn('Failed to load cached delivery totals', error);
+            return null;
+          }),
+          getLastSuccessfulSync(user.id).catch((error) => {
+            console.warn('Failed to load last synchronization time', error);
+            return null;
+          }),
+        ]);
+
+      if (cancelled) {
+        return;
+      }
+
+      if (storedShops !== null) {
+        setShops(storedShops);
+      } else if (!isFactoryView) {
+        setShops([]);
+      }
+      if (storedTotals !== null) {
+        setCachedTotals({
+          scopeKey: `${initialDateKey}:${isFactoryView ? 'all' : 'current'}`,
+          value: storedTotals,
+        });
+      } else {
+        setCachedTotals(null);
+      }
+      setLastSuccessfulSyncState(storedSyncTime);
+
+      if (storedOrders !== null) {
+        setOrders(storedOrders);
+        setInitialLoading(false);
+        return;
+      }
+
+      const result = await syncIncomingOrders({
+        userId: user.id,
+        isFactoryView,
+        totalsDateKey: initialDateKey,
+      });
+      if (cancelled) {
+        return;
+      }
+
+      setOrders(result.orders ?? []);
+      if (result.shops !== undefined) {
+        setShops(result.shops);
+      }
+      if (result.deliveryTotals !== undefined) {
+        setCachedTotals({
+          scopeKey: `${initialDateKey}:${isFactoryView ? 'all' : 'current'}`,
+          value: result.deliveryTotals,
+        });
+      }
+      if (result.lastSuccessfulSync) {
+        setLastSuccessfulSyncState(result.lastSuccessfulSync);
+      }
+      if (Object.keys(result.errors).length > 0) {
+        setSyncWarning('تعذر تحديث بعض البيانات. يتم عرض البيانات المتاحة.');
+      }
+      setInitialLoading(false);
+    }
+
+    void hydrate().catch((error) => {
+      if (!cancelled) {
+        console.warn('Failed to initialize incoming orders', error);
+        setOrders([]);
+        setInitialLoading(false);
+        setSyncWarning('تعذر تحميل البيانات المحفوظة أو الاتصال بالخادم.');
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isFactoryView, user?.id]);
+
+  useEffect(() => {
+    if (!user || orders === null) {
       return;
     }
 
-    async function loadShops() {
-      try {
-        const response = await api.get<ShopSummary[]>('/shops', {
-          params: { type: ShopType.BRANCH },
-        });
+    let cancelled = false;
+    setCachedTotals(null);
+    void getCachedDeliveryTotals(
+      user.id,
+      totalsDateKey,
+      isFactoryView && shopIdFilter ? shopIdFilter : undefined,
+    )
+      .then((value) => {
+        if (!cancelled && value !== null) {
+          setCachedTotals({ scopeKey: totalsScopeKey, value });
+        }
+      })
+      .catch((error) => {
+        console.warn('Failed to load cached delivery totals', error);
+      });
 
-        setShops(response.data ?? []);
-      } catch (error) {
-        Alert.alert('خطأ', getApiErrorMessage(error, 'تعذر تحميل المحلات.'));
-      }
-    }
+    return () => {
+      cancelled = true;
+    };
+  }, [isFactoryView, shopIdFilter, totalsDateKey, totalsScopeKey, user?.id]);
 
-    void loadShops();
-  }, [isFactoryView]);
+  useEffect(
+    () =>
+      subscribeToIncomingOrdersSyncRequests(() => {
+        void runSynchronization();
+      }),
+    [runSynchronization],
+  );
 
-  const sections = [...orders]
+  const sections = [...visibleOrders]
     .sort((first, second) => {
       if (isFactoryView) {
         const branchComparison = (first.shop?.name ?? '').localeCompare(
@@ -308,17 +546,27 @@ export function IncomingOrdersScreen() {
       return result;
     }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      void loadScreenData();
-    }, [loadScreenData]),
-  );
-
   const confirmDelivery = async (orderId: string) => {
     try {
       setConfirmingDeliveryId(orderId);
-      await api.post(`/orders/${orderId}/confirm-delivery`);
-      await loadScreenData();
+      const response = await api.post<IncomingOrder>(
+        `/orders/${orderId}/confirm-delivery`,
+      );
+      setOrders((current) => {
+        if (!current) {
+          return [response.data];
+        }
+        return current.map((order) =>
+          order.id === response.data.id ? response.data : order,
+        );
+      });
+      setCachedTotals(null);
+      if (user) {
+        void upsertCachedOrder(user.id, response.data).catch((error) => {
+          console.warn('Failed to cache confirmed delivery', error);
+        });
+      }
+      requestIncomingOrdersSync();
     } catch (error) {
       Alert.alert(
         'خطأ',
@@ -332,7 +580,7 @@ export function IncomingOrdersScreen() {
   const exportOrders = async () => {
     try {
       setExporting(true);
-      const report = buildFactoryOrderReport(orders);
+      const report = buildFactoryOrderReport(visibleOrders);
 
       await printReport({
         title: 'تواصي الإنتاج حسب الفروع',
@@ -349,7 +597,7 @@ export function IncomingOrdersScreen() {
   };
 
   const exportOrderImages = () => {
-    const report = buildFactoryOrderReport(orders);
+    const report = buildFactoryOrderReport(visibleOrders);
     const hasPages = report.sections.some((section) => section.items?.length);
 
     if (!hasPages) {
@@ -401,6 +649,24 @@ export function IncomingOrdersScreen() {
           </TouchableOpacity>
         </View>
       </View>
+      {syncWarning ? (
+        <View style={styles.syncBanner}>
+          <MaterialIcons
+            name="cloud-off"
+            size={18}
+            color={theme.colors.warning}
+          />
+          <View style={styles.syncBannerTextGroup}>
+            <Text style={styles.syncBannerText}>{syncWarning}</Text>
+            {lastSuccessfulSync ? (
+              <Text style={styles.syncTimestamp}>
+                آخر تحديث ناجح:{' '}
+                {new Date(lastSuccessfulSync).toLocaleString('ar-SY')}
+              </Text>
+            ) : null}
+          </View>
+        </View>
+      ) : null}
       <View style={styles.totalsGrid}>
         <View style={[styles.totalCard, styles.deliveredTotalCard]}>
           <View style={styles.totalTitleRow}>
@@ -441,7 +707,6 @@ export function IncomingOrdersScreen() {
         placeholder="بحث عن طلب أو عميل"
         value={search}
         onChangeText={setSearch}
-        onSubmitEditing={() => void loadOrders()}
       />
       <View style={styles.filterPanel}>
         <View style={styles.filterTitleRow}>
@@ -584,6 +849,15 @@ export function IncomingOrdersScreen() {
     </View>
   );
 
+  if (initialLoading && orders === null) {
+    return (
+      <View style={styles.initialLoader}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={styles.loadingText}>جاري تحميل الطلبات...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.wrapper}>
       <SectionList
@@ -592,6 +866,8 @@ export function IncomingOrdersScreen() {
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={listHeader}
         stickySectionHeadersEnabled={false}
+        refreshing={refreshing}
+        onRefresh={() => void runSynchronization(true)}
         ListEmptyComponent={
           <Text style={styles.emptyText}>لا توجد طلبات لعرضها.</Text>
         }
@@ -729,6 +1005,17 @@ export function IncomingOrdersScreen() {
 
 const styles = StyleSheet.create({
   wrapper: { flex: 1, backgroundColor: theme.colors.surface },
+  initialLoader: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+  },
+  loadingText: {
+    ...theme.typography.body,
+    color: theme.colors.onSurfaceVariant,
+  },
   header: {
     paddingVertical: theme.spacing.lg,
     gap: theme.spacing.sm,
@@ -739,6 +1026,31 @@ const styles = StyleSheet.create({
   heading: {
     ...theme.typography.heading,
     color: theme.colors.onSurface,
+    textAlign: 'right',
+  },
+  syncBanner: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.warning,
+    backgroundColor: theme.colors.surfaceContainerLow,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+  },
+  syncBannerTextGroup: {
+    flex: 1,
+    gap: 2,
+  },
+  syncBannerText: {
+    ...theme.typography.label,
+    color: theme.colors.onSurface,
+    textAlign: 'right',
+  },
+  syncTimestamp: {
+    ...theme.typography.label,
+    color: theme.colors.onSurfaceVariant,
     textAlign: 'right',
   },
   headerRow: {

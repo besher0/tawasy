@@ -127,6 +127,16 @@ export class PrintingService {
       if (item.pieceType) {
         doc.text(`- Piece type: ${item.pieceType}`);
       }
+      if (item.itemKind === 'Mold' && item.moldOrderType === 'FRIDGE') {
+        doc.text('- Mold subtype: Fridge');
+        doc.text(`- Fridge mold name: ${item.fridgeMoldName?.trim() || '-'}`);
+        doc.text(`- Writing: ${item.writingText?.trim() || 'None'}`);
+        if (item.specialDetails) {
+          doc.text(`- Notes: ${item.specialDetails}`);
+        }
+        doc.moveDown(0.5);
+        return;
+      }
       doc.text(`- Layers: ${item.layers}`);
       if (item.moldFlavor) {
         doc.text(`- Mold flavor: ${item.moldFlavor}`);
@@ -268,7 +278,14 @@ export class PrintingService {
 
             const itemDetails =
               item.itemKind === 'Mold'
-                ? [
+                ? item.moldOrderType === 'FRIDGE'
+                  ? [
+                      'قالب براد',
+                      `اسم القالب: ${item.fridgeMoldName?.trim() || '-'}`,
+                      `الكتابة: ${item.writingText?.trim() || 'مافي كتابة'}`,
+                      `الملاحظات: ${item.specialDetails?.trim() || '-'}`,
+                    ]
+                  : [
                     `قالب ${item.peopleCount}`,
                     `${
                       item.moldInnerColor

@@ -129,6 +129,52 @@ describe('buildOrderItemDisplay', () => {
     expect(display.text).toContain('حرف/رقم: 7');
   });
 
+  it('shows only fridge mold details for fridge molds', () => {
+    const display = buildOrderItemDisplay({
+      itemKind: 'Mold',
+      moldOrderType: 'FRIDGE',
+      fridgeMoldName: 'قالب براد فواكه',
+      peopleCount: 10,
+      layers: 3,
+      moldInnerColor: 'White',
+      moldFlavor: 'Cream',
+      moldColor: 'أبيض',
+      hasFillings: true,
+      filling: 'فستق',
+      shape: 'Round',
+      moldBaseType: 'Foam',
+      foamCount: 2,
+      finishType: 'Covering',
+      specialDetails: 'بدون مكسرات',
+      writingText: 'عيد سعيد',
+    });
+
+    expect(display).toEqual({
+      title: 'قالب براد',
+      text: 'قالب براد، اسم القالب: قالب براد فواكه، الكتابة: عيد سعيد، الملاحظات: بدون مكسرات',
+    });
+    expect(display.text).not.toContain('فستق');
+    expect(display.text).not.toContain('أبيض');
+  });
+
+  it('treats molds without a subtype as standard molds', () => {
+    const display = buildOrderItemDisplay({
+      itemKind: 'Mold',
+      peopleCount: 6,
+      layers: 1,
+      moldInnerColor: 'White',
+      moldFlavor: 'Cream',
+      moldColor: 'أبيض',
+      hasFillings: false,
+      shape: 'Round',
+      moldBaseType: 'None',
+      finishType: 'None',
+    });
+
+    expect(display.title).toBe('قالب');
+    expect(display.text).toContain('أبيض');
+  });
+
   it('orders pieces details for production reading', () => {
     const display = buildOrderItemDisplay({
       itemKind: 'Pieces',

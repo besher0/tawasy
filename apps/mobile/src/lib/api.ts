@@ -13,7 +13,14 @@ interface AuthTokens {
 export const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://zerba.duckdns.org';
 export const API_REQUEST_TIMEOUT_MS = 60000;
-export const AUTH_BOOTSTRAP_TIMEOUT_MS = 8000;
+
+export function isDefinitiveRefreshFailure(error: unknown) {
+  if (!axios.isAxiosError(error)) {
+    return false;
+  }
+
+  return error.response?.status === 401 || error.response?.status === 403;
+}
 
 export function ensureTrailingSlash(url: string): string;
 export function ensureTrailingSlash(url: undefined): undefined;
@@ -92,8 +99,10 @@ api.interceptors.response.use(
       request.headers.Authorization = `Bearer ${tokens.accessToken}`;
       return api(request);
     } catch (refreshError) {
-      setAuthTokens(null);
-      authTokensListener?.(null);
+      if (isDefinitiveRefreshFailure(refreshError)) {
+        setAuthTokens(null);
+        authTokensListener?.(null);
+      }
       return Promise.reject(refreshError);
     }
   },

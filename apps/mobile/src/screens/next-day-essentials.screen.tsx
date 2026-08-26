@@ -46,6 +46,8 @@ interface TomorrowOrder {
   items?: {
     id: string;
     itemKind: string;
+    moldOrderType?: string | null;
+    fridgeMoldName?: string | null;
     moldFlavor?: string | null;
     moldInnerColor?: string | null;
     moldLayerColors?: string | null;
@@ -406,12 +408,14 @@ export function NextDayEssentialsScreen() {
                       {order.items
                         .filter((item) => item.itemKind === 'Mold')
                         .map((item) =>
-                          moldConfigurationLabel(
-                            item.moldFlavor,
-                            item.moldColor,
-                            item.moldInnerColor,
-                            item.moldLayerColors,
-                          ),
+                          item.moldOrderType === 'FRIDGE'
+                            ? `قالب براد - ${item.fridgeMoldName?.trim() || '-'}`
+                            : moldConfigurationLabel(
+                                item.moldFlavor,
+                                item.moldColor,
+                                item.moldInnerColor,
+                                item.moldLayerColors,
+                              ),
                         )
                         .join('، ')}
                     </Text>

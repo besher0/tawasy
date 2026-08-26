@@ -46,6 +46,11 @@ export enum OrderItemKind {
   MOLD = 'Mold',
 }
 
+export enum MoldOrderType {
+  STANDARD = 'STANDARD',
+  FRIDGE = 'FRIDGE',
+}
+
 export enum MoldFlavor {
   WHITE = 'White',
   BLACK = 'Black',

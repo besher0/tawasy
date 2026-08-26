@@ -1,9 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
-import axios from 'axios';
 import { Platform } from 'react-native';
 import api, {
-  AUTH_BOOTSTRAP_TIMEOUT_MS,
   setAuthTokens,
   setAuthTokensListener,
 } from '../lib/api';
@@ -99,48 +97,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
-    async function verifyPersistedUser() {
-      try {
-        const response = await api.get<AuthUser>('/auth/me', {
-          timeout: AUTH_BOOTSTRAP_TIMEOUT_MS,
-        });
-
-        if (cancelled) {
-          return;
-        }
-
-        setState((current) => {
-          if (!current.accessToken && !current.refreshToken) {
-            return current;
-          }
-
-          const nextState = { ...current, user: response.data };
-          void persistState(nextState);
-          return nextState;
-        });
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined;
-
-        if (status === 401 || status === 403) {
-          const emptyState: AuthState = {
-            user: null,
-            accessToken: null,
-            refreshToken: null,
-          };
-          setAuthTokens(null);
-          setState(emptyState);
-          await persistState(null);
-          return;
-        }
-
-        console.warn('Failed to verify persisted auth state', error);
-      }
-    }
-
     async function load() {
       try {
         const raw = await getPersistedState();
@@ -155,7 +111,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             refreshToken: parsed.refreshToken ?? '',
           });
           setState(parsed);
-          void verifyPersistedUser();
         }
       } catch (error) {
         console.warn('Failed to load persisted auth state', error);

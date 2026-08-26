@@ -12,6 +12,8 @@ export interface DisplayOrderItem {
   layers?: number;
   shape?: string | null;
   shapeText?: string | null;
+  moldOrderType?: string | null;
+  fridgeMoldName?: string | null;
   moldFlavor?: string | null;
   moldInnerColor?: string | null;
   moldLayerColors?: string | null;
@@ -69,6 +71,20 @@ export function buildOrderItemDisplay(
     return {
       title: 'قطع',
       text: `قطع، ${details.join('، ')}`,
+    };
+  }
+
+  if (item.moldOrderType === 'FRIDGE') {
+    const fridgeName = item.fridgeMoldName?.trim() || '-';
+
+    return {
+      title: 'قالب براد',
+      text: [
+        'قالب براد',
+        `اسم القالب: ${fridgeName}`,
+        `الكتابة: ${writing}`,
+        `الملاحظات: ${notes}`,
+      ].join('، '),
     };
   }
 

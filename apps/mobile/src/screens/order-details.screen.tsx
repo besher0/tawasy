@@ -25,6 +25,7 @@ import theme from "../theme";
 import { orderStatusLabel } from "../lib/labels";
 import { buildOrderItemDisplay } from "../lib/order-item-details";
 import { StatusBadge } from "../components/status-badge";
+import { requestIncomingOrdersSync } from "../services/orders-sync.service";
 
 type ScreenRoute = RouteProp<RootStackParamList, "OrderDetails">;
 
@@ -69,6 +70,7 @@ export function OrderDetailsScreen() {
       setActionError(null);
       const response = await api.post(`/orders/${route.params.orderId}/cancel`);
       setOrder(response.data);
+      requestIncomingOrdersSync();
       setShowCancelConfirmation(false);
     } catch (error) {
       setActionError(

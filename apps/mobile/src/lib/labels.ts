@@ -161,6 +161,10 @@ export function topProductLabel(value?: string | null) {
   }
 
   if (kind === 'Mold') {
+    if (detail === 'FRIDGE') {
+      return 'قالب براد';
+    }
+
     return `قالب - ${moldFlavorLabel(detail)}`;
   }
 

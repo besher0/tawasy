@@ -146,7 +146,9 @@ export class AnalyticsService {
       const label =
         item.itemKind === 'Pieces'
           ? `Pieces - ${item.pieceType ?? 'Unspecified'}`
-          : `Mold - ${item.moldFlavor ?? 'Unspecified'}`;
+          : item.moldOrderType === 'FRIDGE'
+            ? 'Mold - FRIDGE'
+            : `Mold - ${item.moldFlavor ?? 'Unspecified'}`;
       const existing = grouped.get(label) ?? { label, quantity: 0, revenue: 0 };
       existing.quantity += 1;
       existing.revenue += item.order.totalPrice;

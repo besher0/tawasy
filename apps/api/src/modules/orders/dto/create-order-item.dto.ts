@@ -6,6 +6,7 @@ import {
   MoldBaseType,
   MoldFlavor,
   MoldInnerColor,
+  MoldOrderType,
   OrderItemKind,
 } from '@sugarprecision/shared-types';
 import {
@@ -20,6 +21,17 @@ import {
   ValidateIf,
 } from 'class-validator';
 
+function isFridgeMold(item: CreateOrderItemDto) {
+  return (
+    item.itemKind === OrderItemKind.MOLD &&
+    item.moldOrderType === MoldOrderType.FRIDGE
+  );
+}
+
+function isStandardMold(item: CreateOrderItemDto) {
+  return item.itemKind === OrderItemKind.MOLD && !isFridgeMold(item);
+}
+
 export class CreateOrderItemDto {
   @ApiProperty({ enum: OrderItemKind })
   @IsEnum(OrderItemKind)
@@ -31,6 +43,7 @@ export class CreateOrderItemDto {
   pieceType?: string;
 
   @ApiProperty({ default: false })
+  @ValidateIf((item: CreateOrderItemDto) => !isFridgeMold(item))
   @IsBoolean()
   hasTopDecoration!: boolean;
 
@@ -40,12 +53,13 @@ export class CreateOrderItemDto {
   cakeType?: CakeType;
 
   @ApiProperty({ minimum: 1 })
+  @ValidateIf((item: CreateOrderItemDto) => !isFridgeMold(item))
   @IsInt()
   @Min(1)
   layers!: number;
 
   @ApiPropertyOptional({ enum: CakeShape })
-  @ValidateIf((item: CreateOrderItemDto) => item.itemKind === OrderItemKind.MOLD)
+  @ValidateIf((item: CreateOrderItemDto) => isStandardMold(item))
   @IsEnum(CakeShape)
   shape?: CakeShape;
 
@@ -53,19 +67,31 @@ export class CreateOrderItemDto {
   @ValidateIf(
     (item: CreateOrderItemDto) =>
       item.itemKind === OrderItemKind.MOLD &&
+      !isFridgeMold(item) &&
       item.shape === CakeShape.LETTER_OR_NUMBER,
   )
   @IsString()
   @IsNotEmpty()
   shapeText?: string;
 
+  @ApiPropertyOptional({ enum: MoldOrderType, default: MoldOrderType.STANDARD })
+  @IsOptional()
+  @IsEnum(MoldOrderType)
+  moldOrderType?: MoldOrderType;
+
+  @ApiPropertyOptional({ description: 'Required for fridge mold orders' })
+  @ValidateIf((item: CreateOrderItemDto) => isFridgeMold(item))
+  @IsString()
+  @IsNotEmpty()
+  fridgeMoldName?: string;
+
   @ApiPropertyOptional({ enum: MoldFlavor })
-  @ValidateIf((item: CreateOrderItemDto) => item.itemKind === OrderItemKind.MOLD)
+  @ValidateIf((item: CreateOrderItemDto) => isStandardMold(item))
   @IsEnum(MoldFlavor)
   moldFlavor?: MoldFlavor;
 
   @ApiPropertyOptional({ enum: MoldInnerColor, description: 'Mold color from the inside' })
-  @ValidateIf((item: CreateOrderItemDto) => item.itemKind === OrderItemKind.MOLD)
+  @ValidateIf((item: CreateOrderItemDto) => isStandardMold(item))
   @IsEnum(MoldInnerColor)
   moldInnerColor?: MoldInnerColor;
 
@@ -73,6 +99,7 @@ export class CreateOrderItemDto {
   @ValidateIf(
     (item: CreateOrderItemDto) =>
       item.itemKind === OrderItemKind.MOLD &&
+      !isFridgeMold(item) &&
       item.moldInnerColor === MoldInnerColor.MIXED,
   )
   @IsString()
@@ -80,27 +107,32 @@ export class CreateOrderItemDto {
   moldLayerColors?: string;
 
   @ApiPropertyOptional({ description: 'Requested external mold color' })
-  @ValidateIf((item: CreateOrderItemDto) => item.itemKind === OrderItemKind.MOLD)
+  @ValidateIf((item: CreateOrderItemDto) => isStandardMold(item))
   @IsString()
   @IsNotEmpty()
   moldColor?: string;
 
   @ApiProperty({ default: false })
+  @ValidateIf((item: CreateOrderItemDto) => !isFridgeMold(item))
   @IsBoolean()
   hasFillings!: boolean;
 
   @ApiPropertyOptional()
-  @ValidateIf((item: CreateOrderItemDto) => item.hasFillings)
+  @ValidateIf(
+    (item: CreateOrderItemDto) => isStandardMold(item) && item.hasFillings,
+  )
   @IsString()
   filling?: string;
 
   @ApiProperty({ enum: MoldBaseType, default: MoldBaseType.NONE })
+  @ValidateIf((item: CreateOrderItemDto) => isStandardMold(item))
   @IsEnum(MoldBaseType)
   moldBaseType!: MoldBaseType;
 
   @ApiPropertyOptional({ minimum: 1, description: 'Number of foam pieces when foam is selected' })
   @ValidateIf(
-    (item: CreateOrderItemDto) => item.moldBaseType === MoldBaseType.FOAM,
+    (item: CreateOrderItemDto) =>
+      isStandardMold(item) && item.moldBaseType === MoldBaseType.FOAM,
   )
   @IsInt()
   @Min(1)
@@ -108,13 +140,15 @@ export class CreateOrderItemDto {
 
   @ApiPropertyOptional({ minimum: 1, description: 'Number of cake layers when cake is selected' })
   @ValidateIf(
-    (item: CreateOrderItemDto) => item.moldBaseType === MoldBaseType.CAKE,
+    (item: CreateOrderItemDto) =>
+      isStandardMold(item) && item.moldBaseType === MoldBaseType.CAKE,
   )
   @IsInt()
   @Min(1)
   cakeLayerCount?: number;
 
   @ApiProperty({ enum: CakeFinish })
+  @ValidateIf((item: CreateOrderItemDto) => isStandardMold(item))
   @IsEnum(CakeFinish)
   finishType!: CakeFinish;
 
@@ -129,11 +163,13 @@ export class CreateOrderItemDto {
   writingText?: string;
 
   @ApiProperty({ minimum: 1 })
+  @ValidateIf((item: CreateOrderItemDto) => !isFridgeMold(item))
   @IsInt()
   @Min(1)
   peopleCount!: number;
 
   @ApiProperty({ type: [String], default: [] })
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   referenceImages!: string[];

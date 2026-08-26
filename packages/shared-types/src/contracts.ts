@@ -7,6 +7,7 @@ import {
   MoldFlavor,
   MoldBaseType,
   MoldInnerColor,
+  MoldOrderType,
   OrderItemKind,
   OrderStatus,
   PaymentStatus,
@@ -35,6 +36,8 @@ export interface OrderItemInput {
   layers: number;
   shape?: CakeShape;
   shapeText?: string;
+  moldOrderType?: MoldOrderType;
+  fridgeMoldName?: string;
   moldFlavor?: MoldFlavor;
   moldInnerColor?: MoldInnerColor;
   moldLayerColors?: string;

@@ -4,6 +4,7 @@ import {
   MoldBaseType,
   MoldFlavor,
   MoldInnerColor,
+  MoldOrderType,
   OrderItemKind,
   PaymentStatus,
   ShopType,
@@ -39,6 +40,7 @@ import { useAuth } from "../context/auth-context";
 import api from "../lib/api";
 import { getApiErrorMessage } from "../lib/api-error";
 import { RootStackParamList } from "../navigation/types";
+import { requestIncomingOrdersSync } from "../services/orders-sync.service";
 import theme from "../theme";
 
 type DraftOrderItem = {
@@ -49,6 +51,8 @@ type DraftOrderItem = {
   layers: number;
   shape: CakeShape;
   shapeText: string;
+  moldOrderType: MoldOrderType;
+  fridgeMoldName: string;
   moldFlavor: MoldFlavor;
   moldInnerColor: MoldInnerColor;
   moldLayerColors: string;
@@ -103,6 +107,11 @@ const moldFlavorOptions: Choice<MoldFlavor>[] = [
   { value: MoldFlavor.CREAM, label: "كريمة" },
   { value: MoldFlavor.CHOCOLATE, label: "شوكولا" },
   { value: MoldFlavor.HARISSA, label: "هريسة" },
+];
+
+const moldOrderTypeOptions: Choice<MoldOrderType>[] = [
+  { value: MoldOrderType.STANDARD, label: "قالب عادي" },
+  { value: MoldOrderType.FRIDGE, label: "قالب براد" },
 ];
 
 const moldInnerColorOptions: Choice<MoldInnerColor>[] = [
@@ -160,6 +169,8 @@ function createEmptyItem(): DraftOrderItem {
     layers: 1,
     shape: CakeShape.ROUND,
     shapeText: "",
+    moldOrderType: MoldOrderType.STANDARD,
+    fridgeMoldName: "",
     moldFlavor: MoldFlavor.CREAM,
     moldInnerColor: MoldInnerColor.WHITE,
     moldLayerColors: "",
@@ -209,6 +220,8 @@ function toDraftOrderItem(item: any): DraftOrderItem {
     layers: Number.isFinite(item.layers) ? item.layers : empty.layers,
     shape: item.shape ?? empty.shape,
     shapeText: item.shapeText ?? "",
+    moldOrderType: item.moldOrderType ?? MoldOrderType.STANDARD,
+    fridgeMoldName: item.fridgeMoldName ?? "",
     moldFlavor: item.moldFlavor ?? empty.moldFlavor,
     moldInnerColor: item.moldInnerColor ?? empty.moldInnerColor,
     moldLayerColors: item.moldLayerColors ?? "",
@@ -538,7 +551,10 @@ export function NewOrderScreen({ orderId }: NewOrderScreenProps) {
     }
 
     const invalidMoldColorIndex = items.findIndex(
-      (item) => item.itemKind === OrderItemKind.MOLD && !item.moldColor.trim(),
+      (item) =>
+        item.itemKind === OrderItemKind.MOLD &&
+        item.moldOrderType !== MoldOrderType.FRIDGE &&
+        !item.moldColor.trim(),
     );
 
     if (invalidMoldColorIndex >= 0) {
@@ -551,6 +567,7 @@ export function NewOrderScreen({ orderId }: NewOrderScreenProps) {
     const invalidShapeTextIndex = items.findIndex(
       (item) =>
         item.itemKind === OrderItemKind.MOLD &&
+        item.moldOrderType !== MoldOrderType.FRIDGE &&
         item.shape === CakeShape.LETTER_OR_NUMBER &&
         !item.shapeText.trim(),
     );
@@ -565,12 +582,27 @@ export function NewOrderScreen({ orderId }: NewOrderScreenProps) {
     const invalidFillingIndex = items.findIndex(
       (item) =>
         item.itemKind === OrderItemKind.MOLD &&
+        item.moldOrderType !== MoldOrderType.FRIDGE &&
         item.hasFillings &&
         !item.filling.trim(),
     );
 
     if (invalidFillingIndex >= 0) {
       setSubmitError(`اكتب الحشوات في القالب رقم ${invalidFillingIndex + 1}`);
+      return false;
+    }
+
+    const invalidFridgeMoldNameIndex = items.findIndex(
+      (item) =>
+        item.itemKind === OrderItemKind.MOLD &&
+        item.moldOrderType === MoldOrderType.FRIDGE &&
+        !item.fridgeMoldName.trim(),
+    );
+
+    if (invalidFridgeMoldNameIndex >= 0) {
+      setSubmitError(
+        `اكتب اسم قالب البراد في المنتج رقم ${invalidFridgeMoldNameIndex + 1}`,
+      );
       return false;
     }
 
@@ -651,6 +683,7 @@ export function NewOrderScreen({ orderId }: NewOrderScreenProps) {
     const missingMixedLayerColors = items.find(
       (item) =>
         item.itemKind === OrderItemKind.MOLD &&
+        item.moldOrderType !== MoldOrderType.FRIDGE &&
         item.moldInnerColor === MoldInnerColor.MIXED &&
         !item.moldLayerColors.trim(),
     );
@@ -679,37 +712,47 @@ export function NewOrderScreen({ orderId }: NewOrderScreenProps) {
       notes: notes.trim() || undefined,
       items: items.map((item) => {
         const isMold = item.itemKind === OrderItemKind.MOLD;
+        const isFridgeMold =
+          isMold && item.moldOrderType === MoldOrderType.FRIDGE;
+        const isStandardMold = isMold && !isFridgeMold;
 
         return {
           itemKind: item.itemKind,
           pieceType: isMold ? undefined : item.pieceType.trim(),
           hasTopDecoration: isMold ? false : item.hasTopDecoration,
-          layers: item.layers,
-          shape: isMold ? item.shape : undefined,
+          layers: isFridgeMold ? 1 : item.layers,
+          shape: isStandardMold ? item.shape : undefined,
           shapeText:
-            isMold && item.shape === CakeShape.LETTER_OR_NUMBER
+            isStandardMold && item.shape === CakeShape.LETTER_OR_NUMBER
               ? item.shapeText.trim()
               : undefined,
-          moldFlavor: isMold ? item.moldFlavor : undefined,
-          moldInnerColor: isMold ? item.moldInnerColor : undefined,
+          moldOrderType: isMold ? item.moldOrderType : undefined,
+          fridgeMoldName: isFridgeMold
+            ? item.fridgeMoldName.trim()
+            : undefined,
+          moldFlavor: isStandardMold ? item.moldFlavor : undefined,
+          moldInnerColor: isStandardMold ? item.moldInnerColor : undefined,
           moldLayerColors:
-            isMold && item.moldInnerColor === MoldInnerColor.MIXED
+            isStandardMold && item.moldInnerColor === MoldInnerColor.MIXED
               ? item.moldLayerColors.trim()
               : undefined,
-          moldColor: isMold ? item.moldColor.trim() : undefined,
-          hasFillings: isMold && item.hasFillings,
-          filling: isMold && item.hasFillings ? item.filling.trim() : undefined,
-          moldBaseType: isMold ? item.moldBaseType : MoldBaseType.NONE,
+          moldColor: isStandardMold ? item.moldColor.trim() : undefined,
+          hasFillings: isStandardMold && item.hasFillings,
+          filling:
+            isStandardMold && item.hasFillings
+              ? item.filling.trim()
+              : undefined,
+          moldBaseType: isStandardMold ? item.moldBaseType : MoldBaseType.NONE,
           foamCount:
-            isMold && item.moldBaseType === MoldBaseType.FOAM
+            isStandardMold && item.moldBaseType === MoldBaseType.FOAM
               ? item.foamCount
               : undefined,
           cakeLayerCount:
-            isMold && item.moldBaseType === MoldBaseType.CAKE
+            isStandardMold && item.moldBaseType === MoldBaseType.CAKE
               ? item.cakeLayerCount
               : undefined,
-          finishType: isMold ? item.finishType : CakeFinish.NONE,
-          peopleCount: item.peopleCount,
+          finishType: isStandardMold ? item.finishType : CakeFinish.NONE,
+          peopleCount: isFridgeMold ? 1 : item.peopleCount,
           specialDetails: item.specialDetails.trim() || undefined,
           writingText: isMold
             ? item.writingText.trim() || undefined
@@ -727,12 +770,14 @@ export function NewOrderScreen({ orderId }: NewOrderScreenProps) {
       setIsSubmitting(true);
       if (isEditing && orderId) {
         await api.patch(`/orders/${orderId}`, payload);
+        requestIncomingOrdersSync();
         navigation.goBack();
       } else {
         const response = await api.post<{ id: string; orderNumber: string }>(
           "/orders/",
           payload,
         );
+        requestIncomingOrdersSync();
         resetForm();
         setCreatedOrder(response.data);
         navigation.navigate("OrderDetails", { orderId: response.data.id });
@@ -885,6 +930,8 @@ export function NewOrderScreen({ orderId }: NewOrderScreenProps) {
 
       {items.map((item, index) => {
         const isMold = item.itemKind === OrderItemKind.MOLD;
+        const isFridgeMold =
+          isMold && item.moldOrderType === MoldOrderType.FRIDGE;
 
         return (
           <View key={item.id} style={styles.card}>
@@ -957,6 +1004,50 @@ export function NewOrderScreen({ orderId }: NewOrderScreenProps) {
               </>
             ) : (
               <>
+                <Text style={styles.label}>نوع القالب</Text>
+                <ChoiceRow
+                  options={moldOrderTypeOptions}
+                  selected={item.moldOrderType}
+                  onSelect={(moldOrderType) =>
+                    updateItem(item.id, (current) => ({
+                      ...current,
+                      moldOrderType,
+                    }))
+                  }
+                />
+
+                {isFridgeMold ? (
+                  <>
+                    <Text style={styles.label}>اسم القالب</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={item.fridgeMoldName}
+                      onChangeText={(fridgeMoldName) =>
+                        updateItem(item.id, (current) => ({
+                          ...current,
+                          fridgeMoldName,
+                        }))
+                      }
+                      placeholder="مثال: قالب براد فواكه"
+                      textAlign="right"
+                    />
+
+                    <Text style={styles.label}>الكتابة على القالب</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={item.writingText}
+                      onChangeText={(writingText) =>
+                        updateItem(item.id, (current) => ({
+                          ...current,
+                          writingText,
+                        }))
+                      }
+                      placeholder="اكتب النص المطلوب على القالب، أو اتركه فارغاً"
+                      textAlign="right"
+                    />
+                  </>
+                ) : (
+                  <>
                 <Text style={styles.label}>عدد الأشخاص</Text>
                 {renderStepper(item.peopleCount, (peopleCount) =>
                   updateItem(item.id, (current) => ({
@@ -1169,6 +1260,8 @@ export function NewOrderScreen({ orderId }: NewOrderScreenProps) {
                   placeholder="اكتب النص المطلوب على القالب، أو اتركه فارغاً"
                   textAlign="right"
                 />
+                  </>
+                )}
               </>
             )}
 

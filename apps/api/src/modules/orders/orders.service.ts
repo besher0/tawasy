@@ -8,8 +8,11 @@ import {
 import { CakeType, Prisma, OrderStatus } from "@prisma/client";
 import {
   CakeShape,
+  CakeFinish,
   MoldBaseType,
   MoldInnerColor,
+  MoldOrderType,
+  OrderItemKind,
   UserRole,
 } from "@sugarprecision/shared-types";
 import { PrismaService } from "../prisma/prisma.service";
@@ -64,7 +67,7 @@ export class OrdersService {
 
   async create(dto: CreateOrderDto, actor: RequestActor) {
     this.assertDeposit(dto.depositAmount, dto.totalPrice);
-    dto.items.forEach((item) => this.assertMoldBaseConfiguration(item));
+    dto.items.forEach((item) => this.assertOrderItemConfiguration(item));
     const shopId = this.resolveWritableShopId(actor, dto.shopId);
     const moldDeliveryShopId = dto.moldDeliveryShopId ?? shopId;
     await this.assertDeliveryLocation(moldDeliveryShopId);
@@ -202,7 +205,7 @@ export class OrdersService {
       );
     }
 
-    dto.items?.forEach((item) => this.assertMoldBaseConfiguration(item));
+    dto.items?.forEach((item) => this.assertOrderItemConfiguration(item));
 
     const nextShopId =
       dto.shopId !== undefined
@@ -448,6 +451,38 @@ export class OrdersService {
   }
 
   private toOrderItemData(item: CreateOrderDto["items"][number]) {
+    const isMold = item.itemKind === OrderItemKind.MOLD;
+    const isFridgeMold =
+      isMold && item.moldOrderType === MoldOrderType.FRIDGE;
+
+    if (isFridgeMold) {
+      return {
+        itemKind: item.itemKind,
+        pieceType: undefined,
+        hasTopDecoration: false,
+        cakeType: CakeType.Cake,
+        layers: 1,
+        shape: undefined,
+        shapeText: undefined,
+        moldOrderType: MoldOrderType.FRIDGE,
+        fridgeMoldName: item.fridgeMoldName?.trim(),
+        moldFlavor: undefined,
+        moldInnerColor: undefined,
+        moldLayerColors: undefined,
+        moldColor: undefined,
+        hasFillings: false,
+        filling: undefined,
+        moldBaseType: MoldBaseType.NONE,
+        foamCount: undefined,
+        cakeLayerCount: undefined,
+        finishType: CakeFinish.NONE,
+        specialDetails: item.specialDetails,
+        writingText: item.writingText,
+        peopleCount: 1,
+        referenceImages: item.referenceImages ?? [],
+      };
+    }
+
     return {
       itemKind: item.itemKind,
       pieceType: item.pieceType,
@@ -461,6 +496,10 @@ export class OrdersService {
         item.shape === CakeShape.LETTER_OR_NUMBER
           ? item.shapeText?.trim()
           : undefined,
+      moldOrderType: isMold
+        ? item.moldOrderType ?? MoldOrderType.STANDARD
+        : MoldOrderType.STANDARD,
+      fridgeMoldName: undefined,
       moldFlavor: item.moldFlavor,
       moldInnerColor: item.moldInnerColor,
       moldLayerColors:
@@ -493,9 +532,20 @@ export class OrdersService {
     }
   }
 
-  private assertMoldBaseConfiguration(
+  private assertOrderItemConfiguration(
     item: CreateOrderDto["items"][number],
   ) {
+    if (
+      item.itemKind === OrderItemKind.MOLD &&
+      item.moldOrderType === MoldOrderType.FRIDGE
+    ) {
+      if (!item.fridgeMoldName?.trim()) {
+        throw new BadRequestException("Fridge mold name is required");
+      }
+
+      return;
+    }
+
     if (
       item.moldBaseType === MoldBaseType.FOAM &&
       (!Number.isInteger(item.foamCount) || (item.foamCount ?? 0) < 1)

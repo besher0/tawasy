@@ -56,6 +56,11 @@ enum OrderItemKind {
   Mold
 }
 
+enum MoldOrderType {
+  STANDARD
+  FRIDGE
+}
+
 enum MoldFlavor {
   White
   Black
@@ -186,6 +191,8 @@ model OrderItem {
   layers           Int
   shape            CakeShape?
   shapeText        String?
+  moldOrderType    MoldOrderType @default(STANDARD)
+  fridgeMoldName   String?
   moldFlavor       MoldFlavor?
   moldInnerColor   MoldInnerColor?
   moldLayerColors  String?
