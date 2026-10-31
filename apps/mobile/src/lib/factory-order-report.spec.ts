@@ -23,6 +23,7 @@ describe('buildFactoryOrderReport', () => {
           {
             id: 'milk-mold',
             itemKind: 'Mold',
+            layers: 3,
             moldInnerColor: 'White',
             moldBaseType: 'Foam',
             foamCount: 2,
@@ -101,6 +102,7 @@ describe('buildFactoryOrderReport', () => {
       'الفرع: فرع التسليم',
     ]);
     expect(secondBranchBItem?.lines.join(' ')).toContain('قالب 12');
+    expect(secondBranchBItem?.lines.join(' ')).toContain('3 طابق');
     expect(secondBranchBItem?.lines.join(' ')).not.toContain('قطع');
     expect(secondBranchBItem?.images).toEqual([
       {
