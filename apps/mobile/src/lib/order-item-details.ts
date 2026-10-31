@@ -77,7 +77,7 @@ export function buildOrderItemDisplay(
     cakeShapeWithTextLabel(item.shape, item.shapeText),
     item.hasFillings ? item.filling?.trim() || 'يوجد حشوة' : null,
     baseDetails,
-    `${item.layers ?? '-'}`,
+    item.layers == null ? '-' : `${item.layers} طابق`,
     moldFlavorLabel(item.moldFlavor),
     item.moldColor?.trim() || '-',
     finishDetails,
