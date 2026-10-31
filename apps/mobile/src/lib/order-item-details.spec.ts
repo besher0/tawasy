@@ -21,7 +21,7 @@ describe('buildOrderItemDisplay', () => {
 
     expect(display).toEqual({
       title: 'قالب',
-      text: 'قالب 12، حليب، دائري، فستق، مع فلين (2)، 3، شوكولا، زهري، نكبر ونلبس الديسك، عيد ميلاد سعيد، الملاحظات والإضافات الأخرى: كتابة اسم',
+      text: 'قالب 12، حليب، دائري، فستق، مع فلين (2)، 3 طابق، شوكولا، زهري، نكبر ونلبس الديسك، عيد ميلاد سعيد، الملاحظات والإضافات الأخرى: كتابة اسم',
     });
   });
 
@@ -42,7 +42,7 @@ describe('buildOrderItemDisplay', () => {
     });
 
     expect(display.text).toBe(
-      'قالب 8، شوكولا، مربع، بدون فلين، 1، كريمة، أبيض، مافي تكبير ديسك، مافي كتابة، الملاحظات والإضافات الأخرى: -',
+      'قالب 8، شوكولا، مربع، بدون فلين، 1 طابق، كريمة، أبيض، مافي تكبير ديسك، مافي كتابة، الملاحظات والإضافات الأخرى: -',
     );
     expect(display.text).not.toContain('نوع الحشوة');
     expect(display.text).not.toContain('لون القالب من الداخل');
@@ -68,7 +68,7 @@ describe('buildOrderItemDisplay', () => {
     );
 
     expect(display.text).toBe(
-      'قالب 8، شوكولا، مربع، 1، كريمة، أبيض، مافي كتابة، الملاحظات والإضافات الأخرى: -',
+      'قالب 8، شوكولا، مربع، 1 طابق، كريمة، أبيض، مافي كتابة، الملاحظات والإضافات الأخرى: -',
     );
     expect(display.text).not.toContain('بدون فلين');
     expect(display.text).not.toContain('مافي تكبير ديسك');
@@ -108,6 +108,7 @@ describe('buildOrderItemDisplay', () => {
     });
 
     expect(display.text).toContain('كيك (3 طبقات)');
+    expect(display.text).toContain('2 طابق');
     expect(display.text).toContain('نكبر الديسك');
   });
 
